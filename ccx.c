@@ -257,8 +257,8 @@ SourceCode string(SourceCode start, SourceCode end)
 {
   if (*start is_not '"' or end <= start) return NULL;
   mut_SourceCode cursor = start + 1;
-  while (cursor < end and *cursor is_not '"') {
-    if (*cursor is '\\') ++cursor;
+  while (cursor is_not end and *cursor is_not '"') {
+    if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
     ++cursor;
   }
   return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
@@ -268,7 +268,7 @@ SourceCode system_include(SourceCode start, SourceCode end)
 {
   if (*start is_not '<' or end <= start) return NULL;
   mut_SourceCode cursor = start + 1;
-  while (cursor < end and *cursor is_not '>') ++cursor;
+  while (cursor is_not end and *cursor is_not '>') ++cursor;
   return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
 }
 
@@ -276,8 +276,8 @@ SourceCode character(SourceCode start, SourceCode end)
 {
   if (*start is_not '\'' or end <= start) return NULL;
   mut_SourceCode cursor = start + 1;
-  while (cursor < end and *cursor is_not '\'') {
-    if (*cursor is '\\') ++cursor;
+  while (cursor is_not end and *cursor is_not '\'') {
+    if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
     ++cursor;
   }
   return (cursor is end)? NULL: cursor + 1;// End is past the closing quote.
