@@ -210,7 +210,7 @@ SourceCode identifier(SourceCode start, SourceCode end)
   }
 }
 
-/* This matches invalid numbers like 3.4.6, 09, and 0uL348.34e+11.
+/* This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
    Rejecting that is left to the compiler. */
 SourceCode number(SourceCode start, SourceCode end)
 {
