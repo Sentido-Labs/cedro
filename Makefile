@@ -1,10 +1,12 @@
 CC=gcc -std=c99
 NAME=ccx
 
+all: run
+
 run: $(NAME)
 	./$(NAME) $(NAME).c
 
-$(NAME): $(NAME).c Makefile
+$(NAME): $(NAME).c macros.h Makefile
 	$(CC) -o $@ $<
 
 docs: *.c *.h Makefile Doxyfile
