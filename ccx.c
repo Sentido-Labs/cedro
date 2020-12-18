@@ -83,85 +83,103 @@ void Marker_init(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
   _->end        = end;
   _->token_type = token_type;
 }
+void Marker_drop(mut_Marker_p _) {}
 
-typedef struct Marker_array {
-  size_t len;
-  size_t capacity;
-  Marker* items;
-} Marker_array, * const Marker_array_p, * mut_Marker_array_p;
-
-/** Example: <code>Marker_slice s = { 0, 10, &my_array };</code> */
-typedef struct Marker_slice {
-  size_t start;
-  size_t end; /** 0 means the end of the array. */
-  Marker_array_p array_p;
-} Marker_slice, * const Marker_slice_p, * mut_Marker_slice_p;
-
-void Marker_array_init(mut_Marker_array_p _, size_t initial_capacity)
-{
-  _->len = 0;
-  _->capacity = initial_capacity;
-  _->items = malloc(initial_capacity * sizeof(Marker));
-  /* Used malloc() here instead of calloc() because we need realloc() later
-     anyway, so better keep the exact same behaviour. */
+/* There must be a type##_drop(type##_p _) function. */                 \
+#define DEFINE_ARRAY_OF(type)                                           \
+typedef struct type##_array {                                           \
+  size_t len;                                                           \
+  size_t capacity;                                                      \
+  type*  items;                                                         \
+} type##_array, * const type##_array_p, * mut_##type##_array_p;         \
+                                                                        \
+/** Example: <code>type##_slice s = { 0, 10, &my_array };</code> */     \
+typedef struct type##_array_slice {                                     \
+  size_t start;                                                         \
+  size_t end; /** 0 means the end of the array. */                      \
+  type##_array_p array_p;                                               \
+} type##_array_slice, * const type##_array_slice_p, * mut_##type##_array_slice_p; \
+                                                                        \
+mut_##type##_array_p type##_array_init(mut_##type##_array_p _, size_t initial_capacity) \
+{                                                                       \
+  _->len = 0;                                                           \
+  _->capacity = initial_capacity;                                       \
+  _->items = malloc(initial_capacity * sizeof(type));                   \
+  /* Used malloc() here instead of calloc() because we need realloc() later \
+     anyway, so better keep the exact same behaviour. */                \
+  return _;                                                             \
+}                                                                       \
+mut_##type##_array_p type##_array_drop(mut_##type##_array_p _)          \
+{                                                                       \
+  mut_##type##_p cursor = _->items;                                     \
+  type##_p       end    = _->items + _->len;                            \
+  while (cursor != end) type##_drop(cursor++);                          \
+  _->len = 0;                                                           \
+  _->capacity = 0;                                                      \
+  free(_->items); _->items = NULL;                                      \
+  return _;                                                             \
+}                                                                       \
+                                                                        \
+mut_##type##_array_p type##_array_push(mut_##type##_array_p _, type##_p item) \
+{                                                                       \
+  if (_->capacity < _->len + 1) {                                       \
+    _->capacity *= 2;                                                   \
+    _->items = realloc(_->items, _->capacity * sizeof(type));           \
+  }                                                                     \
+  _->items[_->len++] = *item;                                           \
+  return _;                                                             \
+}                                                                       \
+mut_##type##_array_p type##_array_splice(mut_##type##_array_p _, size_t position, size_t delete, type##_array_slice_p insert) \
+{                                                                       \
+  mut_##type##_p cursor = _->items + position;                          \
+  type##_p       end    = _->items + position + delete;                 \
+  while (cursor != end) type##_drop(cursor++);                          \
+                                                                        \
+  size_t insert_len = insert->end;                                      \
+  if (!insert_len) {                                                    \
+    insert_len = insert->array_p->len;                                  \
+    if (insert_len) --insert_len;                                       \
+  }                                                                     \
+  if (insert_len > insert->start) insert_len -= insert->start;          \
+                                                                        \
+  if (_->len + insert_len - delete >= _->capacity) {                    \
+    _->capacity *= 2;                                                   \
+    _->items = realloc(_->items, _->capacity * sizeof(type));           \
+  }                                                                     \
+                                                                        \
+  size_t gap_end = position + insert_len - delete;                      \
+  memmove(_->items + gap_end, _->items + position + delete,             \
+          (_->len - delete - position) * sizeof(type));                 \
+  _->len = _->len + insert_len - delete;                                \
+  memmove(_->items + position, insert->array_p->items + insert->start,  \
+          insert_len * sizeof(type));                                   \
+  return _;                                                             \
+}                                                                       \
+mut_##type##_array_p type##_array_delete(mut_##type##_array_p _, size_t position, size_t delete) \
+{                                                                       \
+  mut_##type##_p cursor = _->items + position;                          \
+  type##_p       end    = _->items + position + delete;                 \
+  while (cursor != end) type##_drop(cursor++);                          \
+                                                                        \
+  memmove(_->items + position, _->items + position + delete,            \
+          (_->len - delete - position) * sizeof(type));                 \
+  _->len -= delete;                                                     \
+  return _;                                                             \
+}                                                                       \
+mut_##type##_array_p type##_array_pop(mut_##type##_array_p _, mut_##type##_p item_p) \
+{                                                                       \
+  if (_->len) {                                                         \
+    mut_##type##_p last_p = _->items + _->len - 1;                      \
+    memmove(last_p, item_p, sizeof(type));                              \
+    --_->len;                                                           \
+  }                                                                     \
+  return _;                                                             \
+}                                                                       \
+type##_p type##_array_end(type##_array_p _)                             \
+{                                                                       \
+  return _->items + _->len;                                             \
 }
-void Marker_array_drop(mut_Marker_array_p _)
-{
-  _->len = 0;
-  _->capacity = 0;
-  free(_->items);
-  _->items = NULL;
-}
-
-mut_Marker_p Marker_array_push(mut_Marker_array_p _,
-                               size_t start, size_t end, TokenType token_type)
-{
-  if (_->capacity < _->len + 1) {
-    _->capacity *= 2;
-    _->items = realloc(_->items, _->capacity * sizeof(Marker));
-  }
-  Marker_init(&(_->items[_->len++]), start, end, token_type);
-}
-
-mut_Marker_array_p Marker_array_splice(mut_Marker_array_p _, size_t position, size_t delete, Marker_slice_p insert)
-{
-  size_t insert_len = insert->end;
-  if (!insert_len) {
-    insert_len = insert->array_p->len;
-    if (insert_len) --insert_len;
-  }
-  if (insert_len > insert->start) insert_len -= insert->start;
-
-  if (_->len + insert_len - delete >= _->capacity) {
-    _->capacity *= 2;
-    _->items = realloc(_->items, _->capacity * sizeof(Marker));
-  }
-
-  size_t gap_end = position + insert_len - delete;
-  memmove(_->items + gap_end, _->items + position + delete,
-          (_->len - delete - position) * sizeof(Marker));
-  _->len = _->len + insert_len - delete;
-  memmove(_->items + position, insert->array_p->items + insert->start,
-          insert_len * sizeof(Marker));
-}
-mut_Marker_array_p Marker_array_delete(mut_Marker_array_p _, size_t position, size_t delete)
-{
-  memmove(_->items + position, _->items + position + delete,
-          (_->len - delete - position) * sizeof(Marker));
-  _->len -= delete;
-}
-mut_Marker_array_p Marker_array_pop(mut_Marker_array_p _, mut_Marker_p item_p)
-{
-  if (_->len) {
-    mut_Marker_p last_p = _->items + _->len - 1;
-    memmove(last_p, item_p, sizeof(Marker));
-    --_->len;
-  }
-}
-Marker_p Marker_array_end(Marker_array_p _)
-{
-  return _->items + _->len;
-}
+DEFINE_ARRAY_OF(Marker);
 
 void define_macro(const char * const name, void (*f)(mut_Marker_array_p markers, Buffer_p src)) {
   fprintf(stderr, "(defmacro %s)\n", name);
@@ -700,8 +718,8 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
        default: TOKEN1(T_OTHER);
       }
     }
-    Marker_array_push(markers,
-                      cursor - src->bytes, token_end - src->bytes, token_type);
+    Marker marker = { cursor - src->bytes, token_end - src->bytes, token_type };
+    Marker_array_push(markers, &marker);
     cursor = token_end;
 
     switch (token_type) {
