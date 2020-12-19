@@ -18,18 +18,17 @@ typedef struct Buffer {
   size_t padding;
   uint8_t* bytes;
 } Buffer, * const Buffer_p, * mut_Buffer_p;
-void Buffer_init(mut_Buffer_p buffer, size_t len, size_t padding)
+void Buffer_init(mut_Buffer_p _, size_t len, size_t padding)
 {
-  buffer->bytes = calloc(1, len + padding);
-  buffer->len = len;
-  buffer->padding = padding;
+  _->bytes = calloc(1, len + padding);
+  _->len = len;
+  _->padding = padding;
 }
-void Buffer_drop(mut_Buffer_p buffer)
+void Buffer_drop(mut_Buffer_p _)
 {
-  buffer->len = 0;
-  buffer->padding = 0;
-  free(buffer->bytes);
-  buffer->bytes = NULL;
+  _->len = 0;
+  _->padding = 0;
+  free(_->bytes); _->bytes = NULL;
 }
 
 typedef uint8_t*const SourceCode;// 0-terminated.
@@ -404,10 +403,7 @@ SourceCode extract_string(SourceCode start, SourceCode end, mut_Buffer_p slice)
 void indent_log(size_t indent)
 {
   if (indent > 40) indent = 40;
-  while (indent is_not 0) {
-    fprintf(stderr, "  ");
-    --indent;
-  }
+  while (indent-- is_not 0) fprintf(stderr, "  ");
 }
 #define log_indent(indent, ...) { indent_log(indent); log(__VA_ARGS__); }
 
@@ -776,11 +772,8 @@ Buffer read_file(FilePath path)
   return buffer;
 }
 
-//char* pattern[] = { "Identifier: DEF", "Start parenthetical expression.", "Identifier: \1", "Comma.", "Start block.", "Identifier: \2" };
-
 int main(int argc, char** argv)
 {
-  log("Hello, start parsing.");
   define_macros();
 
   Buffer src = read_file("test.c");
