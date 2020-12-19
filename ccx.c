@@ -77,14 +77,14 @@ static const unsigned char * const TOKEN_NAME[] = {
 
 typedef struct Marker {
   size_t start;
-  size_t end;
+  size_t len;
   TokenType token_type;
 } Marker, * const Marker_p, * mut_Marker_p;
 
 void Marker_init(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 {
   _->start      = start;
-  _->end        = end;
+  _->len        = end - start;
   _->token_type = token_type;
 }
 void Marker_drop(mut_Marker_p _) {}
@@ -431,11 +431,11 @@ void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
   mut_SourceCode token = NULL;
   for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
     token = extract_string(src->bytes + m->start,
-                           src->bytes + m->end,
+                           src->bytes + m->start + m->len,
                            &slice);
 
-    const char * const spc = m->end - m->start <= spacing_len?
-        spacing + m->end - m->start:
+    const char * const spc = m->len <= spacing_len?
+        spacing + m->len:
         spacing + spacing_len;
 
     switch (m->token_type) {
@@ -727,7 +727,9 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
        default: TOKEN1(T_OTHER);
       }
     }
-    Marker marker = { cursor - src->bytes, token_end - src->bytes, token_type };
+    Marker marker;
+    Marker_init(&marker,
+                cursor - src->bytes, token_end - src->bytes, token_type);
     Marker_array_push(markers, &marker);
     cursor = token_end;
 
@@ -792,45 +794,58 @@ void resolve_types(Marker_array_p markers, Buffer_p src)
 
 typedef FILE* mut_File_p;
 typedef char*const FilePath;
-Buffer read_file(FilePath path)
+Buffer_p read_file(Buffer_p _, FilePath path)
 {
-  Buffer buffer;
   mut_File_p input = fopen(path, "r");
   fseek(input, 0, SEEK_END);
-  Buffer_init(&buffer, ftell(input), SRC_EXTRA_PADDING);
+  Buffer_init(_, ftell(input), SRC_EXTRA_PADDING);
   rewind(input);
-  fread(buffer.bytes, 1, buffer.len, input);
+  fread(_->bytes, 1, _->len, input);
   fclose(input); input = NULL;
-
-  return buffer;
+  return _;
 }
 
 int main(int argc, char** argv)
 {
   define_macros();
 
-  Buffer src = read_file("test.c");
+  for (int i = 1; i < argc; ++i) {
+    char* arg = argv[i];
+    if (arg[0] == '-') {
+      char* lang = getenv("LANG");
+      if (0 == strncmp(lang, "es", 2)) {
+        fprintf(stderr, "Uso: ccx fichero.c [fichero2.c … ]\n");
+      } else {
+        fprintf(stderr, "Usage: ccx file.c [file2.c … ]\n");
+      }
+      return 1;
+    }
 
+    Buffer src;
+    read_file(&src, arg);
 
-  Marker_array markers;
-  Marker_array_init(&markers, 8192);
     Options options = { .ignore_comment = false, .ignore_space = true };
 
-  SourceCode cursor = parse((Buffer_p)&src, (mut_Marker_array_p)&markers);
+    Marker_array markers;
+    Marker_array_init(&markers, 8192);
 
-  resolve_types((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    SourceCode cursor = parse((Buffer_p)&src, (mut_Marker_array_p)&markers);
 
-  macro_count_markers((mut_Marker_array_p)&markers, (Buffer_p)&src);
-  macro_fn((mut_Marker_array_p)&markers, (Buffer_p)&src);
-  macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    resolve_types((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
+    macro_count_markers((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    macro_fn((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
-  Marker_array_drop(&markers);
     dump_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
 
-  log("Read %d lines.", line_number((Buffer_p)&src, cursor) - 1);
 
-  Buffer_drop(&src);
+    Marker_array_drop(&markers);
+
+    log("Read %d lines.", line_number((Buffer_p)&src, cursor) - 1);
+
+    Buffer_drop(&src);
+  }
 
   return 0;
 }
