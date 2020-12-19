@@ -13,6 +13,11 @@
 
 #include <string.h> // For memcpy(), memmove().
 
+typedef struct Options {
+  bool ignore_space;
+  bool ignore_comment;
+} Options, *Options_p;
+
 typedef struct Buffer {
   size_t len;
   size_t padding;
@@ -408,8 +413,7 @@ void indent_log(size_t indent)
 #define log_indent(indent, ...) { indent_log(indent); log(__VA_ARGS__); }
 
 /** Print a human-legible dump of the markers array to stderr. */
-void dump_markers(Marker_array_p markers, Buffer_p src,
-                  bool ignore_comment, bool ignore_space)
+void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
 {
   size_t indent = 0;
   uint8_t slice_data[80];
@@ -441,12 +445,12 @@ void dump_markers(Marker_array_p markers, Buffer_p src,
         /* Invisible grouping tokens. */
         break;
       case T_SPACE:
-        if (not ignore_space) {
+        if (not options.ignore_space) {
           log_indent(indent, "%s %s← Space", token, spc);
         }
         break;
       case T_COMMENT:
-        if (not ignore_comment) {
+        if (not options.ignore_comment) {
           log_indent(indent, "%s %s← Comment", token, spc);
         }
         break;
@@ -801,11 +805,10 @@ int main(int argc, char** argv)
 
   Buffer src = read_file("test.c");
 
-  bool ignore_space = true;
-  bool ignore_comment = false;
 
   Marker_array markers;
   Marker_array_init(&markers, 8192);
+    Options options = { .ignore_comment = false, .ignore_space = true };
 
   SourceCode cursor = parse((Buffer_p)&src, (mut_Marker_array_p)&markers);
 
@@ -815,10 +818,9 @@ int main(int argc, char** argv)
   macro_fn((mut_Marker_array_p)&markers, (Buffer_p)&src);
   macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
-  dump_markers((Marker_array_p)&markers, (Buffer_p)&src,
-               ignore_comment, ignore_space);
 
   Marker_array_drop(&markers);
+    dump_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
 
   log("Read %d lines.", line_number((Buffer_p)&src, cursor) - 1);
 
