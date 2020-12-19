@@ -41,7 +41,6 @@ typedef enum TokenType {
   T_NUMBER, T_STRING, T_CHARACTER,
   T_SPACE, T_COMMENT,
   T_PREPROCESSOR,
-  T_FUNCTION_CALL,
   T_BLOCK_START, T_BLOCK_END, T_TUPLE_START, T_TUPLE_END,
   T_INDEX_START, T_INDEX_END,
   T_GROUP_START, T_GROUP_END,
@@ -56,7 +55,6 @@ static const unsigned char * const TOKEN_NAME[] = {
   "Number", "String", "Character",
   "Space", "Comment",
   "Preprocessor",
-  "Function call",
   "Block start", "Block end", "Tuple start", "Tuple end",
   "Index start", "Index end",
   "Group start", "Group end",
@@ -748,9 +746,29 @@ void resolve_types(Marker_array_p markers, Buffer_p src)
   mut_Marker_p previous = NULL;
   for (mut_Marker_p m = markers->items; m is_not markers_end; ++m) {
     if (T_SPACE == m->token_type || T_COMMENT == m->token_type) continue;
-    if (T_TUPLE_START == m->token_type && previous &&
-        T_IDENTIFIER  == previous->token_type) {
-      previous->token_type = T_FUNCTION_CALL;
+    if (previous) {
+      if ((T_TUPLE_START == m->token_type || T_OP_14 == m->token_type) &&
+          T_IDENTIFIER  == previous->token_type) {
+        mut_Marker_p p = previous;
+        while (p is_not markers->items) {
+          --p;
+          switch (p->token_type) {
+            case T_TYPE_QUALIFIER:
+            case T_TYPE:
+            case T_SPACE:
+            case T_COMMENT:
+              continue;
+            case T_IDENTIFIER:
+              p->token_type = T_TYPE;
+              break;
+            case T_OP_3:
+              p->token_type = T_OP_2;
+              break;
+            default:
+              p = markers->items;
+          }
+        }
+      }
     }
     previous = m;
   }
