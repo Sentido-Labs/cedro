@@ -466,6 +466,19 @@ void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
   }
 }
 
+void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
+{
+  Marker_p m_end = Marker_array_end(markers);
+  for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
+    if (options.ignore_comment && m->token_type == T_COMMENT) continue;
+    if (options.ignore_space && m->token_type == T_SPACE) {
+      fwrite(" ", 1, 1, out);
+      continue;
+    }
+    fwrite(src->bytes + m->start, sizeof(uint8_t), m->len, out);
+  }
+}
+
 /*
   T_CONTROL_FLOW:
   break case continue default do else for goto if return switch while
@@ -839,6 +852,8 @@ int main(int argc, char** argv)
 
     dump_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
 
+    options.ignore_space = false;
+    unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
 
     Marker_array_drop(&markers);
 
