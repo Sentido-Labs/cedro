@@ -399,8 +399,14 @@ size_t line_number(Buffer_p src, SourceCode cursor)
 SourceCode extract_string(SourceCode start, SourceCode end, mut_Buffer_p slice)
 {
   size_t len = end - start;
-  if (len >= slice->len) len = slice->len - 1;
-  memcpy(slice->bytes, start, len);
+  if (len >= slice->len - 4) {
+    memcpy(slice->bytes, start, slice->len - 4);
+    uint8_t* p = slice->bytes + slice->len - 4;
+    *(p++) = 0xE2; *(p++) = 0x80; *(p++) = 0xA6;// UTF-8 ellipsis: “…”
+    len = slice->len;
+  } else {
+    memcpy(slice->bytes, start, len);
+  }
   slice->bytes[len] = 0;
   return slice->bytes;
 }
