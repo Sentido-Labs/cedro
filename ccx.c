@@ -47,6 +47,7 @@ typedef enum TokenType {
   T_OP_1, T_OP_2, T_OP_3, T_OP_4, T_OP_5, T_OP_6, T_OP_7, T_OP_8,
   T_OP_9, T_OP_10, T_OP_11, T_OP_12, T_OP_13, T_OP_14,
   T_COMMA /* = T_OP_15 */, T_SEMICOLON,
+  T_ELLIPSIS,
   T_OTHER
 } TokenType;
 static const unsigned char * const TOKEN_NAME[] = {
@@ -61,6 +62,7 @@ static const unsigned char * const TOKEN_NAME[] = {
   "Op 1", "Op 2", "Op 3", "Op 4", "Op 5", "Op 6", "Op 7", "Op 8",
   "Op 9", "Op 10", "Op 11", "Op 12", "Op 13", "Op 14",
   "Comma (op 15)", "Semicolon",
+  "Ellipsis",
   "OTHER"
 };
 
@@ -614,7 +616,10 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
         case ']': TOKEN1(T_INDEX_END);   break;
         case ',': TOKEN1(T_COMMA);       break;
         case ';': TOKEN1(T_SEMICOLON);   break;
-        case '.': TOKEN1(T_OP_1);        break;
+        case '.':
+          if (c2 == '.' && c3 == '.') { TOKEN3(T_ELLIPSIS); }
+          else                        { TOKEN1(T_OP_1);     }
+          break;
         case '~': TOKEN1(T_OP_2);        break;
         case '?': case ':': TOKEN1(T_OP_13); break;
         case '+':
