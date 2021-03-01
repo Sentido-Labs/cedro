@@ -1,5 +1,5 @@
 /* Author: Alberto González Palomo https://sentido-labs.com
- * ©2020   Alberto González Palomo https://sentido-labs.com
+ * ©2021 Alberto González Palomo https://sentido-labs.com
  * Created: 2020-11-25 22:41
  */
 
@@ -23,13 +23,13 @@ typedef struct Buffer {
   size_t padding; /// zeroed bytes after end of buffer to avoid bounds checking.
   uint8_t* bytes;
 } Buffer, * const Buffer_p, * mut_Buffer_p;
-void Buffer_init(mut_Buffer_p _, size_t len, size_t padding)
+void init_Buffer(mut_Buffer_p _, size_t len, size_t padding)
 {
   _->bytes = calloc(1, len + padding);
   _->len = len;
   _->padding = padding;
 }
-void Buffer_drop(mut_Buffer_p _)
+void drop_Buffer(mut_Buffer_p _)
 {
   _->len = 0;
   _->padding = 0;
@@ -838,7 +838,7 @@ Buffer_p read_file(Buffer_p _, FilePath path)
 {
   mut_File_p input = fopen(path, "r");
   fseek(input, 0, SEEK_END);
-  Buffer_init(_, ftell(input), SRC_EXTRA_PADDING);
+  init_Buffer(_, ftell(input), SRC_EXTRA_PADDING);
   rewind(input);
   fread(_->bytes, 1, _->len, input);
   fclose(input); input = NULL;
@@ -886,7 +886,7 @@ int main(int argc, char** argv)
 
     log("Read %d lines.", line_number((Buffer_p)&src, cursor) - 1);
 
-    Buffer_drop(&src);
+    drop_Buffer(&src);
   }
 
   return 0;
