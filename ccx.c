@@ -19,8 +19,8 @@ typedef struct Options {
 } Options, *Options_p;
 
 typedef struct Buffer {
-  size_t len;
-  size_t padding;
+  size_t len;     /// actual number of valid bytes.
+  size_t padding; /// zeroed bytes after end of buffer to avoid bounds checking.
   uint8_t* bytes;
 } Buffer, * const Buffer_p, * mut_Buffer_p;
 void Buffer_init(mut_Buffer_p _, size_t len, size_t padding)
@@ -95,6 +95,7 @@ typedef struct type##_array {                                           \
   size_t len;                                                           \
   size_t capacity;                                                      \
   type*  items;                                                         \
+  mut_##type##_p last_p;                                                \
 } type##_array, * const type##_array_p, * mut_##type##_array_p;         \
                                                                         \
 /** Example: <code>type##_slice s = { 0, 10, &my_array };</code> */     \
@@ -104,6 +105,15 @@ typedef struct type##_array_slice {                                     \
   type##_array_p array_p;                                               \
 } type##_array_slice, * const type##_array_slice_p, * mut_##type##_array_slice_p; \
                                                                         \
+/** Initialize the array at the given pointer.                          \
+    For local variables, use it like this:                              \
+    \code{.c}                                                           \
+    type##_array things;                                                \
+    type##_array_init(&things, 100); // We expect around 100 items.     \
+    {...}                                                               \
+    type##_array_drop(&things);                                         \
+    \endcode                                                            \
+ */                                                                     \
 mut_##type##_array_p type##_array_init(mut_##type##_array_p _, size_t initial_capacity) \
 {                                                                       \
   _->len = 0;                                                           \
@@ -111,8 +121,12 @@ mut_##type##_array_p type##_array_init(mut_##type##_array_p _, size_t initial_ca
   _->items = malloc(initial_capacity * sizeof(type));                   \
   /* Used malloc() here instead of calloc() because we need realloc() later \
      anyway, so better keep the exact same behaviour. */                \
+  _->last_p = NULL;                                                     \
   return _;                                                             \
 }                                                                       \
+/** Release any resources allocated for this struct.                    \
+    Returns `NULL` to enable convenient clearing of the pointer:        \
+    `p = type##_array_drop(p); // p is now NULL.` */                    \
 mut_##type##_array_p type##_array_drop(mut_##type##_array_p _)          \
 {                                                                       \
   mut_##type##_p cursor = _->items;                                     \
@@ -120,6 +134,7 @@ mut_##type##_array_p type##_array_drop(mut_##type##_array_p _)          \
   while (cursor != end) type##_drop(cursor++);                          \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
+  _->last_p = NULL;                                                     \
   free(_->items); _->items = NULL;                                      \
   return _;                                                             \
 }                                                                       \
@@ -130,7 +145,7 @@ mut_##type##_array_p type##_array_push(mut_##type##_array_p _, type##_p item) \
     _->capacity *= 2;                                                   \
     _->items = realloc(_->items, _->capacity * sizeof(type));           \
   }                                                                     \
-  _->items[_->len++] = *item;                                           \
+  *(_->last_p = _->items + _->len++) = *item;                           \
   return _;                                                             \
 }                                                                       \
 mut_##type##_array_p type##_array_splice(mut_##type##_array_p _, size_t position, size_t delete, type##_array_slice_p insert) \
@@ -172,12 +187,17 @@ mut_##type##_array_p type##_array_delete(mut_##type##_array_p _, size_t position
 }                                                                       \
 mut_##type##_array_p type##_array_pop(mut_##type##_array_p _, mut_##type##_p item_p) \
 {                                                                       \
-  if (_->len) {                                                         \
-    mut_##type##_p last_p = _->items + _->len - 1;                      \
-    memmove(last_p, item_p, sizeof(type));                              \
-    --_->len;                                                           \
-  }                                                                     \
+  if (not _->len) return NULL;                                          \
+  mut_##type##_p last_p = _->items + _->len - 1;                        \
+  if (item_p) memmove(last_p, item_p, sizeof(type));                    \
+  else        type##_drop(last_p);                                      \
+  --_->len;                                                             \
   return _;                                                             \
+}                                                                       \
+type##_p type##_array_start(type##_array_p _, size_t position)          \
+{                                                                       \
+  if (position >= _->len) position = _->len;                            \
+  return _->items + position;                                           \
 }                                                                       \
 type##_p type##_array_end(type##_array_p _)                             \
 {                                                                       \
@@ -586,6 +606,7 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
   mut_SourceCode prev_cursor = 0;
   bool previous_token_is_value = false;
   bool include_mode = false;
+  bool define_mode  = false;
   while (cursor is_not end) {
     if (cursor == prev_cursor) {
       log("ERROR: endless loop after %d.\n", cursor - src->bytes);
@@ -613,14 +634,20 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
     } else if ((token_end = space(cursor, end))) {
       TOKEN1(T_SPACE);
       if (token_end == cursor) { log("error T_SPACE"); break; }
-      if (include_mode && memchr(cursor, '\n', token_end - cursor)) {
+      if ((include_mode||define_mode) && memchr(cursor, '\n', token_end - cursor)) {
         include_mode = false;
+        if (define_mode) {
+          define_mode = false;
+          // TODO: mark somehow that the definition ends here.
+        }
       }
     } else if ((token_end = preprocessor(cursor, end))) {
       TOKEN1(T_PREPROCESSOR);
       if (token_end == cursor) { log("error T_PREPROCESSOR"); break; }
       if (0 == memcmp(cursor, "#include", token_end - cursor)) {
         include_mode = true;
+      } else if (0 == memcmp(cursor, "#define", token_end - cursor)) {
+        define_mode = true;
       }
     } else if (include_mode && (token_end = system_include(cursor, end))) {
       TOKEN1(T_STRING);
