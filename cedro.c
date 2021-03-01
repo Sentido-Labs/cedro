@@ -1,4 +1,5 @@
-/* Author: Alberto González Palomo https://sentido-labs.com
+/**
+ * Author: Alberto González Palomo https://sentido-labs.com
  * ©2021 Alberto González Palomo https://sentido-labs.com
  * Created: 2020-11-25 22:41
  */
@@ -18,10 +19,12 @@ typedef struct Options {
   bool ignore_comment;
 } Options, *Options_p;
 
-typedef uint8_t*const SourceCode;// 0-terminated.
-typedef uint8_t* mut_SourceCode; // 0-terminated.
+typedef uint8_t*const SourceCode;/// 0-terminated.
+typedef uint8_t* mut_SourceCode; /// 0-terminated.
 
-/* https://en.cppreference.com/w/c/language/operator_precedence */
+#define B(string) ((unsigned char*)string)
+
+/** https://en.cppreference.com/w/c/language/operator_precedence */
 typedef enum TokenType {
   T_NONE,
   T_IDENTIFIER, T_TYPE, T_TYPE_QUALIFIER, T_CONTROL_FLOW,
@@ -38,28 +41,31 @@ typedef enum TokenType {
   T_OTHER
 } TokenType;
 static const unsigned char * const TOKEN_NAME[] = {
-  "None",
-  "Identifier", "Type", "Type qualifier", "Control flow",
-  "Number", "String", "Character",
-  "Space", "Comment",
-  "Preprocessor",
-  "Block start", "Block end", "Tuple start", "Tuple end",
-  "Index start", "Index end",
-  "Group start", "Group end",
-  "Op 1", "Op 2", "Op 3", "Op 4", "Op 5", "Op 6", "Op 7", "Op 8",
-  "Op 9", "Op 10", "Op 11", "Op 12", "Op 13", "Op 14",
-  "Comma (op 15)", "Semicolon",
-  "Ellipsis",
-  "OTHER"
+  B("None"),
+  B("Identifier"), B("Type"), B("Type qualifier"), B("Control flow"),
+  B("Number"), B("String"), B("Character"),
+  B("Space"), B("Comment"),
+  B("Preprocessor"),
+  B("Block start"), B("Block end"), B("Tuple start"), B("Tuple end"),
+  B("Index start"), B("Index end"),
+  B("Group start"), B("Group end"),
+  B("Op 1"), B("Op 2"), B("Op 3"), B("Op 4"), B("Op 5"), B("Op 6"),
+  B("Op 7"), B("Op 8"), B("Op 9"), B("Op 10"), B("Op 11"), B("Op 12"),
+  B("Op 13"), B("Op 14"),
+  B("Comma (op 15)"), B("Semicolon"),
+  B("Ellipsis"),
+  B("OTHER")
 };
 
 #define precedence(token_type) (token_type - T_OP_1)
 #define is_operator(token_type) (token_type >= T_OP_1 && token_type <= T_COMMA)
 #define is_fence(token_type) (token_type >= T_BLOCK_START && token_type <= T_GROUP_END)
 
+/** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
+    and constant types 〈T〉 and 〈T〉_p (pointer to constant). */
 #define TYPEDEF(T, STRUCT)                                       \
   typedef struct T STRUCT mut_##T, * const T##_p, * mut_##T##_p; \
-  typedef const struct T T;
+  typedef const struct T T
 
 TYPEDEF(Marker, {
   size_t start;
@@ -75,8 +81,8 @@ void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 }
 void drop_Marker(mut_Marker_p _) {}
 
-/* There must be a drop_##type(type##_p _) function. */                 \
 #define DEFINE_ARRAY_OF(T, PADDING)                                     \
+/** There must be a drop_##T(T##_p _) function. */                      \
 typedef struct T##_array {                                              \
   size_t len;                                                           \
   size_t capacity;                                                      \
@@ -84,7 +90,6 @@ typedef struct T##_array {                                              \
   mut_##T##_p last_p;                                                   \
 } mut_##T##_array, * const T##_array_p, * mut_##T##_array_p;            \
 typedef const struct T##_array T##_array;                               \
-const size_t PADDING_##T##_ARRAY = PADDING;                             \
                                                                         \
 /** Example: <code>T##_slice s = { 0, 10, &my_array };</code> */        \
 typedef struct T##_array_slice {                                        \
@@ -190,12 +195,13 @@ T##_p T##_array_start(T##_array_p _, size_t position)                   \
 T##_p T##_array_end(T##_array_p _)                                      \
 {                                                                       \
   return _->items + _->len;                                             \
-}
+}                                                                       \
+const size_t PADDING_##T##_ARRAY = PADDING//; commented out to avoid ;;.
 
 DEFINE_ARRAY_OF(Marker, 0);
 
-/* Add 10 bytes after end of buffer to avoid bounds checking while scanning
-   for tokens. No literal token is that long. */
+/** Add 10 bytes after end of buffer to avoid bounds checking while scanning
+    for tokens. No literal token is that long. */
 #define SRC_EXTRA_PADDING 10
 typedef uint8_t mut_Byte, * const Byte_p, * mut_Byte_p;
 typedef const uint8_t Byte;
@@ -210,8 +216,8 @@ void define_macro(const char * const name, void (*f)(mut_Marker_array_p markers,
   fprintf(stderr, "(defmacro %s)\n", name);
 }
 
-#define defmacro(name, ...) \
-  void macro_##name(mut_Marker_array_p markers, Buffer_p src) __VA_ARGS__
+#define defmacro(name, body) \
+  void macro_##name(mut_Marker_array_p markers, Buffer_p src) body const char const * macro_##name##_NAME = #name
 #include "macros.h"
 #undef  defmacro
 #define defmacro(name, body) \
@@ -229,66 +235,58 @@ SourceCode identifier(SourceCode start, SourceCode end)
 {
   if (end <= start) return NULL;
   mut_SourceCode cursor = start;
-  switch (*cursor) {
-    case 'a' ... 'z': case 'A' ... 'Z': case '_':
-      ++cursor;
-      while (cursor < end) {
-        switch (*cursor) {
-          case '0' ... '9': case 'a' ... 'z': case 'A' ... 'Z': case '_':
-            ++cursor;
-            break;
-          default:
-            return cursor;
-            // Unreachable: break;
-        }
-      }
-      return cursor;
-      // Unreachable: break;
-    default:
-      return NULL;
+  mut_Byte c = *cursor;
+  if (c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+    ++cursor;
+    while (cursor < end) {
+      c = *cursor;
+      if (c >= '0' and c <= '9' or
+          c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+        ++cursor;
+      } else break;
+    }
+    return cursor;
+  } else {
+    return NULL;
   }
 }
 
-/* This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
-   Rejecting that is left to the compiler. */
+/** This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+    Rejecting that is left to the compiler. */
 SourceCode number(SourceCode start, SourceCode end)
 {
   if (end <= start) return NULL;
   mut_SourceCode cursor = start;
-  switch (*cursor) {
-    case '0' ... '9':
-      ++cursor;
-      while (cursor < end) {
-        switch (*cursor) {
-          case '0' ... '9': case '.':
-            ++cursor;
-            break;
-          case 'u': case 'U': case 'l': case 'L':
-            ++cursor;
-            if (cursor < end) {
-              switch (*cursor) {
-                case 'u': case 'U': case 'l': case 'L': ++cursor;
-              }
-            }
-            break;
-          case 'E': case 'e':
-            ++cursor;
-            if (cursor < end) {
-              switch (*cursor) { case '+': case '-': ++cursor; }
-              while (cursor < end) {
-                switch (*cursor) { case '0' ... '9': ++cursor; }
-              }
-            }
-            break;
-          default:
-            return cursor;
-            // Unreachable: break;
+  mut_Byte c = *cursor;
+  if (c >= '1' and c <= '9') {
+    ++cursor;
+    while (cursor < end) {
+      c = *cursor;
+      if (c >= '1' and c <= '9' or c == '.') {
+        ++cursor;
+      } else if (c == 'u' or c == 'U' or c == 'l' or c == 'L') {
+        ++cursor;
+        if (cursor < end) {
+          c = *cursor;
+          if (c == 'u' or c == 'U' or c == 'l' or c == 'L') ++cursor;
+          else break;
         }
-      }
-      return cursor;
-      // Unreachable: break;
-    default:
-      return NULL;
+      } else if (c == 'e' or c == 'E') {
+        ++cursor;
+        if (cursor < end) {
+          c = *cursor;
+          if (c == '+' or c == '-') ++cursor;
+          while (cursor < end) {
+            c = *cursor;
+            if (c >= '1' and c <= '9' or c == '.') ++cursor;
+            else break;
+          }
+        }
+      } else break;
+    }
+    return cursor;
+  } else {
+    return NULL;
   }
 }
 
@@ -377,27 +375,22 @@ SourceCode preprocessor(SourceCode start, SourceCode end)
   if (*start is_not '#' or end <= start) return NULL;
   mut_SourceCode cursor = start + 1;
   if (cursor == end) return cursor;
-  switch (*cursor) {
-    case 'a' ... 'z': case 'A' ... 'Z': case '_':
-      ++cursor;
-      while (cursor < end) {
-        switch (*cursor) {
-          case '0' ... '9': case 'a' ... 'z': case 'A' ... 'Z': case '_':
-            ++cursor;
-            break;
-          default:
-            return cursor;
-            // Unreachable: break;
-        }
-      }
-      return cursor;
-      // Unreachable: break;
-    case '#':
-      // Token concatenation.
-      return cursor + 1;
-      // Unreachable: break;
-    default:
-      return NULL;
+  mut_Byte c = *cursor;
+  if (c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+    ++cursor;
+    while (cursor < end) {
+      c = *cursor;
+      if (c >= '0' and c <= '9' or
+          c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+        ++cursor;
+      } else break;
+    }
+    return cursor;
+  } else if (c == '#') {
+    // Token concatenation.
+    return cursor + 1;
+  } else {
+    return NULL;
   }
 }
 
@@ -496,7 +489,7 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
   }
 }
 
-/*
+/**
   T_CONTROL_FLOW:
   break case continue default do else for goto if return switch while
   T_TYPE:
@@ -878,8 +871,11 @@ int main(int argc, char** argv)
 
     resolve_types((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
+    fprintf(stderr, "Running macro %s:\n", macro_count_markers_NAME);
     macro_count_markers((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    fprintf(stderr, "Running macro %s:\n", macro_fn_NAME);
     macro_fn((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    fprintf(stderr, "Running macro %s:\n", macro_let_NAME);
     macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
     dump_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
