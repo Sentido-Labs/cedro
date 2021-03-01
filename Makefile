@@ -1,7 +1,7 @@
 CC=gcc -std=c99
 NAME=cedro
 
-all: run
+all: $(NAME)
 
 run: $(NAME)
 	./$(NAME) $(NAME).c
