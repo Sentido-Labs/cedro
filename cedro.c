@@ -854,9 +854,9 @@ int main(int argc, char** argv)
     if (arg[0] == '-') {
       char* lang = getenv("LANG");
       if (0 == strncmp(lang, "es", 2)) {
-        fprintf(stderr, "Uso: ccx fichero.c [fichero2.c … ]\n");
+        fprintf(stderr, "Uso: cedro fichero.c [fichero2.c … ]\n");
       } else {
-        fprintf(stderr, "Usage: ccx file.c [file2.c … ]\n");
+        fprintf(stderr, "Usage: cedro file.c [file2.c … ]\n");
       }
       return 1;
     }

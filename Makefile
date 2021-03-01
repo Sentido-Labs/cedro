@@ -1,5 +1,5 @@
 CC=gcc -std=c99
-NAME=ccx
+NAME=cedro
 
 all: run
 
