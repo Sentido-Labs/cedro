@@ -18,24 +18,6 @@ typedef struct Options {
   bool ignore_comment;
 } Options, *Options_p;
 
-typedef struct Buffer {
-  size_t len;     /// actual number of valid bytes.
-  size_t padding; /// zeroed bytes after end of buffer to avoid bounds checking.
-  uint8_t* bytes;
-} Buffer, * const Buffer_p, * mut_Buffer_p;
-void init_Buffer(mut_Buffer_p _, size_t len, size_t padding)
-{
-  _->bytes = calloc(1, len + padding);
-  _->len = len;
-  _->padding = padding;
-}
-void drop_Buffer(mut_Buffer_p _)
-{
-  _->len = 0;
-  _->padding = 0;
-  free(_->bytes); _->bytes = NULL;
-}
-
 typedef uint8_t*const SourceCode;// 0-terminated.
 typedef uint8_t* mut_SourceCode; // 0-terminated.
 
@@ -75,50 +57,56 @@ static const unsigned char * const TOKEN_NAME[] = {
 #define is_operator(token_type) (token_type >= T_OP_1 && token_type <= T_COMMA)
 #define is_fence(token_type) (token_type >= T_BLOCK_START && token_type <= T_GROUP_END)
 
-typedef struct Marker {
+#define TYPEDEF(T, STRUCT)                                       \
+  typedef struct T STRUCT mut_##T, * const T##_p, * mut_##T##_p; \
+  typedef const struct T T;
+
+TYPEDEF(Marker, {
   size_t start;
   size_t len;
   TokenType token_type;
-} Marker, * const Marker_p, * mut_Marker_p;
+  });
 
-void Marker_init(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
+void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 {
   _->start      = start;
   _->len        = end - start;
   _->token_type = token_type;
 }
-void Marker_drop(mut_Marker_p _) {}
+void drop_Marker(mut_Marker_p _) {}
 
-/* There must be a type##_drop(type##_p _) function. */                 \
-#define DEFINE_ARRAY_OF(type)                                           \
-typedef struct type##_array {                                           \
+/* There must be a drop_##type(type##_p _) function. */                 \
+#define DEFINE_ARRAY_OF(T, PADDING)                                     \
+typedef struct T##_array {                                              \
   size_t len;                                                           \
   size_t capacity;                                                      \
-  type*  items;                                                         \
-  mut_##type##_p last_p;                                                \
-} type##_array, * const type##_array_p, * mut_##type##_array_p;         \
+  mut_##T* items;                                                       \
+  mut_##T##_p last_p;                                                   \
+} mut_##T##_array, * const T##_array_p, * mut_##T##_array_p;            \
+typedef const struct T##_array T##_array;                               \
+const size_t PADDING_##T##_ARRAY = PADDING;                             \
                                                                         \
-/** Example: <code>type##_slice s = { 0, 10, &my_array };</code> */     \
-typedef struct type##_array_slice {                                     \
+/** Example: <code>T##_slice s = { 0, 10, &my_array };</code> */        \
+typedef struct T##_array_slice {                                        \
   size_t start;                                                         \
   size_t end; /** 0 means the end of the array. */                      \
-  type##_array_p array_p;                                               \
-} type##_array_slice, * const type##_array_slice_p, * mut_##type##_array_slice_p; \
+  T##_array_p array_p;                                                  \
+} T##_array_slice, * const T##_array_slice_p, * mut_##T##_array_slice_p; \
                                                                         \
 /** Initialize the array at the given pointer.                          \
     For local variables, use it like this:                              \
     \code{.c}                                                           \
-    type##_array things;                                                \
-    type##_array_init(&things, 100); // We expect around 100 items.     \
+    T##_array things;                                                   \
+    T##_array_init(&things, 100); // We expect around 100 items.        \
     {...}                                                               \
-    type##_array_drop(&things);                                         \
+    T##_array_drop(&things);                                            \
     \endcode                                                            \
  */                                                                     \
-mut_##type##_array_p type##_array_init(mut_##type##_array_p _, size_t initial_capacity) \
+mut_##T##_array_p init_##T##_array(mut_##T##_array_p _, size_t initial_capacity) \
 {                                                                       \
   _->len = 0;                                                           \
-  _->capacity = initial_capacity;                                       \
-  _->items = malloc(initial_capacity * sizeof(type));                   \
+  _->capacity = initial_capacity + PADDING;                             \
+  _->items = malloc(_->capacity * sizeof(T));                           \
   /* Used malloc() here instead of calloc() because we need realloc() later \
      anyway, so better keep the exact same behaviour. */                \
   _->last_p = NULL;                                                     \
@@ -126,12 +114,12 @@ mut_##type##_array_p type##_array_init(mut_##type##_array_p _, size_t initial_ca
 }                                                                       \
 /** Release any resources allocated for this struct.                    \
     Returns `NULL` to enable convenient clearing of the pointer:        \
-    `p = type##_array_drop(p); // p is now NULL.` */                    \
-mut_##type##_array_p type##_array_drop(mut_##type##_array_p _)          \
+    `p = drop_##T##_array(p); // p is now NULL.` */                     \
+mut_##T##_array_p drop_##T##_array(mut_##T##_array_p _)                 \
 {                                                                       \
-  mut_##type##_p cursor = _->items;                                     \
-  type##_p       end    = _->items + _->len;                            \
-  while (cursor != end) type##_drop(cursor++);                          \
+  mut_##T##_p cursor = _->items;                                        \
+  T##_p       end    = _->items + _->len;                               \
+  while (cursor != end) drop_##T(cursor++);                             \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
   _->last_p = NULL;                                                     \
@@ -139,20 +127,20 @@ mut_##type##_array_p type##_array_drop(mut_##type##_array_p _)          \
   return _;                                                             \
 }                                                                       \
                                                                         \
-mut_##type##_array_p type##_array_push(mut_##type##_array_p _, type##_p item) \
+mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
 {                                                                       \
-  if (_->capacity < _->len + 1) {                                       \
-    _->capacity *= 2;                                                   \
-    _->items = realloc(_->items, _->capacity * sizeof(type));           \
+  if (_->capacity < _->len + 1 + PADDING) {                             \
+    _->capacity = 2*_->capacity + PADDING;                              \
+    _->items = realloc(_->items, _->capacity * sizeof(T));              \
   }                                                                     \
   *(_->last_p = _->items + _->len++) = *item;                           \
   return _;                                                             \
 }                                                                       \
-mut_##type##_array_p type##_array_splice(mut_##type##_array_p _, size_t position, size_t delete, type##_array_slice_p insert) \
+mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _, size_t position, size_t delete, T##_array_slice_p insert) \
 {                                                                       \
-  mut_##type##_p cursor = _->items + position;                          \
-  type##_p       end    = _->items + position + delete;                 \
-  while (cursor != end) type##_drop(cursor++);                          \
+  mut_##T##_p cursor = _->items + position;                             \
+  T##_p       end    = _->items + position + delete;                    \
+  while (cursor != end) drop_##T(cursor++);                             \
                                                                         \
   size_t insert_len = insert->end;                                      \
   if (!insert_len) {                                                    \
@@ -161,49 +149,62 @@ mut_##type##_array_p type##_array_splice(mut_##type##_array_p _, size_t position
   }                                                                     \
   if (insert_len > insert->start) insert_len -= insert->start;          \
                                                                         \
-  if (_->len + insert_len - delete >= _->capacity) {                    \
-    _->capacity *= 2;                                                   \
-    _->items = realloc(_->items, _->capacity * sizeof(type));           \
+  if (_->len + insert_len - delete + PADDING >= _->capacity) {          \
+    _->capacity = 2*_->capacity + PADDING;                              \
+    _->items = realloc(_->items, _->capacity * sizeof(T));              \
   }                                                                     \
                                                                         \
   size_t gap_end = position + insert_len - delete;                      \
   memmove(_->items + gap_end, _->items + position + delete,             \
-          (_->len - delete - position) * sizeof(type));                 \
+          (_->len - delete - position) * sizeof(T));                    \
   _->len = _->len + insert_len - delete;                                \
   memmove(_->items + position, insert->array_p->items + insert->start,  \
-          insert_len * sizeof(type));                                   \
+          insert_len * sizeof(T));                                      \
   return _;                                                             \
 }                                                                       \
-mut_##type##_array_p type##_array_delete(mut_##type##_array_p _, size_t position, size_t delete) \
+mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
-  mut_##type##_p cursor = _->items + position;                          \
-  type##_p       end    = _->items + position + delete;                 \
-  while (cursor != end) type##_drop(cursor++);                          \
+  mut_##T##_p cursor = _->items + position;                             \
+  T##_p       end    = _->items + position + delete;                    \
+  while (cursor != end) drop_##T(cursor++);                             \
                                                                         \
   memmove(_->items + position, _->items + position + delete,            \
-          (_->len - delete - position) * sizeof(type));                 \
+          (_->len - delete - position) * sizeof(T));                    \
   _->len -= delete;                                                     \
   return _;                                                             \
 }                                                                       \
-mut_##type##_array_p type##_array_pop(mut_##type##_array_p _, mut_##type##_p item_p) \
+mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p) \
 {                                                                       \
   if (not _->len) return NULL;                                          \
-  mut_##type##_p last_p = _->items + _->len - 1;                        \
-  if (item_p) memmove(last_p, item_p, sizeof(type));                    \
-  else        type##_drop(last_p);                                      \
+  mut_##T##_p last_p = _->items + _->len - 1;                           \
+  if (item_p) memmove(last_p, item_p, sizeof(T));                       \
+  else        drop_##T(last_p);                                         \
   --_->len;                                                             \
   return _;                                                             \
 }                                                                       \
-type##_p type##_array_start(type##_array_p _, size_t position)          \
+T##_p T##_array_start(T##_array_p _, size_t position)                   \
 {                                                                       \
   if (position >= _->len) position = _->len;                            \
   return _->items + position;                                           \
 }                                                                       \
-type##_p type##_array_end(type##_array_p _)                             \
+T##_p T##_array_end(T##_array_p _)                                      \
 {                                                                       \
   return _->items + _->len;                                             \
 }
-DEFINE_ARRAY_OF(Marker);
+
+DEFINE_ARRAY_OF(Marker, 0);
+
+/* Add 10 bytes after end of buffer to avoid bounds checking while scanning
+   for tokens. No literal token is that long. */
+#define SRC_EXTRA_PADDING 10
+typedef uint8_t mut_Byte, * const Byte_p, * mut_Byte_p;
+typedef const uint8_t Byte;
+#define drop_Byte(_) _
+DEFINE_ARRAY_OF(Byte, SRC_EXTRA_PADDING);
+typedef mut_Byte_array mut_Buffer, *mut_Buffer_p;
+typedef     Byte_array     Buffer, *    Buffer_p;
+#define init_Buffer init_Byte_array
+#define drop_Buffer drop_Byte_array
 
 void define_macro(const char * const name, void (*f)(mut_Marker_array_p markers, Buffer_p src)) {
   fprintf(stderr, "(defmacro %s)\n", name);
@@ -223,10 +224,6 @@ void define_macros()
 #define log(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
 
 /* Lexer definitions. */
-
-/* Add 10 bytes after end of buffer to avoid bounds checking while scanning
-   for tokens. */
-#define SRC_EXTRA_PADDING 10
 
 SourceCode identifier(SourceCode start, SourceCode end)
 {
@@ -409,9 +406,9 @@ SourceCode preprocessor(SourceCode start, SourceCode end)
 size_t line_number(Buffer_p src, SourceCode cursor)
 {
   size_t line_number = 1;
-  if (cursor > src->bytes && cursor - src->bytes <= src->len) {
+  if (cursor > src->items && cursor - src->items <= src->len) {
     mut_SourceCode pointer = cursor;
-    while (pointer is_not src->bytes) if (*(--pointer) is '\n') ++line_number;
+    while (pointer is_not src->items) if (*(--pointer) is '\n') ++line_number;
   }
   return line_number;
 }
@@ -420,15 +417,15 @@ SourceCode extract_string(SourceCode start, SourceCode end, mut_Buffer_p slice)
 {
   size_t len = end - start;
   if (len >= slice->len - 4) {
-    memcpy(slice->bytes, start, slice->len - 4);
-    uint8_t* p = slice->bytes + slice->len - 4;
+    memcpy(slice->items, start, slice->len - 4);
+    uint8_t* p = slice->items + slice->len - 4;
     *(p++) = 0xE2; *(p++) = 0x80; *(p++) = 0xA6;// UTF-8 ellipsis: “…”
     len = slice->len;
   } else {
-    memcpy(slice->bytes, start, len);
+    memcpy(slice->items, start, len);
   }
-  slice->bytes[len] = 0;
-  return slice->bytes;
+  slice->items[len] = 0;
+  return slice->items;
 }
 
 void indent_log(size_t indent)
@@ -442,16 +439,16 @@ void indent_log(size_t indent)
 void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
 {
   size_t indent = 0;
-  uint8_t slice_data[80];
-  Buffer slice = { 80, 0, (uint8_t *)&slice_data };
+  mut_Byte slice_data[80];
+  mut_Buffer slice = { 80, 0, &slice_data[0] };
   const char * const spacing = "                                ";
-  const size_t spacing_len = 32;
+  const size_t spacing_len = strlen(spacing);
 
   Marker_p m_end = Marker_array_end(markers);
   mut_SourceCode token = NULL;
   for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
-    token = extract_string(src->bytes + m->start,
-                           src->bytes + m->start + m->len,
+    token = extract_string(src->items + m->start,
+                           src->items + m->start + m->len,
                            &slice);
 
     const char * const spc = m->len <= spacing_len?
@@ -495,7 +492,7 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
       fwrite(" ", 1, 1, out);
       continue;
     }
-    fwrite(src->bytes + m->start, sizeof(uint8_t), m->len, out);
+    fwrite(src->items + m->start, sizeof(uint8_t), m->len, out);
   }
 }
 
@@ -601,15 +598,15 @@ TokenType keyword_or_identifier(SourceCode start, SourceCode end)
 
 SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
 {
-  mut_SourceCode cursor = src->bytes;
-  SourceCode end = src->bytes + src->len;
+  mut_SourceCode cursor = src->items;
+  SourceCode end = src->items + src->len;
   mut_SourceCode prev_cursor = 0;
   bool previous_token_is_value = false;
   bool include_mode = false;
   bool define_mode  = false;
   while (cursor is_not end) {
     if (cursor == prev_cursor) {
-      log("ERROR: endless loop after %d.\n", cursor - src->bytes);
+      log("ERROR: endless loop after %d.\n", cursor - src->items);
       break;
     }
     prev_cursor = cursor;
@@ -767,10 +764,10 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
        default: TOKEN1(T_OTHER);
       }
     }
-    Marker marker;
-    Marker_init(&marker,
-                cursor - src->bytes, token_end - src->bytes, token_type);
-    Marker_array_push(markers, &marker);
+    mut_Marker marker;
+    init_Marker(&marker,
+                cursor - src->items, token_end - src->items, token_type);
+    push_Marker_array(markers, &marker);
     cursor = token_end;
 
     switch (token_type) {
@@ -834,15 +831,23 @@ void resolve_types(Marker_array_p markers, Buffer_p src)
 
 typedef FILE* mut_File_p;
 typedef char*const FilePath;
-Buffer_p read_file(Buffer_p _, FilePath path)
+void read_file(mut_Buffer_p _, FilePath path)
 {
   mut_File_p input = fopen(path, "r");
   fseek(input, 0, SEEK_END);
-  init_Buffer(_, ftell(input), SRC_EXTRA_PADDING);
+  size_t size = ftell(input);
+  init_Buffer(_, size);
   rewind(input);
-  fread(_->bytes, 1, _->len, input);
+  _->len = fread(_->items, sizeof(Byte), size, input);
+  if (feof(input)) {
+    fprintf(stderr, "Unexpected EOF at %d reading “%s”.\n", _->len, path);
+  } else if (ferror(input)) {
+    fprintf(stderr, "Error reading “%s”.\n", path);
+  } else {
+    fprintf(stderr, "Read %d bytes from “%s”.\n", _->len, path);
+    memset(_->items + _->len, 0, (_->capacity - _->len) * sizeof(Byte));
+  }
   fclose(input); input = NULL;
-  return _;
 }
 
 int main(int argc, char** argv)
@@ -861,13 +866,13 @@ int main(int argc, char** argv)
       return 1;
     }
 
-    Buffer src;
+    mut_Buffer src;
     read_file(&src, arg);
 
     Options options = { .ignore_comment = false, .ignore_space = true };
 
-    Marker_array markers;
-    Marker_array_init(&markers, 8192);
+    mut_Marker_array markers;
+    init_Marker_array(&markers, 8192);
 
     SourceCode cursor = parse((Buffer_p)&src, (mut_Marker_array_p)&markers);
 
@@ -882,7 +887,7 @@ int main(int argc, char** argv)
     options.ignore_space = false;
     unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
 
-    Marker_array_drop(&markers);
+    drop_Marker_array(&markers);
 
     log("Read %d lines.", line_number((Buffer_p)&src, cursor) - 1);
 
