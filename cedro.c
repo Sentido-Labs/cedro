@@ -695,10 +695,12 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
    `break case continue default do else for goto if return switch while`
 
    - `T_TYPE`:
-   `char double enum float int long short struct union void` (c99: `bool complex imaginary`)
+   `char double enum float int long short struct union void`
+   (c99: `bool complex imaginary`)
 
    - `T_TYPE_QUALIFIER`:
-   `auto const extern inline register restrict? signed static unsigned volatile`
+   `auto const extern inline register signed static unsigned volatile`
+   (c99: `restrict`)
 
    - `T_OP_2`:
    `sizeof _Alignof`
