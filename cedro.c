@@ -21,11 +21,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <iso646.h>
-
-#define is     ==     ///< For readability.
-#define is_not not_eq ///< For readability.
-
+#define is_not not_eq
+#define is     ==
+#define in(min, x, max) (x >= min && x <= max)
 #include <string.h> // For memcpy(), memmove().
+#define mem_eq(start, bytes, len) (0 == memcmp(start, bytes, len))
+#define str_eq(a, b)              (0 == strcmp(a, b))
 
 /** Parameters set by command line options. */
 typedef struct Options {
@@ -258,7 +259,7 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _, size_t position, size_
   drop_##T##_block(_->items + position, _->items + position + delete);  \
                                                                         \
   size_t insert_len = insert->end;                                      \
-  if (!insert_len) {                                                    \
+  if (not insert_len) {                                                 \
     insert_len = insert->array_p->len;                                  \
     if (insert_len) --insert_len;                                       \
   }                                                                     \
@@ -375,12 +376,11 @@ SourceCode identifier(SourceCode start, SourceCode end)
   if (end <= start) return NULL;
   mut_SourceCode cursor = start;
   mut_Byte c = *cursor;
-  if (c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+  if (in('a',c,'z') or in('A',c,'Z') or c is '_') {
     ++cursor;
     while (cursor < end) {
       c = *cursor;
-      if (c >= '0' and c <= '9' or
-          c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+      if (in('0',c,'9') or in('a',c,'z') or in('A',c,'Z') or c is '_') {
         ++cursor;
       } else break;
     }
@@ -402,23 +402,23 @@ SourceCode number(SourceCode start, SourceCode end)
     ++cursor;
     while (cursor < end) {
       c = *cursor;
-      if (c >= '1' and c <= '9' or c == '.') {
+      if (in('1',c,'9') or c is '.') {
         ++cursor;
-      } else if (c == 'u' or c == 'U' or c == 'l' or c == 'L') {
+      } else if (c is 'u' or c is 'U' or c is 'l' or c is 'L') {
         ++cursor;
         if (cursor < end) {
           c = *cursor;
-          if (c == 'u' or c == 'U' or c == 'l' or c == 'L') ++cursor;
+          if (c is 'u' or c is 'U' or c is 'l' or c is 'L') ++cursor;
           else break;
         }
-      } else if (c == 'e' or c == 'E') {
+      } else if (c is 'e' or c is 'E') {
         ++cursor;
         if (cursor < end) {
           c = *cursor;
-          if (c == '+' or c == '-') ++cursor;
+          if (c is '+' or c is '-') ++cursor;
           while (cursor < end) {
             c = *cursor;
-            if (c >= '1' and c <= '9' or c == '.') ++cursor;
+            if (in('1',c,'9') or c is '.') ++cursor;
             else break;
           }
         }
@@ -523,19 +523,18 @@ SourceCode preprocessor(SourceCode start, SourceCode end)
 {
   if (*start is_not '#' or end <= start) return NULL;
   mut_SourceCode cursor = start + 1;
-  if (cursor == end) return cursor;
+  if (cursor is end) return cursor;
   mut_Byte c = *cursor;
-  if (c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+  if (in('a',c,'z') or in('A',c,'Z') or c is '_') {
     ++cursor;
     while (cursor < end) {
       c = *cursor;
-      if (c >= '0' and c <= '9' or
-          c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z' or c == '_') {
+      if (in('0',c,'9') or in('a',c,'z') or in('A',c,'Z') or c is '_') {
         ++cursor;
       } else break;
     }
     return cursor;
-  } else if (c == '#') {
+  } else if (c is '#') {
     // Token concatenation.
     return cursor + 1;
   } else {
@@ -649,19 +648,19 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
   Marker_p m_end = Marker_array_end(markers);
   bool eol_pending = false;
   for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
-    if (options.discard_comments && m->token_type == T_COMMENT) {
+    if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
-          m+1 is_not m_end && (m+1)->token_type == T_SPACE) ++m;
+          m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
       continue;
     }
     Byte_p text = src->items + m->start;
     if (options.discard_space) {
-      if (m->token_type == T_SPACE) {
+      if (m->token_type is T_SPACE) {
         mut_Byte_p eol = text;
         size_t len = m->len;
         if (eol_pending) {
           while ((eol = memchr(eol, '\n', len))) {
-            if (eol == text || *(eol-1) != '\\') {
+            if (eol is text || *(eol-1) is_not '\\') {
               fputc('\n', out);
               eol_pending = false;
               break;
@@ -669,15 +668,15 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
             ++eol; // Skip the LF character we just found.
             len = m->len - (eol - text);
           }
-          if (!eol_pending) continue;
+          if (not eol_pending) continue;
         }
         fputc(' ', out);
         continue;
-      } else if (m->token_type == T_PREPROCESSOR) {
+      } else if (m->token_type is T_PREPROCESSOR) {
         eol_pending = true;
-      } else if (m->token_type == T_COMMENT) {
+      } else if (m->token_type is T_COMMENT) {
         // If not eol_pending, set it if this is a line comment.
-        eol_pending = eol_pending || (m->len > 1 && '/' == text[1]);
+        eol_pending = eol_pending || (m->len > 1 && '/' is text[1]);
       }
     }
     fwrite(text, sizeof(*src->items), m->len, out);
@@ -707,81 +706,81 @@ TokenType keyword_or_identifier(SourceCode start, SourceCode end)
 {
   switch (end - start) {
     case 2:
-      if (0 == memcmp(start, "do", 2) || 0 == memcmp(start, "if", 2)) {
+      if (mem_eq(start, "do", 2) || mem_eq(start, "if", 2)) {
         return T_CONTROL_FLOW;
       }
       break;
     case 3:
-      if (0 == memcmp(start, "for", 3)) {
+      if (mem_eq(start, "for", 3)) {
         return T_CONTROL_FLOW;
       }
-      if (0 == memcmp(start, "int", 3)) {
+      if (mem_eq(start, "int", 3)) {
         return T_TYPE;
       }
       break;
     case 4:
-      if (0 == memcmp(start, "case", 4) || 0 == memcmp(start, "else", 4) ||
-          0 == memcmp(start, "goto", 4)) {
+      if (mem_eq(start, "case", 4) || mem_eq(start, "else", 4) ||
+          mem_eq(start, "goto", 4)) {
         return T_CONTROL_FLOW;
       }
-      if (0 == memcmp(start, "char", 4) || 0 == memcmp(start, "enum", 4) ||
-          0 == memcmp(start, "long", 4) || 0 == memcmp(start, "void", 4) ||
-          0 == memcmp(start, "bool", 4)) {
+      if (mem_eq(start, "char", 4) || mem_eq(start, "enum", 4) ||
+          mem_eq(start, "long", 4) || mem_eq(start, "void", 4) ||
+          mem_eq(start, "bool", 4)) {
         return T_TYPE;
       }
-      if (0 == memcmp(start, "auto", 4)) {
+      if (mem_eq(start, "auto", 4)) {
         return T_TYPE_QUALIFIER;
       }
       break;
     case 5:
-      if (0 == memcmp(start, "break", 5) || 0 == memcmp(start, "while", 5)) {
+      if (mem_eq(start, "break", 5) || mem_eq(start, "while", 5)) {
         return T_CONTROL_FLOW;
       }
-      if (0 == memcmp(start, "float", 5) || 0 == memcmp(start, "short", 5) ||
-          0 == memcmp(start, "union", 5)) {
+      if (mem_eq(start, "float", 5) || mem_eq(start, "short", 5) ||
+          mem_eq(start, "union", 5)) {
         return T_TYPE;
       }
-      if (0 == memcmp(start, "const", 5)) {
+      if (mem_eq(start, "const", 5)) {
         return T_TYPE_QUALIFIER;
       }
       break;
     case 6:
-      if (0 == memcmp(start, "return", 6) || 0 == memcmp(start, "switch", 6)) {
+      if (mem_eq(start, "return", 6) || mem_eq(start, "switch", 6)) {
         return T_CONTROL_FLOW;
       }
-      if (0 == memcmp(start, "double", 6) || 0 == memcmp(start, "struct", 6)) {
+      if (mem_eq(start, "double", 6) || mem_eq(start, "struct", 6)) {
         return T_TYPE;
       }
-      if (0 == memcmp(start, "extern", 6) || 0 == memcmp(start, "inline", 6) ||
-          0 == memcmp(start, "signed", 6) || 0 == memcmp(start, "static", 6)){
+      if (mem_eq(start, "extern", 6) || mem_eq(start, "inline", 6) ||
+          mem_eq(start, "signed", 6) || mem_eq(start, "static", 6)){
         return T_TYPE_QUALIFIER;
       }
-      if (0 == memcmp(start, "sizeof", 6)) {
+      if (mem_eq(start, "sizeof", 6)) {
         return T_OP_2;
       }
       break;
     case 7:
-      if (0 == memcmp(start, "default", 7)) {
+      if (mem_eq(start, "default", 7)) {
         return T_CONTROL_FLOW;
       }
-      if (0 == memcmp(start, "complex", 7)) {
+      if (mem_eq(start, "complex", 7)) {
         return T_TYPE;
       }
       break;
     case 8:
-      if (0 == memcmp(start, "continue", 8)) {
+      if (mem_eq(start, "continue", 8)) {
         return T_CONTROL_FLOW;
       }
-      if (0 == memcmp(start, "register", 8) || 0 == memcmp(start, "restrict", 8) ||
-          0 == memcmp(start, "unsigned", 8) || 0 == memcmp(start, "volatile", 8)){
+      if (mem_eq(start, "register", 8) || mem_eq(start, "restrict", 8) ||
+          mem_eq(start, "unsigned", 8) || mem_eq(start, "volatile", 8)){
         return T_TYPE_QUALIFIER;
       }
-      if (0 == memcmp(start, "_Alignof", 8)) {
+      if (mem_eq(start, "_Alignof", 8)) {
         return T_OP_2;
       }
       break;
     case 9:
-      if (0 == memcmp(start, "imaginary", 9)) {
+      if (mem_eq(start, "imaginary", 9)) {
         return T_TYPE;
       }
       break;
@@ -806,7 +805,7 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
   bool include_mode = false;
   bool define_mode  = false;
   while (cursor is_not end) {
-    if (cursor == prev_cursor) {
+    if (cursor is prev_cursor) {
       log("ERROR: endless loop after %ld.\n", cursor - src->items);
       break;
     }
@@ -816,22 +815,22 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
     mut_SourceCode token_end = NULL;
     if        ((token_end = identifier(cursor, end))) {
       TOKEN1(keyword_or_identifier(cursor, token_end));
-      if (token_end == cursor) log("error T_IDENTIFIER");
+      if (token_end is cursor) log("error T_IDENTIFIER");
     } else if ((token_end = string(cursor, end))) {
       TOKEN1(T_STRING);
-      if (token_end == cursor) { log("error T_STRING"); break; }
+      if (token_end is cursor) { log("error T_STRING"); break; }
     } else if ((token_end = number(cursor, end))) {
       TOKEN1(T_NUMBER);
-      if (token_end == cursor) { log("error T_NUMBER"); break; }
+      if (token_end is cursor) { log("error T_NUMBER"); break; }
     } else if ((token_end = character(cursor, end))) {
       TOKEN1(T_CHARACTER);
-      if (token_end == cursor) { log("error T_CHARACTER"); break; }
+      if (token_end is cursor) { log("error T_CHARACTER"); break; }
     } else if ((token_end = comment(cursor, end))) {
       TOKEN1(T_COMMENT);
-      if (token_end == cursor) { log("error T_COMMENT"); break; }
+      if (token_end is cursor) { log("error T_COMMENT"); break; }
     } else if ((token_end = space(cursor, end))) {
       TOKEN1(T_SPACE);
-      if (token_end == cursor) { log("error T_SPACE"); break; }
+      if (token_end is cursor) { log("error T_SPACE"); break; }
       if ((include_mode||define_mode) && memchr(cursor, '\n', token_end - cursor)) {
         include_mode = false;
         if (define_mode) {
@@ -841,15 +840,15 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
       }
     } else if ((token_end = preprocessor(cursor, end))) {
       TOKEN1(T_PREPROCESSOR);
-      if (token_end == cursor) { log("error T_PREPROCESSOR"); break; }
-      if (0 == memcmp(cursor, "#include", token_end - cursor)) {
+      if (token_end is cursor) { log("error T_PREPROCESSOR"); break; }
+      if (mem_eq(cursor, "#include", token_end - cursor)) {
         include_mode = true;
-      } else if (0 == memcmp(cursor, "#define", token_end - cursor)) {
+      } else if (mem_eq(cursor, "#define", token_end - cursor)) {
         define_mode = true;
       }
     } else if (include_mode && (token_end = system_include(cursor, end))) {
       TOKEN1(T_STRING);
-      if (token_end == cursor) { log("error T_STRING"); break; }
+      if (token_end is cursor) { log("error T_STRING"); break; }
     } else {
       uint8_t c = *cursor;
       token_end = cursor + 1;
@@ -865,7 +864,7 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
         case ',': TOKEN1(T_COMMA);       break;
         case ';': TOKEN1(T_SEMICOLON);   break;
         case '.':
-          if (c2 == '.' && c3 == '.') { TOKEN3(T_ELLIPSIS); }
+          if (c2 is '.' && c3 is '.') { TOKEN3(T_ELLIPSIS); }
           else                        { TOKEN1(T_OP_1);     }
           break;
         case '~': TOKEN1(T_OP_2);        break;
@@ -1001,10 +1000,10 @@ void resolve_types(Marker_array_p markers, Buffer_p src)
   //mut_SourceCode token = NULL;
   mut_Marker_p previous = NULL;
   for (mut_Marker_p m = markers->items; m is_not markers_end; ++m) {
-    if (T_SPACE == m->token_type || T_COMMENT == m->token_type) continue;
+    if (T_SPACE is m->token_type || T_COMMENT is m->token_type) continue;
     if (previous) {
-      if ((T_TUPLE_START == m->token_type || T_OP_14 == m->token_type) &&
-          T_IDENTIFIER  == previous->token_type) {
+      if ((T_TUPLE_START is m->token_type || T_OP_14 is m->token_type) &&
+          T_IDENTIFIER  is previous->token_type) {
         mut_Marker_p p = previous;
         while (p is_not markers->items) {
           --p;
@@ -1074,7 +1073,7 @@ const char* const usage_en =
 void usage()
 {
   char* lang = getenv("LANG");
-  if (0 == strncmp(lang, "es", 2)) {
+  if (0 is strncmp(lang, "es", 2)) {
     fprintf(stderr, usage_es);
   } else {
     fprintf(stderr, usage_en);
@@ -1091,17 +1090,17 @@ int main(int argc, char** argv)
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
-    if (arg[0] == '-') {
+    if (arg[0] is '-') {
       bool flag_value = true;
-      if (0 == strncmp("--not-", arg, 6)) flag_value = false;
-      if (0 == strcmp("--discard-comments", arg) ||
-          0 == strcmp("--not-discard-comments", arg)) {
+      if (0 is strncmp("--not-", arg, 6)) flag_value = false;
+      if (str_eq("--discard-comments", arg) ||
+          str_eq("--not-discard-comments", arg)) {
         options.discard_comments = flag_value;
-      } else if (0 == strcmp("--discard-space", arg) ||
-                 0 == strcmp("--not-discard-space", arg)) {
+      } else if (str_eq("--discard-space", arg) ||
+                 str_eq("--not-discard-space", arg)) {
         options.discard_space = flag_value;
-      } else if (0 == strcmp("--print-markers", arg) ||
-                 0 == strcmp("--not-print-markers", arg)) {
+      } else if (str_eq("--print-markers", arg) ||
+                 str_eq("--not-print-markers", arg)) {
         options.print_markers = flag_value;
       } else {
         usage();
@@ -1114,7 +1113,7 @@ int main(int argc, char** argv)
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
-    if (arg[0] == '-') continue;
+    if (arg[0] is '-') continue;
 
     mut_Buffer src;
     read_file(&src, arg);
