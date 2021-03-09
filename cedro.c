@@ -331,7 +331,7 @@ void define_macros()
 #include "macros.h"
 }
 
-#define log(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
+#define log(...) { fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); }
 
 /* Lexer definitions. */
 
