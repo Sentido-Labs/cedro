@@ -650,8 +650,8 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
   bool eol_pending = false;
   for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
     if (options.discard_comments && m->token_type == T_COMMENT) {
-      if (options.discard_space && m+1 is_not m_end &&
-          (m+1)->token_type == T_SPACE) ++m;
+      if (options.discard_space && not eol_pending &&
+          m+1 is_not m_end && (m+1)->token_type == T_SPACE) ++m;
       continue;
     }
     Byte_p text = src->items + m->start;
@@ -674,9 +674,10 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
         fputc(' ', out);
         continue;
       } else if (m->token_type == T_PREPROCESSOR) {
-          eol_pending = true;
+        eol_pending = true;
       } else if (m->token_type == T_COMMENT) {
-          eol_pending = !eol_pending || (m->len > 1 && '/' == text[1]);
+        // If not eol_pending, set it if this is a line comment.
+        eol_pending = eol_pending || (m->len > 1 && '/' == text[1]);
       }
     }
     fwrite(text, sizeof(*src->items), m->len, out);
