@@ -98,18 +98,19 @@ void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
   _->len        = end - start;
   _->token_type = token_type;
 }
-/** Destroy a marker. No resources were allocated so there is nothing to do. */
-void drop_Marker(mut_Marker_p _) {}
 
-#define DEFINE_ARRAY_OF(T, PADDING)                                     \
-  /** There must be a `drop_##T(T##_p _)` function.                   \n\
-                                                                      \n\
-     The constant `PADDING_##T##_ARRAY` = `PADDING`                     \
-     defines how many items are physically available                    \
-     after those valid elements.                                      \n\
-     This can be used to avoid special cases near the end               \
-     when searching for fixed-length sequences in the array,            \
-     although you have to set them to `0` or other appropriate value.   \
+/** DROP_BLOCK is a block of code that releases the resources for a block
+    of objects of type T, between `mut_##T##_p cursor` and `T##_p end`.\n
+    For instance: { while (cursor != end) drop_##T(cursor++); } \n
+    If the type does not need any clean-up, just use `{}`.
+*/
+#define DEFINE_ARRAY_OF(T, PADDING, DROP_BLOCK)                         \
+  /** The constant `PADDING_##T##_ARRAY` = `PADDING`                    \
+      defines how many items are physically available                   \
+      after those valid elements.                                     \n\
+      This can be used to avoid special cases near the end              \
+      when searching for fixed-length sequences in the array,           \
+      although you have to set them to `0` or other appropriate value.  \
    */                                                                   \
 typedef struct T##_array {                                              \
   /** Current length, the number of valid elements. */                  \
@@ -133,6 +134,10 @@ typedef struct T##_array_slice {                                        \
   T##_array_p array_p;                                                  \
 } T##_array_slice, * const T##_array_slice_p, * mut_##T##_array_slice_p; \
                                                                         \
+void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
+{                                                                       \
+  DROP_BLOCK                                                            \
+}                                                                       \
 /** Initialize the array at the given pointer.                        \n\
     For local variables, use it like this:                            \n\
     \code{.c}                                                           \
@@ -157,9 +162,7 @@ mut_##T##_array_p init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)
     `p = drop_##T##_array(p); // p is now NULL.` */                     \
 mut_##T##_array_p drop_##T##_array(mut_##T##_array_p _)                 \
 {                                                                       \
-  mut_##T##_p cursor = _->items;                                        \
-  T##_p       end    = _->items + _->len;                               \
-  while (cursor != end) drop_##T(cursor++);                             \
+  drop_##T##_block(_->items, _->items + _->len);                        \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
   _->last_p = NULL;                                                     \
@@ -187,9 +190,7 @@ mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
     Returns the given array pointer. */                                 \
 mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _, size_t position, size_t delete, T##_array_slice_p insert) \
 {                                                                       \
-  mut_##T##_p cursor = _->items + position;                             \
-  T##_p       end    = _->items + position + delete;                    \
-  while (cursor != end) drop_##T(cursor++);                             \
+  drop_##T##_block(_->items + position, _->items + position + delete);  \
                                                                         \
   size_t insert_len = insert->end;                                      \
   if (!insert_len) {                                                    \
@@ -216,9 +217,7 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _, size_t position, size_
     Returns the given array pointer. */                                 \
 mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
-  mut_##T##_p cursor = _->items + position;                             \
-  T##_p       end    = _->items + position + delete;                    \
-  while (cursor != end) drop_##T(cursor++);                             \
+  drop_##T##_block(_->items + position, _->items + position + delete);  \
                                                                         \
   memmove(_->items + position, _->items + position + delete,            \
           (_->len - delete - position) * sizeof(T));                    \
@@ -235,7 +234,7 @@ mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p) \
   if (not _->len) return NULL;                                          \
   mut_##T##_p last_p = _->items + _->len - 1;                           \
   if (item_p) memmove(last_p, item_p, sizeof(T));                       \
-  else        drop_##T(last_p);                                         \
+  else        drop_##T##_block(last_p, last_p + 1);                     \
   --_->len;                                                             \
   return _;                                                             \
 }                                                                       \
@@ -263,17 +262,14 @@ T##_p T##_array_end(T##_array_p _)                                      \
 }                                                                       \
 const size_t PADDING_##T##_ARRAY = PADDING//; commented out to avoid ;;.
 
-DEFINE_ARRAY_OF(Marker, 0);
+DEFINE_ARRAY_OF(Marker, 0, {});
 
 /** Add 10 bytes after end of buffer to avoid bounds checking while scanning
  *  for tokens. No literal token is that long. */
 #define SRC_EXTRA_PADDING 10
 typedef uint8_t mut_Byte, * const Byte_p, * mut_Byte_p;
 typedef const uint8_t Byte;
-/** A byte does not have any allocated resources:
- *  just evaluate the argument in case it has side effects. */
-#define drop_Byte(_) _
-DEFINE_ARRAY_OF(Byte, SRC_EXTRA_PADDING);
+DEFINE_ARRAY_OF(Byte, SRC_EXTRA_PADDING, {});
 typedef mut_Byte_array mut_Buffer, *mut_Buffer_p;
 typedef     Byte_array     Buffer, *    Buffer_p;
 #define init_Buffer init_Byte_array
@@ -443,6 +439,8 @@ SourceCode comment_line(SourceCode start, SourceCode end)
   if (*start is_not '/' or end <= start + 1) return NULL;
   mut_SourceCode cursor = start + 1;
   if (*cursor is_not '/') return NULL;
+  while (cursor < end && *cursor is_not '\n') ++cursor;
+  return cursor;
 }
 
 /** Match a pre-processor directive. */
@@ -707,7 +705,7 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
   bool define_mode  = false;
   while (cursor is_not end) {
     if (cursor == prev_cursor) {
-      log("ERROR: endless loop after %d.\n", cursor - src->items);
+      log("ERROR: endless loop after %ld.\n", cursor - src->items);
       break;
     }
     prev_cursor = cursor;
@@ -895,10 +893,10 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
 /** Resolve the types of expressions. W.I.P. */
 void resolve_types(Marker_array_p markers, Buffer_p src)
 {
-  uint8_t slice_data[80];
-  Buffer slice = { 80, 0, (uint8_t *)&slice_data };
+  //uint8_t slice_data[80];
+  //Buffer slice = { 80, 0, (uint8_t *)&slice_data };
   Marker_p markers_end = Marker_array_end(markers);
-  mut_SourceCode token = NULL;
+  //mut_SourceCode token = NULL;
   mut_Marker_p previous = NULL;
   for (mut_Marker_p m = markers->items; m is_not markers_end; ++m) {
     if (T_SPACE == m->token_type || T_COMMENT == m->token_type) continue;
@@ -943,11 +941,11 @@ void read_file(mut_Buffer_p _, FilePath path)
   rewind(input);
   _->len = fread(_->items, sizeof(Byte), size, input);
   if (feof(input)) {
-    fprintf(stderr, "Unexpected EOF at %d reading “%s”.\n", _->len, path);
+    fprintf(stderr, "Unexpected EOF at %ld reading “%s”.\n", _->len, path);
   } else if (ferror(input)) {
     fprintf(stderr, "Error reading “%s”.\n", path);
   } else {
-    fprintf(stderr, "Read %d bytes from “%s”.\n", _->len, path);
+    fprintf(stderr, "Read %ld bytes from “%s”.\n", _->len, path);
     memset(_->items + _->len, 0, (_->capacity - _->len) * sizeof(Byte));
   }
   fclose(input); input = NULL;
@@ -995,7 +993,7 @@ int main(int argc, char** argv)
 
     drop_Marker_array(&markers);
 
-    log("Read %d lines.", line_number((Buffer_p)&src, cursor) - 1);
+    log("Read %ld lines.", line_number((Buffer_p)&src, cursor) - 1);
 
     drop_Buffer(&src);
   }

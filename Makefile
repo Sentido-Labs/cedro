@@ -1,13 +1,16 @@
-CC=gcc -std=c99 -pedantic
+CC=gcc
+CC_STRICT=$(CC) -std=c99 -pedantic -Wall
 NAME=cedro
 
 all: $(NAME)
+.PHONY: all
 
 run: $(NAME)
 	./$(NAME) $(NAME).c
+.PHONY: run
 
 $(NAME): $(NAME).c macros.h Makefile
-	$(CC) -o $@ $<
+	$(CC_STRICT) -o $@ $<
 
 doc:
 	$(MAKE) -C doc
