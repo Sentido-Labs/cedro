@@ -27,6 +27,7 @@
 #include <string.h> // For memcpy(), memmove().
 #define mem_eq(start, bytes, len) (0 == memcmp(start, bytes, len))
 #define str_eq(a, b)              (0 == strcmp(a, b))
+#include <assert.h>
 
 /** Parameters set by command line options. */
 typedef struct Options {
@@ -337,16 +338,16 @@ const size_t PADDING_##T##_ARRAY = PADDING//; commented out to avoid ;;.
 
 DEFINE_ARRAY_OF(Marker, 0, {});
 
-/** Add 10 bytes after end of buffer to avoid bounds checking while scanning
- *  for tokens. No literal token is that long. */
-#define SRC_EXTRA_PADDING 10
 typedef uint8_t mut_Byte, * const Byte_p, * mut_Byte_p;
 typedef const uint8_t Byte;
-DEFINE_ARRAY_OF(Byte, SRC_EXTRA_PADDING, {});
+/** Add 8 bytes after end of buffer to avoid bounds checking while scanning
+ *  for tokens. No literal token is longer. */
+DEFINE_ARRAY_OF(Byte, 8, {});
 typedef mut_Byte_array mut_Buffer, *mut_Buffer_p;
 typedef     Byte_array     Buffer, *    Buffer_p;
 #define init_Buffer init_Byte_array
 #define drop_Buffer drop_Byte_array
+#define PADDING_Buffer PADDING_Byte_ARRAY
 
 typedef     Byte_p     SourceCode; /**< 0-terminated. */
 typedef mut_Byte_p mut_SourceCode; /**< 0-terminated. */
@@ -474,7 +475,7 @@ SourceCode space(SourceCode start, SourceCode end)
         ++cursor;
         break;
       case '\\':
-        // No need to check bounds thanks to SRC_EXTRA_PADDING.
+        // No need to check bounds thanks to PADDING_Buffer.
         if (*(cursor + 1) is_not '\n') goto exit;
         ++cursor;
         break;
@@ -798,6 +799,7 @@ TokenType keyword_or_identifier(SourceCode start, SourceCode end)
    if you are re-parsing from scratch. */
 SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
 {
+  assert(PADDING_Buffer >= 8); // Must be greater than the longest keyword.
   mut_SourceCode cursor = src->items;
   SourceCode end = src->items + src->len;
   mut_SourceCode prev_cursor = 0;
@@ -1085,7 +1087,7 @@ int main(int argc, char** argv)
   Options options = { // Remember to keep the usage strings updated.
     .discard_comments = true,
     .discard_space    = true,
-    .print_markers    = false
+    .print_markers    = false,
   };
 
   for (int i = 1; i < argc; ++i) {
