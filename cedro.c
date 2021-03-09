@@ -35,9 +35,6 @@ typedef struct Options {
   bool ignore_comment;
 } Options, *Options_p;
 
-typedef uint8_t*const SourceCode; /**< 0-terminated. */
-typedef uint8_t*  mut_SourceCode; /**< 0-terminated. */
-
 /// Binary string, `const unsigned char const*`.
 #define B(string) ((const unsigned char const*)string)
 
@@ -347,6 +344,9 @@ typedef mut_Byte_array mut_Buffer, *mut_Buffer_p;
 typedef     Byte_array     Buffer, *    Buffer_p;
 #define init_Buffer init_Byte_array
 #define drop_Buffer drop_Byte_array
+
+typedef     Byte_p     SourceCode; /**< 0-terminated. */
+typedef mut_Byte_p mut_SourceCode; /**< 0-terminated. */
 
 void define_macro(const char * const name, void (*f)(mut_Marker_array_p markers, Buffer_p src)) {
   fprintf(stderr, "(defmacro %s)\n", name);
