@@ -81,8 +81,8 @@ static const unsigned char * const TOKEN_NAME[] = {
 /** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
     and constant types 〈T〉 and 〈T〉_p (pointer to constant). */
 #define TYPEDEF(T, STRUCT)                                       \
-  typedef struct T STRUCT mut_##T, * const T##_p, * mut_##T##_p; \
-  typedef const struct T T
+  typedef struct T STRUCT mut_##T, * mut_##T##_p; \
+  typedef const struct T T, * T##_p
 
 /** Marks a C token in the source code. */
 TYPEDEF(Marker, {
