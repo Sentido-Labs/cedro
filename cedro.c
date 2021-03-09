@@ -1,6 +1,18 @@
 /**
- * Author: Alberto González Palomo https://sentido-labs.com
- * ©2021 Alberto González Palomo https://sentido-labs.com
+ * @file */
+/**
+ * @mainpage
+ * The Cedro C pre-processor.
+ *   - [Data structures](cedro_8c.html#nested-classes)
+ *   - [Macros](cedro_8c.html#define-members)
+ *   - [Typedefs](cedro_8c.html#typedef-members)
+ *   - [Enumerations](cedro_8c.html#enum-members)
+ *   - [Functions](cedro_8c.html#func-members)
+ *   - [Variables](cedro_8c.html#var-members)
+ *
+ * @author Alberto González Palomo https://sentido-labs.com
+ * @copyright ©2021 Alberto González Palomo https://sentido-labs.com
+ *
  * Created: 2020-11-25 22:41
  */
 
@@ -9,20 +21,25 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <iso646.h>
-#define is     ==
-#define is_not not_eq
+
+#define is     ==     ///< For readability.
+#define is_not not_eq ///< For readability.
 
 #include <string.h> // For memcpy(), memmove().
 
+/** Parameters set by command line options. */
 typedef struct Options {
+  /// Whether to skip space tokens, or include them in the markers array.
   bool ignore_space;
+  /// Skip comments, or include them in the markers array.
   bool ignore_comment;
 } Options, *Options_p;
 
-typedef uint8_t*const SourceCode;/// 0-terminated.
-typedef uint8_t* mut_SourceCode; /// 0-terminated.
+typedef uint8_t*const SourceCode; /**< 0-terminated. */
+typedef uint8_t*  mut_SourceCode; /**< 0-terminated. */
 
-#define B(string) ((unsigned char*)string)
+/// Binary string, `const unsigned char const*`.
+#define B(string) ((const unsigned char const*)string)
 
 /** https://en.cppreference.com/w/c/language/operator_precedence */
 typedef enum TokenType {
@@ -67,42 +84,60 @@ static const unsigned char * const TOKEN_NAME[] = {
   typedef struct T STRUCT mut_##T, * const T##_p, * mut_##T##_p; \
   typedef const struct T T
 
+/** Marks a C token in the source code. */
 TYPEDEF(Marker, {
-  size_t start;
-  size_t len;
-  TokenType token_type;
+    size_t start;         /**< Start position, in bytes/chars. */
+    size_t len;           /**< Length, in bytes/chars. */
+    TokenType token_type; /**< Token type. */
   });
 
+/** Initialize a marker with the given values. */
 void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 {
   _->start      = start;
   _->len        = end - start;
   _->token_type = token_type;
 }
+/** Destroy a marker. No resources were allocated so there is nothing to do. */
 void drop_Marker(mut_Marker_p _) {}
 
 #define DEFINE_ARRAY_OF(T, PADDING)                                     \
-/** There must be a drop_##T(T##_p _) function. */                      \
+  /** There must be a `drop_##T(T##_p _)` function.                   \n\
+                                                                      \n\
+     The constant `PADDING_##T##_ARRAY` = `PADDING`                     \
+     defines how many items are physically available                    \
+     after those valid elements.                                      \n\
+     This can be used to avoid special cases near the end               \
+     when searching for fixed-length sequences in the array,            \
+     although you have to set them to `0` or other appropriate value.   \
+   */                                                                   \
 typedef struct T##_array {                                              \
+  /** Current length, the number of valid elements. */                  \
   size_t len;                                                           \
+  /** Maximum length before reallocation is needed. */                  \
   size_t capacity;                                                      \
+  /** The items stored in this array. */                                \
   mut_##T* items;                                                       \
+  /** Pointer to last element. */                                       \
   mut_##T##_p last_p;                                                   \
 } mut_##T##_array, * const T##_array_p, * mut_##T##_array_p;            \
 typedef const struct T##_array T##_array;                               \
                                                                         \
 /** Example: <code>T##_slice s = { 0, 10, &my_array };</code> */        \
 typedef struct T##_array_slice {                                        \
+  /** Start position in the array. */                                   \
   size_t start;                                                         \
-  size_t end; /** 0 means the end of the array. */                      \
+  /** End position. 0 means the end of the array. */                    \
+  size_t end;                                                           \
+  /** The array this slice refers to. */                                \
   T##_array_p array_p;                                                  \
 } T##_array_slice, * const T##_array_slice_p, * mut_##T##_array_slice_p; \
                                                                         \
-/** Initialize the array at the given pointer.                          \
-    For local variables, use it like this:                              \
+/** Initialize the array at the given pointer.                        \n\
+    For local variables, use it like this:                            \n\
     \code{.c}                                                           \
     T##_array things;                                                   \
-    T##_array_init(&things, 100); // We expect around 100 items.        \
+    T##_array_init(&things, 100); ///< We expect around 100 items.      \
     {...}                                                               \
     T##_array_drop(&things);                                            \
     \endcode                                                            \
@@ -129,9 +164,12 @@ mut_##T##_array_p drop_##T##_array(mut_##T##_array_p _)                 \
   _->capacity = 0;                                                      \
   _->last_p = NULL;                                                     \
   free(_->items); _->items = NULL;                                      \
-  return _;                                                             \
+  return NULL;                                                          \
 }                                                                       \
                                                                         \
+/** Push a bit copy of the element on the end/top of the array,         \
+    resizing the array if needed.                                       \
+    Returns the given array pointer. */                                 \
 mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
 {                                                                       \
   if (_->capacity < _->len + 1 + PADDING) {                             \
@@ -141,6 +179,12 @@ mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
   *(_->last_p = _->items + _->len++) = *item;                           \
   return _;                                                             \
 }                                                                       \
+/** Splice the given slice in place of the removed elements,            \
+    resizing the array if needed.                                       \
+    Starting at `position`, `delete` elements are deleted and           \
+    the elements in the `insert` slice are inserted there               \
+    as bit copies.                                                      \
+    Returns the given array pointer. */                                 \
 mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _, size_t position, size_t delete, T##_array_slice_p insert) \
 {                                                                       \
   mut_##T##_p cursor = _->items + position;                             \
@@ -167,6 +211,9 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _, size_t position, size_
           insert_len * sizeof(T));                                      \
   return _;                                                             \
 }                                                                       \
+                                                                        \
+/** Delete `delete` elements from the array at `position`.              \
+    Returns the given array pointer. */                                 \
 mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
   mut_##T##_p cursor = _->items + position;                             \
@@ -178,6 +225,11 @@ mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _, size_t position, size_
   _->len -= delete;                                                     \
   return _;                                                             \
 }                                                                       \
+                                                                        \
+/** Remove the element at the end/top of the array,                     \
+    copying its bits into `*item_p` unless `item_p` is `0`.             \
+    Returns the given array pointer,                                    \
+    or `NULL` if the array was empty. */                                \
 mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p) \
 {                                                                       \
   if (not _->len) return NULL;                                          \
@@ -187,11 +239,24 @@ mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p) \
   --_->len;                                                             \
   return _;                                                             \
 }                                                                       \
-T##_p T##_array_start(T##_array_p _, size_t position)                   \
+                                                                        \
+/** Return a pointer to the element at `position`.                      \
+    or `NULL` if the index is out of range. */                          \
+T##_p T##_array_get(T##_array_p _, size_t position)                     \
 {                                                                       \
-  if (position >= _->len) position = _->len;                            \
-  return _->items + position;                                           \
+  return (position >= _->len)? NULL: _->items + position;               \
 }                                                                       \
+                                                                        \
+/** Return a pointer to the start of the array (same as `_->items`),    \
+    or `NULL` if the array was empty. */                                \
+T##_p T##_array_start(T##_array_p _)                                    \
+{                                                                       \
+  if (not _->len) return NULL;                                          \
+  return _->items;                                                      \
+}                                                                       \
+                                                                        \
+/** Return a pointer to the next byte after                             \
+    the element at the end of the array. */                             \
 T##_p T##_array_end(T##_array_p _)                                      \
 {                                                                       \
   return _->items + _->len;                                             \
@@ -201,10 +266,12 @@ const size_t PADDING_##T##_ARRAY = PADDING//; commented out to avoid ;;.
 DEFINE_ARRAY_OF(Marker, 0);
 
 /** Add 10 bytes after end of buffer to avoid bounds checking while scanning
-    for tokens. No literal token is that long. */
+ *  for tokens. No literal token is that long. */
 #define SRC_EXTRA_PADDING 10
 typedef uint8_t mut_Byte, * const Byte_p, * mut_Byte_p;
 typedef const uint8_t Byte;
+/** A byte does not have any allocated resources:
+ *  just evaluate the argument in case it has side effects. */
 #define drop_Byte(_) _
 DEFINE_ARRAY_OF(Byte, SRC_EXTRA_PADDING);
 typedef mut_Byte_array mut_Buffer, *mut_Buffer_p;
@@ -231,6 +298,7 @@ void define_macros()
 
 /* Lexer definitions. */
 
+/** Match an identifier. */
 SourceCode identifier(SourceCode start, SourceCode end)
 {
   if (end <= start) return NULL;
@@ -251,7 +319,8 @@ SourceCode identifier(SourceCode start, SourceCode end)
   }
 }
 
-/** This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+/** Match a number.
+    This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
     Rejecting that is left to the compiler. */
 SourceCode number(SourceCode start, SourceCode end)
 {
@@ -290,6 +359,7 @@ SourceCode number(SourceCode start, SourceCode end)
   }
 }
 
+/** Match a string literal. */
 SourceCode string(SourceCode start, SourceCode end)
 {
   if (*start is_not '"' or end <= start) return NULL;
@@ -301,6 +371,7 @@ SourceCode string(SourceCode start, SourceCode end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
 }
 
+/** Match an `#include <...>` directive. */
 SourceCode system_include(SourceCode start, SourceCode end)
 {
   if (*start is_not '<' or end <= start) return NULL;
@@ -309,6 +380,7 @@ SourceCode system_include(SourceCode start, SourceCode end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
 }
 
+/** Match a character literal. */
 SourceCode character(SourceCode start, SourceCode end)
 {
   if (*start is_not '\'' or end <= start) return NULL;
@@ -320,6 +392,7 @@ SourceCode character(SourceCode start, SourceCode end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing quote.
 }
 
+/** Match whitespace: one or more space, TAB, CR, or NL characters. */
 SourceCode space(SourceCode start, SourceCode end)
 {
   if (end <= start) return NULL;
@@ -343,6 +416,7 @@ exit:
   return (cursor is start)? NULL: cursor;
 }
 
+/** Match a comment block. */
 SourceCode comment(SourceCode start, SourceCode end)
 {
   if (*start is_not '/' or end <= start + 1) return NULL;
@@ -363,6 +437,7 @@ SourceCode comment(SourceCode start, SourceCode end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
 }
 
+/** Match a line comment. */
 SourceCode comment_line(SourceCode start, SourceCode end)
 {
   if (*start is_not '/' or end <= start + 1) return NULL;
@@ -370,6 +445,7 @@ SourceCode comment_line(SourceCode start, SourceCode end)
   if (*cursor is_not '/') return NULL;
 }
 
+/** Match a pre-processor directive. */
 SourceCode preprocessor(SourceCode start, SourceCode end)
 {
   if (*start is_not '#' or end <= start) return NULL;
@@ -396,6 +472,7 @@ SourceCode preprocessor(SourceCode start, SourceCode end)
 
 
 
+/** Compute the line number for the given byte index. */
 size_t line_number(Buffer_p src, SourceCode cursor)
 {
   size_t line_number = 1;
@@ -406,6 +483,13 @@ size_t line_number(Buffer_p src, SourceCode cursor)
   return line_number;
 }
 
+/** Copy the characters between `start` and `end` into the given slice,
+ *  as many as they fit. If the slice is too small, the content is truncated
+ *  with a Unicode ellipsis symbol “…” at the end.
+ *  @param[in] start of a source code segment.
+ *  @param[in] end of a source code segment.
+ *  @param[out] slice buffer to receive the bytes copied from the segment.
+ */
 SourceCode extract_string(SourceCode start, SourceCode end, mut_Buffer_p slice)
 {
   size_t len = end - start;
@@ -421,6 +505,7 @@ SourceCode extract_string(SourceCode start, SourceCode end, mut_Buffer_p slice)
   return slice->items;
 }
 
+/** Indent by the given number of double spaces, for the next `fprintf()`. */
 void indent_log(size_t indent)
 {
   if (indent > 40) indent = 40;
@@ -428,7 +513,11 @@ void indent_log(size_t indent)
 }
 #define log_indent(indent, ...) { indent_log(indent); log(__VA_ARGS__); }
 
-/** Print a human-legible dump of the markers array to stderr. */
+/** Print a human-legible dump of the markers array to stderr.
+ *  @param[in] markers parsed program.
+ *  @param[in] src original source code.
+ *  @param[in] options formatting options.
+ */
 void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
 {
   size_t indent = 0;
@@ -476,6 +565,12 @@ void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
   }
 }
 
+/* Format the markers back into source code form.
+ * @param[in] markers tokens for the current form of the program.
+ * @param[in] src original source code.
+ * @param[in] options formatting options.
+ * @param[in] out FILE pointer where the source code will be written.
+ */
 void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
 {
   Marker_p m_end = Marker_array_end(markers);
@@ -490,14 +585,23 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
 }
 
 /**
-  T_CONTROL_FLOW:
-  break case continue default do else for goto if return switch while
-  T_TYPE:
-  char double enum float int long short struct union void (c99: bool complex imaginary)
-  T_TYPE_QUALIFIER:
-  auto const extern inline register restrict? signed static unsigned volatile
-  T_OP_2:
-  sizeof _Alignof
+   Match a keyword or identifier.
+   @param[in] start of source code segment to search in.
+   @param[in] end of source code segment.
+
+   Keywords:
+
+   - `T_CONTROL_FLOW`:
+   `break case continue default do else for goto if return switch while`
+
+   - `T_TYPE`:
+   `char double enum float int long short struct union void` (c99: `bool complex imaginary`)
+
+   - `T_TYPE_QUALIFIER`:
+   `auto const extern inline register restrict? signed static unsigned volatile`
+
+   - `T_OP_2`:
+   `sizeof _Alignof`
  */
 TokenType keyword_or_identifier(SourceCode start, SourceCode end)
 {
@@ -589,6 +693,10 @@ TokenType keyword_or_identifier(SourceCode start, SourceCode end)
 #define TOKEN2(token) ++token_end;    TOKEN1(token)
 #define TOKEN3(token) token_end += 2; TOKEN1(token)
 
+/* Parse the given source code into the `markers` array,
+   appending the new markers to whatever was already there.
+   Remember to empty the `markers` array before calling this function
+   if you are re-parsing from scratch. */
 SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
 {
   mut_SourceCode cursor = src->items;
@@ -784,6 +892,7 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
   return cursor;
 }
 
+/** Resolve the types of expressions. W.I.P. */
 void resolve_types(Marker_array_p markers, Buffer_p src)
 {
   uint8_t slice_data[80];
@@ -824,6 +933,7 @@ void resolve_types(Marker_array_p markers, Buffer_p src)
 
 typedef FILE* mut_File_p;
 typedef char*const FilePath;
+/** Read a file into the given buffer. Errors are printed to `stderr`. */
 void read_file(mut_Buffer_p _, FilePath path)
 {
   mut_File_p input = fopen(path, "r");
