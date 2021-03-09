@@ -32,7 +32,7 @@ typedef struct Options {
   /// Whether to skip space tokens, or include them in the markers array.
   bool ignore_space;
   /// Skip comments, or include them in the markers array.
-  bool ignore_comment;
+  bool ignore_comments;
 } Options, *Options_p;
 
 /// Binary string, `const unsigned char const*`.
@@ -626,7 +626,7 @@ void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
         }
         break;
       case T_COMMENT:
-        if (not options.ignore_comment) {
+        if (not options.ignore_comments) {
           log_indent(indent, "%s %s← Comment", token, spc);
         }
         break;
@@ -645,13 +645,39 @@ void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
 void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
 {
   Marker_p m_end = Marker_array_end(markers);
+  bool eol_pending = false;
   for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
-    if (options.ignore_comment && m->token_type == T_COMMENT) continue;
-    if (options.ignore_space && m->token_type == T_SPACE) {
-      fwrite(" ", 1, 1, out);
+    if (options.ignore_comments && m->token_type == T_COMMENT) {
+      if (options.ignore_space && m+1 is_not m_end &&
+          (m+1)->token_type == T_SPACE) ++m;
       continue;
     }
-    fwrite(src->items + m->start, sizeof(uint8_t), m->len, out);
+    Byte_p text = src->items + m->start;
+    if (options.ignore_space) {
+      if (m->token_type == T_SPACE) {
+        mut_Byte_p eol = text;
+        size_t len = m->len;
+        if (eol_pending) {
+          while ((eol = memchr(eol, '\n', len))) {
+            if (eol == text || *(eol-1) != '\\') {
+              fputc('\n', out);
+              eol_pending = false;
+              break;
+            }
+            ++eol; // Skip the LF character we just found.
+            len = m->len - (eol - text);
+          }
+          if (!eol_pending) continue;
+        }
+        fputc(' ', out);
+        continue;
+      } else if (m->token_type == T_PREPROCESSOR) {
+          eol_pending = true;
+      } else if (m->token_type == T_COMMENT) {
+          eol_pending = !eol_pending || (m->len > 1 && '/' == text[1]);
+      }
+    }
+    fwrite(text, sizeof(*src->items), m->len, out);
   }
 }
 
@@ -1012,38 +1038,58 @@ void read_file(mut_Buffer_p _, FilePath path)
   size_t size = ftell(input);
   init_Buffer(_, size);
   rewind(input);
-  _->len = fread(_->items, sizeof(Byte), size, input);
+  _->len = fread(_->items, sizeof(*_->items), size, input);
   if (feof(input)) {
     fprintf(stderr, "Unexpected EOF at %ld reading “%s”.\n", _->len, path);
   } else if (ferror(input)) {
     fprintf(stderr, "Error reading “%s”.\n", path);
   } else {
     fprintf(stderr, "Read %ld bytes from “%s”.\n", _->len, path);
-    memset(_->items + _->len, 0, (_->capacity - _->len) * sizeof(Byte));
+    memset(_->items + _->len, 0, (_->capacity - _->len) * sizeof(*_->items));
   }
   fclose(input); input = NULL;
 }
 
+void usage()
+{
+  char* lang = getenv("LANG");
+  if (0 == strncmp(lang, "es", 2)) {
+    fprintf(stderr, "Uso: cedro fichero.c [fichero2.c … ]\n");
+  } else {
+    fprintf(stderr, "Usage: cedro file.c [file2.c … ]\n");
+  }
+}
+
 int main(int argc, char** argv)
 {
-  define_macros();
+  Options options = { .ignore_comments = false, .ignore_space = true };
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
     if (arg[0] == '-') {
-      char* lang = getenv("LANG");
-      if (0 == strncmp(lang, "es", 2)) {
-        fprintf(stderr, "Uso: cedro fichero.c [fichero2.c … ]\n");
+      bool flag_value = true;
+      if (0 == strncmp("--not-", arg, 6)) flag_value = false;
+      if (0 == strcmp("--ignore-comments", arg) ||
+          0 == strcmp("--not-ignore-comments", arg)) {
+        options.ignore_comments = flag_value;
+      } else if (0 == strcmp("--ignore-space", arg) ||
+                 0 == strcmp("--not-ignore-space", arg)) {
+        options.ignore_space = flag_value;
       } else {
-        fprintf(stderr, "Usage: cedro file.c [file2.c … ]\n");
+        usage();
+        return 1;
       }
-      return 1;
     }
+  }
+
+  define_macros();
+
+  for (int i = 1; i < argc; ++i) {
+    char* arg = argv[i];
+    if (arg[0] == '-') continue;
 
     mut_Buffer src;
     read_file(&src, arg);
-
-    Options options = { .ignore_comment = false, .ignore_space = true };
 
     mut_Marker_array markers;
     init_Marker_array(&markers, 8192);
@@ -1061,12 +1107,11 @@ int main(int argc, char** argv)
 
     dump_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
 
-    options.ignore_space = false;
     unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
 
     drop_Marker_array(&markers);
 
-    log("Read %ld lines.", line_number((Buffer_p)&src, cursor) - 1);
+    log("\nRead %ld lines.", line_number((Buffer_p)&src, cursor) - 1);
 
     drop_Buffer(&src);
   }
