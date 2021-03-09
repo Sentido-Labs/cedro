@@ -41,24 +41,90 @@ typedef uint8_t*  mut_SourceCode; /**< 0-terminated. */
 /// Binary string, `const unsigned char const*`.
 #define B(string) ((const unsigned char const*)string)
 
-/** https://en.cppreference.com/w/c/language/operator_precedence */
+/**
+   These token types loosely correspond to those in the C grammar.
+
+   For the operator precedence levels, see:
+   https://en.cppreference.com/w/c/language/operator_precedence */
 typedef enum TokenType {
+  /** No token, used as marker for uninitialized data. */
   T_NONE,
-  T_IDENTIFIER, T_TYPE, T_TYPE_QUALIFIER, T_CONTROL_FLOW,
-  T_NUMBER, T_STRING, T_CHARACTER,
-  T_SPACE, T_COMMENT,
+  /** Identifier. */
+  T_IDENTIFIER,
+  /** Type name. */
+  T_TYPE,
+  /** Type qualifier. */
+  T_TYPE_QUALIFIER,
+  /** Control flow keyword. */
+  T_CONTROL_FLOW,
+  /** Number, either integer or float. */
+  T_NUMBER,
+  /** String including the quotes: `"ABC"` */
+  T_STRING,
+  /** Character including the apostrophes: ```'A'``` */
+  T_CHARACTER,
+  /** Whitespace, a block of either `SP`, `HT`, `LF` or `CR`.
+      See [Wikipedia, Basic ASCII control codes](https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Basic_ASCII_control_codes) */
+  T_SPACE,
+  /** Comment block or line. */
+  T_COMMENT,
+  /** Preprocessor directive. */
   T_PREPROCESSOR,
-  T_BLOCK_START, T_BLOCK_END, T_TUPLE_START, T_TUPLE_END,
-  T_INDEX_START, T_INDEX_END,
-  T_GROUP_START, T_GROUP_END,
-  T_OP_1, T_OP_2, T_OP_3, T_OP_4, T_OP_5, T_OP_6, T_OP_7, T_OP_8,
-  T_OP_9, T_OP_10, T_OP_11, T_OP_12, T_OP_13, T_OP_14,
-  T_COMMA /* = T_OP_15 */, T_SEMICOLON,
+  /** Start of a block: `{` */
+  T_BLOCK_START,
+  /** End of a block: `}` */
+  T_BLOCK_END,
+  /** Start of a tuple: `(` */
+  T_TUPLE_START,
+  /** End of a tuple: `)` */
+  T_TUPLE_END,
+  /** Start of an array index: `[` */
+  T_INDEX_START,
+  /** End of an array index: `]` */
+  T_INDEX_END,
+  /** Invisible token group, for instance to account for operator precedence. */
+  T_GROUP_START,
+  /** Invisible token group end. */
+  T_GROUP_END,
+  /** `++ -- () [] . -> (type){list}` */
+  T_OP_1,
+  /** `++ -- + - ! ~ (type) * & sizeof _Alignof` */
+  T_OP_2,
+  /** `* / %` */
+  T_OP_3,
+  /** `+ -` */
+  T_OP_4,
+  /** `<< >>` */
+  T_OP_5,
+  /** `< <= > >=` */
+  T_OP_6,
+  /** `== !=` */
+  T_OP_7,
+  /** `&` */
+  T_OP_8,
+  /** `^` */
+  T_OP_9,
+  /** `|` */
+  T_OP_10,
+  /** `&&` */
+  T_OP_11,
+  /** `||` */
+  T_OP_12,
+  /** `?:` */
+  T_OP_13,
+  /** `= += -= *= /= %= <<= >>= &= ^= |=` */
+  T_OP_14,
+  /** `,` */
+  T_COMMA /* = T_OP_15 */,
+  /** End of line: `;` */
+  T_SEMICOLON,
+  /** Ellipsis: `...` */
   T_ELLIPSIS,
+  /** Other token that is not part of the C grammar. */
   T_OTHER
 } TokenType;
 static const unsigned char * const TOKEN_NAME[] = {
-  B("None"),
+  B("NONE"),
   B("Identifier"), B("Type"), B("Type qualifier"), B("Control flow"),
   B("Number"), B("String"), B("Character"),
   B("Space"), B("Comment"),
