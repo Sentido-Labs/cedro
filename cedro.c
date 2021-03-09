@@ -81,9 +81,9 @@ typedef enum TokenType {
   T_INDEX_START,
   /** End of an array index: `]` */
   T_INDEX_END,
-  /** Invisible token group, for instance to account for operator precedence. */
+  /** Invisible grouping of tokens, for instance for operator precedence. */
   T_GROUP_START,
-  /** Invisible token group end. */
+  /** End invisible grouping of tokens. */
   T_GROUP_END,
   /** `++ -- () [] . -> (type){list}` */
   T_OP_1,
@@ -439,7 +439,7 @@ SourceCode string(SourceCode start, SourceCode end)
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
     ++cursor;
   }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
+  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
 /** Match an `#include <...>` directive. */
@@ -448,7 +448,7 @@ SourceCode system_include(SourceCode start, SourceCode end)
   if (*start is_not '<' or end <= start) return NULL;
   mut_SourceCode cursor = start + 1;
   while (cursor is_not end and *cursor is_not '>') ++cursor;
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
+  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
 /** Match a character literal. */
@@ -460,7 +460,7 @@ SourceCode character(SourceCode start, SourceCode end)
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
     ++cursor;
   }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing quote.
+  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
 /** Match whitespace: one or more space, TAB, CR, or NL characters. */
@@ -505,7 +505,7 @@ SourceCode comment(SourceCode start, SourceCode end)
     }
     ++cursor;
   }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing quotes.
+  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
 /** Match a line comment. */
@@ -620,7 +620,7 @@ void print_markers(Marker_array_p markers, Buffer_p src, Options options)
                    "%s %s← %s", token, spc, TOKEN_NAME[m->token_type]);
         break;
       case T_GROUP_START: case T_GROUP_END:
-        /* Invisible grouping tokens. */
+        /* Invisible grouping of tokens. */
         break;
       case T_SPACE:
         if (not options.discard_space) {
