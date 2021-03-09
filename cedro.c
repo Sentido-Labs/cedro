@@ -30,9 +30,11 @@
 /** Parameters set by command line options. */
 typedef struct Options {
   /// Whether to skip space tokens, or include them in the markers array.
-  bool ignore_space;
+  bool discard_space;
   /// Skip comments, or include them in the markers array.
-  bool ignore_comments;
+  bool discard_comments;
+  /// Print markers array.
+  bool print_markers;
 } Options, *Options_p;
 
 /// Binary string, `const unsigned char const*`.
@@ -589,7 +591,7 @@ void indent_log(size_t indent)
  *  @param[in] src original source code.
  *  @param[in] options formatting options.
  */
-void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
+void print_markers(Marker_array_p markers, Buffer_p src, Options options)
 {
   size_t indent = 0;
   mut_Byte slice_data[80];
@@ -621,12 +623,12 @@ void dump_markers(Marker_array_p markers, Buffer_p src, Options options)
         /* Invisible grouping tokens. */
         break;
       case T_SPACE:
-        if (not options.ignore_space) {
+        if (not options.discard_space) {
           log_indent(indent, "%s %s← Space", token, spc);
         }
         break;
       case T_COMMENT:
-        if (not options.ignore_comments) {
+        if (not options.discard_comments) {
           log_indent(indent, "%s %s← Comment", token, spc);
         }
         break;
@@ -647,13 +649,13 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
   Marker_p m_end = Marker_array_end(markers);
   bool eol_pending = false;
   for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
-    if (options.ignore_comments && m->token_type == T_COMMENT) {
-      if (options.ignore_space && m+1 is_not m_end &&
+    if (options.discard_comments && m->token_type == T_COMMENT) {
+      if (options.discard_space && m+1 is_not m_end &&
           (m+1)->token_type == T_SPACE) ++m;
       continue;
     }
     Byte_p text = src->items + m->start;
-    if (options.ignore_space) {
+    if (options.discard_space) {
       if (m->token_type == T_SPACE) {
         mut_Byte_p eol = text;
         size_t len = m->len;
@@ -1050,31 +1052,56 @@ void read_file(mut_Buffer_p _, FilePath path)
   fclose(input); input = NULL;
 }
 
+const char* const usage_es =
+    "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
+    "  --discard-spaces   Descarta los espacios en blanco. (implícito)\n"
+    "  --discard-comments Descarta los comentarios. (implícito)\n"
+    "  --print-markers    Imprime los marcadores.\n"
+    "  --not-discard-spaces   No descarta los espacios.\n"
+    "  --not-discard-comments No descarta los comentarios.\n"
+    "  --not-print-markers    No imprime los marcadores. (implícito)\n"
+    ;
+const char* const usage_en =
+    "Usage: cedro [options] file.c [file2.c … ]\n"
+    "  --discard-spaces   Discards all whitespace. (default)\n"
+    "  --discard-comments Discards the comments. (default)\n"
+    "  --print-markers    Prints the markers.\n"
+    "  --not-discard-spaces   Does not discard whitespace.\n"
+    "  --not-discard-comments Does not discard comments.\n"
+    "  --not-print-markers    Does not print the markers. (default)\n"
+    ;
 void usage()
 {
   char* lang = getenv("LANG");
   if (0 == strncmp(lang, "es", 2)) {
-    fprintf(stderr, "Uso: cedro fichero.c [fichero2.c … ]\n");
+    fprintf(stderr, usage_es);
   } else {
-    fprintf(stderr, "Usage: cedro file.c [file2.c … ]\n");
+    fprintf(stderr, usage_en);
   }
 }
 
 int main(int argc, char** argv)
 {
-  Options options = { .ignore_comments = false, .ignore_space = true };
+  Options options = { // Remember to keep the usage strings updated.
+    .discard_comments = true,
+    .discard_space    = true,
+    .print_markers    = false
+  };
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
     if (arg[0] == '-') {
       bool flag_value = true;
       if (0 == strncmp("--not-", arg, 6)) flag_value = false;
-      if (0 == strcmp("--ignore-comments", arg) ||
-          0 == strcmp("--not-ignore-comments", arg)) {
-        options.ignore_comments = flag_value;
-      } else if (0 == strcmp("--ignore-space", arg) ||
-                 0 == strcmp("--not-ignore-space", arg)) {
-        options.ignore_space = flag_value;
+      if (0 == strcmp("--discard-comments", arg) ||
+          0 == strcmp("--not-discard-comments", arg)) {
+        options.discard_comments = flag_value;
+      } else if (0 == strcmp("--discard-space", arg) ||
+                 0 == strcmp("--not-discard-space", arg)) {
+        options.discard_space = flag_value;
+      } else if (0 == strcmp("--print-markers", arg) ||
+                 0 == strcmp("--not-print-markers", arg)) {
+        options.print_markers = flag_value;
       } else {
         usage();
         return 1;
@@ -1105,7 +1132,9 @@ int main(int argc, char** argv)
     fprintf(stderr, "Running macro %s:\n", macro_let_NAME);
     macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
-    dump_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
+    if (options.print_markers) {
+      print_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
+    }
 
     unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
 
