@@ -1102,9 +1102,9 @@ int main(int argc, char** argv)
 
     if (options.print_markers) {
       print_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
+    } else {
+      unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
     }
-
-    unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
 
     drop_Marker_array(&markers);
 
