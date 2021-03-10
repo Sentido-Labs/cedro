@@ -1190,6 +1190,8 @@ int main(int argc, char** argv)
     macro_fn(&markers, &src);
     log("Running macro let:");
     macro_let(&markers, &src);
+    log("Running macro backstitch:");
+    macro_backstitch(&markers, &src);
 
     if (options.print_markers) {
       print_markers(&markers, &src, 0, 0, options);
