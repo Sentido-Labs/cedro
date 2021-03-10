@@ -359,21 +359,6 @@ typedef Byte_mut_p mut_SourceCode; /**< 0-terminated. */
 
 #define log(...) { fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); }
 
-void define_macro(const char * const name, void (*f)(mut_Marker_array_p markers, Buffer_p src)) {
-  fprintf(stderr, "(defmacro %s)\n", name);
-}
-
-#define defmacro(name, body) \
-  void macro_##name(mut_Marker_array_p markers, Buffer_p src) body const char const * macro_##name##_NAME = #name
-#include "macros.h"
-#undef  defmacro
-#define defmacro(name, body) \
-  define_macro(#name, &macro_##name)
-void define_macros()
-{
-  #include "macros.h"
-}
-
 /* Lexer definitions. */
 
 /** Match an identifier. */
@@ -1071,6 +1056,9 @@ void read_file(mut_Buffer_p _, FilePath path)
   fclose(input); input = NULL;
 }
 
+/***************** macros *****************/
+#include "macros.h"
+
 const char* const usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
     "  --discard-spaces   Descarta los espacios en blanco. (implícito)\n"
@@ -1145,8 +1133,6 @@ int main(int argc, char** argv)
     assert(0 == setrlimit(RLIMIT_CORE, &core_limit));
   }
 
-  define_macros();
-
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
     if (arg[0] is '-') continue;
@@ -1161,11 +1147,11 @@ int main(int argc, char** argv)
 
     resolve_types((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
-    fprintf(stderr, "Running macro %s:\n", macro_count_markers_NAME);
+    log("Running macro count_markers:");
     macro_count_markers((mut_Marker_array_p)&markers, (Buffer_p)&src);
-    fprintf(stderr, "Running macro %s:\n", macro_fn_NAME);
+    log("Running macro fn:");
     macro_fn((mut_Marker_array_p)&markers, (Buffer_p)&src);
-    fprintf(stderr, "Running macro %s:\n", macro_let_NAME);
+    log("Running macro let:");
     macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
     if (options.print_markers) {
