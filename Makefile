@@ -1,5 +1,5 @@
 CC=gcc
-CC_STRICT=$(CC) -std=c99 -pedantic -Wall
+CC_STRICT=$(CC) -std=c99 -pedantic-errors -Wall
 NAME=cedro
 
 all: $(NAME)

@@ -27,6 +27,7 @@
 #include <string.h> // For memcpy(), memmove().
 #define mem_eq(start, bytes, len) (0 == memcmp(start, bytes, len))
 #define str_eq(a, b)              (0 == strcmp(a, b))
+
 #include <assert.h>
 
 /** Parameters set by command line options. */
@@ -110,10 +111,17 @@ static const unsigned char * const TOKEN_NAME[] = {
 #define is_fence(token_type) (token_type >= T_BLOCK_START && token_type <= T_GROUP_END)
 
 /** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
-    and constant types 〈T〉 and 〈T〉_p (pointer to constant). */
-#define TYPEDEF(T, STRUCT)                                       \
-  typedef struct T STRUCT mut_##T, * mut_##T##_p; \
-  typedef const struct T T, * T##_p
+    and constant types 〈T〉 and 〈T〉_p (pointer to constant).
+
+    You can define similar types for an existing type, for instance `uint8_t`:
+    ```
+    typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
+    typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
+    ```
+*/
+#define TYPEDEF(T, STRUCT)                                                    \
+  typedef struct T STRUCT mut_##T, * mut_##T##_mut_p, * const mut_##T##_p;    \
+  typedef const struct T        T, * const T##_p,     *             T##_mut_p
 
 /** Marks a C token in the source code. */
 TYPEDEF(Marker, {
@@ -129,6 +137,11 @@ void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
   _->len        = end - start;
   _->token_type = token_type;
 }
+
+#define CONST_AND_MUT_VARIANT(T, NAME) T NAME
+/* With C11 we could have const/mut variants:
+#define CONST_AND_MUT_VARIANT(T, NAME) union { T NAME; mut_##T mut_##NAME; }
+ */
 
 /** DROP_BLOCK is a block of code that releases the resources for a block
     of objects of type T, between `mut_##T##_p cursor` and `T##_p end`.\n
@@ -149,21 +162,26 @@ typedef struct T##_array {                                              \
   /** Maximum length before reallocation is needed. */                  \
   size_t capacity;                                                      \
   /** The items stored in this array. */                                \
-  mut_##T* items;                                                       \
+  CONST_AND_MUT_VARIANT(T##_mut_p, items);                              \
   /** Pointer to last element. */                                       \
-  mut_##T##_p last_p;                                                   \
-} mut_##T##_array, * const T##_array_p, * mut_##T##_array_p;            \
-typedef const struct T##_array T##_array;                               \
+  T##_mut_p last_p;                                                     \
+} mut_##T##_array, * const mut_##T##_array_p, * mut_##T##_array_mut_p;  \
+typedef const struct T##_array                                          \
+/*   */ T##_array, * const       T##_array_p, *       T##_array_mut_p;  \
                                                                         \
-/** Example: <code>T##_slice s = { 0, 10, &my_array };</code> */        \
+/** Example: <code>T##_array_slice s = { 0, 10, &my_array };</code> */  \
 typedef struct T##_array_slice {                                        \
   /** Start position in the array. */                                   \
   size_t start;                                                         \
   /** End position. 0 means the end of the array. */                    \
   size_t end;                                                           \
   /** The array this slice refers to. */                                \
-  T##_array_p array_p;                                                  \
-} T##_array_slice, * const T##_array_slice_p, * mut_##T##_array_slice_p; \
+  mut_##T##_array_mut_p array_p;                                        \
+} mut_##T##_array_slice, * const mut_##T##_array_slice_p,               \
+  /**/                   *       mut_##T##_array_slice_mut_p;           \
+typedef const struct T##_array_slice                                    \
+/*   */ T##_array_slice, * const T##_array_slice_p,                     \
+  /**/                   *       T##_array_slice_mut_p;                 \
                                                                         \
 void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
 {                                                                       \
@@ -172,19 +190,20 @@ void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
 /** Initialize the array at the given pointer.                        \n\
     For local variables, use it like this:                            \n\
     \code{.c}                                                           \
-    T##_array things;                                                   \
-    T##_array_init(&things, 100); ///< We expect around 100 items.      \
+    mut_T##_array things;                                               \
+    init_##T##_array(&things, 100); ///< We expect around 100 items.    \
     {...}                                                               \
-    T##_array_drop(&things);                                            \
+    drop_##T##_array(&things);                                          \
     \endcode                                                            \
  */                                                                     \
-mut_##T##_array_p init_##T##_array(mut_##T##_array_p _, size_t initial_capacity) \
+mut_##T##_array_p init_##T##_array(mut_##T##_array_p _,                 \
+                                   size_t initial_capacity)             \
 {                                                                       \
   _->len = 0;                                                           \
   _->capacity = initial_capacity + PADDING;                             \
   _->items = malloc(_->capacity * sizeof(T));                           \
-  /* Used malloc() here instead of calloc() because we need realloc() later \
-     anyway, so better keep the exact same behaviour. */                \
+  /* Used malloc() here instead of calloc() because we need realloc()   \
+     later anyway, so better keep the exact same behaviour. */          \
   _->last_p = NULL;                                                     \
   return _;                                                             \
 }                                                                       \
@@ -193,11 +212,12 @@ mut_##T##_array_p init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)
     `p = drop_##T##_array(p); // p is now NULL.` */                     \
 mut_##T##_array_p drop_##T##_array(mut_##T##_array_p _)                 \
 {                                                                       \
-  drop_##T##_block(_->items, _->items + _->len);                        \
+  drop_##T##_block((mut_##T##_p) _->items, _->items + _->len);          \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
   _->last_p = NULL;                                                     \
-  free(_->items); _->items = NULL;                                      \
+  free((mut_##T##_mut_p) (_->items));                                   \
+  *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
   return NULL;                                                          \
 }                                                                       \
                                                                         \
@@ -208,49 +228,66 @@ mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
 {                                                                       \
   if (_->capacity < _->len + 1 + PADDING) {                             \
     _->capacity = 2*_->capacity + PADDING;                              \
-    _->items = realloc(_->items, _->capacity * sizeof(T));              \
+    _->items = realloc((void*) _->items, _->capacity * sizeof(T));      \
   }                                                                     \
-  *(_->last_p = _->items + _->len++) = *item;                           \
+  *((mut_##T##_mut_p) (_->last_p = _->items + _->len++)) = *item;       \
   return _;                                                             \
 }                                                                       \
+                                                                        \
 /** Splice the given slice in place of the removed elements,            \
     resizing the array if needed.                                       \
     Starting at `position`, `delete` elements are deleted and           \
     the elements in the `insert` slice are inserted there               \
     as bit copies.                                                      \
+    The `insert` slice, if given, must belong to a different array.     \
     Returns the given array pointer. */                                 \
-mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _, size_t position, size_t delete, T##_array_slice_p insert) \
+mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
+                                     size_t position, size_t delete,    \
+                                     T##_array_slice_p insert)          \
 {                                                                       \
-  drop_##T##_block(_->items + position, _->items + position + delete);  \
+  assert(position + delete <= _->len);                                  \
+  drop_##T##_block((mut_##T##_p) _->items + position,                   \
+                   _->items + position + delete);                       \
                                                                         \
-  size_t insert_len = insert->end;                                      \
-  if (not insert_len) {                                                 \
-    insert_len = insert->array_p->len;                                  \
-    if (insert_len) --insert_len;                                       \
+  size_t insert_len = 0;                                                \
+  if (insert) {                                                         \
+    assert(_->items != insert->array_p->items);                         \
+    insert_len = insert->end;                                           \
+    if (not insert_len) {                                               \
+      insert_len = insert->array_p->len;                                \
+      if (insert_len) --insert_len;                                     \
+    }                                                                   \
+    if (insert_len > insert->start) insert_len -= insert->start;        \
+                                                                        \
+    if (_->len + insert_len - delete + PADDING >= _->capacity) {        \
+      _->capacity = 2*_->capacity + PADDING;                            \
+      _->items = realloc((void*) _->items, _->capacity * sizeof(T));    \
+    }                                                                   \
   }                                                                     \
-  if (insert_len > insert->start) insert_len -= insert->start;          \
                                                                         \
-  if (_->len + insert_len - delete + PADDING >= _->capacity) {          \
-    _->capacity = 2*_->capacity + PADDING;                              \
-    _->items = realloc(_->items, _->capacity * sizeof(T));              \
-  }                                                                     \
-                                                                        \
-  size_t gap_end = position + insert_len - delete;                      \
-  memmove(_->items + gap_end, _->items + position + delete,             \
+  size_t gap_end = position + insert_len;                               \
+  memmove((void*) (_->items + gap_end),                                 \
+          _->items + position + delete,                                 \
           (_->len - delete - position) * sizeof(T));                    \
   _->len = _->len + insert_len - delete;                                \
-  memmove(_->items + position, insert->array_p->items + insert->start,  \
-          insert_len * sizeof(T));                                      \
+  if (insert_len) {                                                     \
+    memcpy((void*) (_->items + position),                               \
+           insert->array_p->items + insert->start,                      \
+           insert_len * sizeof(T));                                     \
+  }                                                                     \
   return _;                                                             \
 }                                                                       \
                                                                         \
 /** Delete `delete` elements from the array at `position`.              \
     Returns the given array pointer. */                                 \
-mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
+mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _,               \
+                                     size_t position, size_t delete)    \
 {                                                                       \
-  drop_##T##_block(_->items + position, _->items + position + delete);  \
+  drop_##T##_block((mut_##T##_p) _->items + position,                   \
+                   _->items + position + delete);                       \
                                                                         \
-  memmove(_->items + position, _->items + position + delete,            \
+  memmove((void*) (_->items + position),                                \
+          _->items + position + delete,                                 \
           (_->len - delete - position) * sizeof(T));                    \
   _->len -= delete;                                                     \
   return _;                                                             \
@@ -260,12 +297,13 @@ mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _, size_t position, size_
     copying its bits into `*item_p` unless `item_p` is `0`.             \
     Returns the given array pointer,                                    \
     or `NULL` if the array was empty. */                                \
-mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p) \
+mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _,                  \
+                                  mut_##T##_p item_p)                   \
 {                                                                       \
   if (not _->len) return NULL;                                          \
-  mut_##T##_p last_p = _->items + _->len - 1;                           \
-  if (item_p) memmove(last_p, item_p, sizeof(T));                       \
-  else        drop_##T##_block(last_p, last_p + 1);                     \
+  mut_##T##_p last_p = (mut_##T##_p) _->items + _->len - 1;             \
+  if (item_p) memmove((void*) last_p, item_p, sizeof(T));               \
+  else        drop_##T##_block((mut_##T##_p) last_p, last_p + 1);       \
   --_->len;                                                             \
   return _;                                                             \
 }                                                                       \
@@ -281,7 +319,7 @@ T##_p get_##T##_array(T##_array_p _, size_t position)                   \
     or `NULL` if the index is out of range. */                          \
 mut_##T##_p get_mut_##T##_array(T##_array_p _, size_t position)         \
 {                                                                       \
-  return (position >= _->len)? NULL: _->items + position;               \
+  return (position >= _->len)? NULL: (mut_##T##_p) _->items + position; \
 }                                                                       \
                                                                         \
 /** Return a pointer to the start of the array (same as `_->items`),    \
@@ -302,8 +340,10 @@ const size_t PADDING_##T##_ARRAY = PADDING//; commented out to avoid ;;.
 
 DEFINE_ARRAY_OF(Marker, 0, {});
 
-typedef uint8_t mut_Byte, * const Byte_p, * mut_Byte_p;
-typedef const uint8_t Byte;
+typedef uint8_t
+/*   */ mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
+typedef const uint8_t
+/*   */     Byte, * const     Byte_p, *      Byte_mut_p;
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
  *  for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
@@ -313,8 +353,10 @@ typedef     Byte_array     Buffer, *    Buffer_p;
 #define drop_Buffer drop_Byte_array
 #define PADDING_Buffer PADDING_Byte_ARRAY
 
-typedef     Byte_p     SourceCode; /**< 0-terminated. */
-typedef mut_Byte_p mut_SourceCode; /**< 0-terminated. */
+typedef Byte_p         SourceCode; /**< 0-terminated. */
+typedef Byte_mut_p mut_SourceCode; /**< 0-terminated. */
+
+#define log(...) { fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); }
 
 void define_macro(const char * const name, void (*f)(mut_Marker_array_p markers, Buffer_p src)) {
   fprintf(stderr, "(defmacro %s)\n", name);
@@ -328,10 +370,8 @@ void define_macro(const char * const name, void (*f)(mut_Marker_array_p markers,
   define_macro(#name, &macro_##name)
 void define_macros()
 {
-#include "macros.h"
+  #include "macros.h"
 }
-
-#define log(...) { fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); }
 
 /* Lexer definitions. */
 
@@ -531,14 +571,14 @@ SourceCode extract_string(SourceCode start, SourceCode end, mut_Buffer_p slice)
 {
   size_t len = end - start;
   if (len >= slice->len - 4) {
-    memcpy(slice->items, start, slice->len - 4);
-    uint8_t* p = slice->items + slice->len - 4;
+    memcpy((void*) slice->items, start, slice->len - 4);
+    mut_Byte_mut_p p = (mut_Byte_mut_p) slice->items + slice->len - 4;
     *(p++) = 0xE2; *(p++) = 0x80; *(p++) = 0xA6;// UTF-8 ellipsis: “…”
     len = slice->len;
   } else {
-    memcpy(slice->items, start, len);
+    memcpy((void*) slice->items, start, len);
   }
-  slice->items[len] = 0;
+  ((mut_Byte_mut_p) slice->items)[len] = 0;
   return slice->items;
 }
 
@@ -559,13 +599,13 @@ void print_markers(Marker_array_p markers, Buffer_p src, Options options)
 {
   size_t indent = 0;
   mut_Byte slice_data[80];
-  mut_Buffer slice = { 80, 0, &slice_data[0] };
+  mut_Buffer slice = { .capacity = 80, .len = 0, .items = &slice_data[0] };
   const char * const spacing = "                                ";
   const size_t spacing_len = strlen(spacing);
 
   Marker_p m_end = Marker_array_end(markers);
   mut_SourceCode token = NULL;
-  for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
+  for (Marker_mut_p m = (Marker_mut_p) markers->items; m is_not m_end; ++m) {
     token = extract_string(src->items + m->start,
                            src->items + m->start + m->len,
                            &slice);
@@ -612,7 +652,7 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
 {
   Marker_p m_end = Marker_array_end(markers);
   bool eol_pending = false;
-  for (mut_Marker_p m = markers->items; m is_not m_end; ++m) {
+  for (Marker_mut_p m = (Marker_mut_p) markers->items; m is_not m_end; ++m) {
     if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
@@ -621,7 +661,7 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
     Byte_p text = src->items + m->start;
     if (options.discard_space) {
       if (m->token_type is T_SPACE) {
-        mut_Byte_p eol = text;
+        Byte_mut_p eol = text;
         size_t len = m->len;
         if (eol_pending) {
           while ((eol = memchr(eol, '\n', len))) {
@@ -960,20 +1000,21 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
 }
 
 /** Resolve the types of expressions. W.I.P. */
-void resolve_types(Marker_array_p markers, Buffer_p src)
+void resolve_types(mut_Marker_array_p markers, Buffer_p src)
 {
   //uint8_t slice_data[80];
   //Buffer slice = { 80, 0, (uint8_t *)&slice_data };
-  Marker_p markers_end = Marker_array_end(markers);
+  mut_Marker_p m_start = (mut_Marker_p) Marker_array_start(markers);
+  mut_Marker_p m_end   = (mut_Marker_p) Marker_array_end(markers);
   //mut_SourceCode token = NULL;
-  mut_Marker_p previous = NULL;
-  for (mut_Marker_p m = markers->items; m is_not markers_end; ++m) {
+  mut_Marker_mut_p previous = NULL;
+  for (mut_Marker_mut_p m = m_start; m is_not m_end; ++m) {
     if (T_SPACE is m->token_type || T_COMMENT is m->token_type) continue;
     if (previous) {
       if ((T_TUPLE_START is m->token_type || T_OP_14 is m->token_type) &&
           T_IDENTIFIER  is previous->token_type) {
-        mut_Marker_p p = previous;
-        while (p is_not markers->items) {
+        mut_Marker_mut_p p = previous;
+        while (p is_not m_start) {
           --p;
           switch (p->token_type) {
             case T_TYPE_QUALIFIER:
@@ -988,7 +1029,7 @@ void resolve_types(Marker_array_p markers, Buffer_p src)
               p->token_type = T_OP_2;
               break;
             default:
-              p = markers->items;
+              p = m_start;
           }
         }
       }
@@ -1008,14 +1049,15 @@ void read_file(mut_Buffer_p _, FilePath path)
   size_t size = ftell(input);
   init_Buffer(_, size);
   rewind(input);
-  _->len = fread(_->items, sizeof(*_->items), size, input);
+  _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
   if (feof(input)) {
     fprintf(stderr, "Unexpected EOF at %ld reading “%s”.\n", _->len, path);
   } else if (ferror(input)) {
     fprintf(stderr, "Error reading “%s”.\n", path);
   } else {
     fprintf(stderr, "Read %ld bytes from “%s”.\n", _->len, path);
-    memset(_->items + _->len, 0, (_->capacity - _->len) * sizeof(*_->items));
+    memset((mut_Byte_p) _->items + _->len, 0,
+           (_->capacity - _->len) * sizeof(*_->items));
   }
   fclose(input); input = NULL;
 }
