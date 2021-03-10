@@ -594,9 +594,13 @@ void indent_log(size_t indent)
 /** Print a human-legible dump of the markers array to stderr.
  *  @param[in] markers parsed program.
  *  @param[in] src original source code.
+ *  @param[in] start index to start with.
+ *  @param[in] end   index to end with: if `0`, use the end of the array.
  *  @param[in] options formatting options.
  */
-void print_markers(Marker_array_p markers, Buffer_p src, Options options)
+void print_markers(Marker_array_p markers, Buffer_p src,
+                   size_t start, size_t end,
+                   Options options)
 {
   size_t indent = 0;
   mut_Byte slice_data[80];
@@ -604,9 +608,13 @@ void print_markers(Marker_array_p markers, Buffer_p src, Options options)
   const char * const spacing = "                                ";
   const size_t spacing_len = strlen(spacing);
 
-  Marker_p m_end = Marker_array_end(markers);
+  Marker_p m_start =
+      get_Marker_array(markers, start);
+  Marker_p m_end   = end?
+      get_Marker_array(markers, end):
+      Marker_array_end(markers);
   mut_SourceCode token = NULL;
-  for (Marker_mut_p m = (Marker_mut_p) markers->items; m is_not m_end; ++m) {
+  for (Marker_mut_p m = m_start; m is_not m_end; ++m) {
     token = extract_string(src->items + m->start,
                            src->items + m->start + m->len,
                            &slice);
@@ -1161,7 +1169,7 @@ int main(int argc, char** argv)
     macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
 
     if (options.print_markers) {
-      print_markers((Marker_array_p)&markers, (Buffer_p)&src, options);
+      print_markers((Marker_array_p)&markers, (Buffer_p)&src, 0, 0, options);
     } else {
       unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
     }
