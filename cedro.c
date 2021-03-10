@@ -272,14 +272,14 @@ mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p) \
                                                                         \
 /** Return a pointer to the element at `position`.                      \
     or `NULL` if the index is out of range. */                          \
-T##_p T##_array_get(T##_array_p _, size_t position)                     \
+T##_p get_##T##_array(T##_array_p _, size_t position)                   \
 {                                                                       \
   return (position >= _->len)? NULL: _->items + position;               \
 }                                                                       \
                                                                         \
 /** Return a mutable pointer to the element at `position`.              \
     or `NULL` if the index is out of range. */                          \
-mut_##T##_p T##_array_get_mut(T##_array_p _, size_t position)           \
+mut_##T##_p get_mut_##T##_array(T##_array_p _, size_t position)         \
 {                                                                       \
   return (position >= _->len)? NULL: _->items + position;               \
 }                                                                       \
