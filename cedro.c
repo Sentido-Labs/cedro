@@ -574,6 +574,45 @@ void indent_log(size_t indent)
 }
 #define log_indent(indent, ...) { indent_log(indent); log(__VA_ARGS__); }
 
+/** Build a new marker for the given string,
+ *  pointing to its first appearance in `src`.
+ *  If not found, append the text to `src`
+ *  and return a marker poiting there.
+ */
+Marker new_marker(mut_Buffer_p src,
+                  const char * const text, TokenType token_type)
+{
+  Byte_mut_p start = Byte_array_start(src);
+  Byte_mut_p match = NULL;
+  Byte_p     end   = Byte_array_end(src);
+  size_t text_len = strlen(text);
+  if (end - start >= text_len) {
+    const char first_character = text[0];
+    for (;;++start) {
+      start = memchr(start, first_character, src->len);
+      Byte_mut_p p1 = start;
+      Byte_mut_p p2 = (Byte_p) text;
+      while (*p2 && *p1 == *p2 && p1 != end) { ++p1; ++p2; }
+      if (*p2 is 0) {
+        match = start;
+        break;
+      }
+    }
+  }
+  mut_Marker marker;
+  if (match) {
+    marker.start = match - Byte_array_start(src);
+  } else {
+    Byte_mut_p p2 = (Byte_p) text;
+    while (*p2) push_Byte_array(src, p2++);
+    marker.start = src->len;
+  }
+  marker.len = text_len;
+  marker.token_type = token_type;
+
+  return marker;
+}
+
 /** Print a human-legible dump of the markers array to stderr.
  *  @param[in] markers parsed program.
  *  @param[in] src original source code.
