@@ -253,13 +253,10 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
   size_t insert_len = 0;                                                \
   if (insert) {                                                         \
     assert(_->items != insert->array_p->items);                         \
-    insert_len = insert->end;                                           \
-    if (not insert_len) {                                               \
-      insert_len = insert->array_p->len;                                \
-      if (insert_len) --insert_len;                                     \
-    }                                                                   \
-    if (insert_len > insert->start) insert_len -= insert->start;        \
-                                                                        \
+    size_t end = (insert->end? insert->end: insert->array_p->len);      \
+    log("end: %ld, insert->start: %ld", end, insert->start);            \
+    assert(end >= insert->start);                                       \
+    insert_len = end - insert->start;                                   \
     if (_->len + insert_len - delete + PADDING >= _->capacity) {        \
       _->capacity = 2*_->capacity + PADDING;                            \
       _->items = realloc((void*) _->items, _->capacity * sizeof(T));    \
@@ -272,6 +269,7 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
           (_->len - delete - position) * sizeof(T));                    \
   _->len = _->len + insert_len - delete;                                \
   if (insert_len) {                                                     \
+    assert(insert->start + insert_len <= insert->array_p->len);         \
     memcpy((void*) (_->items + position),                               \
            insert->array_p->items + insert->start,                      \
            insert_len * sizeof(T));                                     \
