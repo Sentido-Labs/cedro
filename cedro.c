@@ -1180,21 +1180,21 @@ int main(int argc, char** argv)
     mut_Marker_array markers;
     init_Marker_array(&markers, 8192);
 
-    SourceCode cursor = parse((Buffer_p)&src, (mut_Marker_array_p)&markers);
+    SourceCode cursor = parse(&src, &markers);
 
-    resolve_types((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    resolve_types(&markers, &src);
 
     log("Running macro count_markers:");
-    macro_count_markers((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    macro_count_markers(&markers, &src);
     log("Running macro fn:");
-    macro_fn((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    macro_fn(&markers, &src);
     log("Running macro let:");
-    macro_let((mut_Marker_array_p)&markers, (Buffer_p)&src);
+    macro_let(&markers, &src);
 
     if (options.print_markers) {
-      print_markers((Marker_array_p)&markers, (Buffer_p)&src, 0, 0, options);
+      print_markers(&markers, &src, 0, 0, options);
     } else {
-      unparse((Marker_array_p)&markers, (Buffer_p)&src, options, stderr);
+      unparse(&markers, &src, options, stderr);
     }
 
     drop_Marker_array(&markers);
