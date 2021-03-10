@@ -1,5 +1,6 @@
 body { background-color:#ddd; }
 #titlearea, #projectname { background-color:#070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; }
+#projectname { line-height:0.75em; padding-top:0.5em; }
 div.header { background-color:transparent; background-image:none; text-align:right; }
 div.header div.title { font-size:1.0rem; font-weight:normal; }
 dt { font-weight:normal; }
