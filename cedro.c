@@ -31,6 +31,8 @@
 #include <assert.h>
 #include <sys/resource.h>
 
+#define log(...) { fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); }
+
 /** Parameters set by command line options. */
 typedef struct Options {
   /// Whether to skip space tokens, or include them in the markers array.
@@ -354,8 +356,6 @@ typedef     Byte_array     Buffer, *    Buffer_p;
 
 typedef Byte_p         SourceCode; /**< 0-terminated. */
 typedef Byte_mut_p mut_SourceCode; /**< 0-terminated. */
-
-#define log(...) { fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); }
 
 /* Lexer definitions. */
 
