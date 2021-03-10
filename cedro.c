@@ -29,6 +29,7 @@
 #define str_eq(a, b)              (0 == strcmp(a, b))
 
 #include <assert.h>
+#include <sys/resource.h>
 
 /** Parameters set by command line options. */
 typedef struct Options {
@@ -1070,6 +1071,10 @@ const char* const usage_es =
     "  --not-discard-spaces   No descarta los espacios.\n"
     "  --not-discard-comments No descarta los comentarios.\n"
     "  --not-print-markers    No imprime los marcadores. (implícito)\n"
+    "\n"
+    "  --enable-core-dump     Activa volcado de memoria al estrellarse.\n"
+    "  --not-enable-core-dump Desactiva volcado de memoria al estrellarse.\n"
+    "                         (implícito)\n"
     ;
 const char* const usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
@@ -1079,6 +1084,9 @@ const char* const usage_en =
     "  --not-discard-spaces   Does not discard whitespace.\n"
     "  --not-discard-comments Does not discard comments.\n"
     "  --not-print-markers    Does not print the markers. (default)\n"
+    "\n"
+    "  --enable-core-dump     Enable core dump on crash.\n"
+    "  --not-enable-core-dump Disable core dump on crash. (default)\n"
     ;
 void usage()
 {
@@ -1098,6 +1106,8 @@ int main(int argc, char** argv)
     .print_markers    = false,
   };
 
+  bool enable_core_dump = false;
+
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
     if (arg[0] is '-') {
@@ -1112,11 +1122,19 @@ int main(int argc, char** argv)
       } else if (str_eq("--print-markers", arg) ||
                  str_eq("--not-print-markers", arg)) {
         options.print_markers = flag_value;
+      } else if (str_eq("--enable-core-dump", arg) ||
+                 str_eq("--not-enable-core-dump", arg)) {
+        enable_core_dump = flag_value;
       } else {
         usage();
         return 1;
       }
     }
+  }
+
+  if (enable_core_dump) {
+    struct rlimit core_limit = { RLIM_INFINITY, RLIM_INFINITY };
+    assert(0 == setrlimit(RLIMIT_CORE, &core_limit));
   }
 
   define_macros();
