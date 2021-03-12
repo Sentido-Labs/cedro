@@ -172,19 +172,34 @@ typedef struct T##_array {                                              \
 typedef const struct T##_array                                          \
 /*   */ T##_array, * const       T##_array_p, *       T##_array_mut_p;  \
                                                                         \
-/** Example: <code>T##_array_slice s = { 0, 10, &my_array };</code> */  \
+/** Example:                                                            \
+    <code>T##_array_slice s = { &items, &items + 10 };</code> */        \
 typedef struct T##_array_slice {                                        \
-  /** Start position in the array. */                                   \
-  size_t start;                                                         \
-  /** End position. 0 means the end of the array. */                    \
-  size_t end;                                                           \
-  /** The array this slice refers to. */                                \
-  mut_##T##_array_mut_p array_p;                                        \
+  /** Start address. */                                                 \
+  T##_mut_p start_p;                                                    \
+  /** End addres. */                                                    \
+  T##_mut_p end_p;                                                      \
 } mut_##T##_array_slice, * const mut_##T##_array_slice_p,               \
   /**/                   *       mut_##T##_array_slice_mut_p;           \
 typedef const struct T##_array_slice                                    \
 /*   */ T##_array_slice, * const T##_array_slice_p,                     \
   /**/                   *       T##_array_slice_mut_p;                 \
+                                                                        \
+/**                                                                     \
+   A slice of an array where the elements are read-only.                \
+                                                                        \
+   Example:                                                             \
+   <code>T##_mut_array_slice s = { &items, &items + 10 };</code> */     \
+typedef struct T##_array_mut_slice {                                    \
+  /** Start address. */                                                 \
+  mut_##T##_mut_p start_p;                                              \
+  /** End addres. */                                                    \
+  mut_##T##_mut_p end_p;                                                \
+} mut_##T##_array_mut_slice, * const mut_##T##_array_mut_slice_p,       \
+  /**/                       *       mut_##T##_array_mut_slice_mut_p;   \
+typedef const struct T##_array_mut_slice                                \
+/*   */ T##_array_mut_slice, * const T##_array_mut_slice_p,             \
+  /**/                       *       T##_array_mut_slice_mut_p;         \
                                                                         \
 void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
 {                                                                       \
@@ -254,11 +269,10 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
                                                                         \
   size_t insert_len = 0;                                                \
   if (insert) {                                                         \
-    assert(_->items != insert->array_p->items);                         \
-    size_t end = (insert->end? insert->end: insert->array_p->len);      \
-    log("end: %ld, insert->start: %ld", end, insert->start);            \
-    assert(end >= insert->start);                                       \
-    insert_len = end - insert->start;                                   \
+    assert(_->items          > insert->end_p ||                         \
+           _->items + _->len < insert->start_p);                        \
+    assert(insert->end_p >= insert->start_p);                           \
+    insert_len = insert->end_p - insert->start_p;                       \
     if (_->len + insert_len - delete + PADDING >= _->capacity) {        \
       _->capacity = 2*_->capacity + PADDING;                            \
       _->items = realloc((void*) _->items, _->capacity * sizeof(T));    \
@@ -271,10 +285,9 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
           (_->len - delete - position) * sizeof(T));                    \
   _->len = _->len + insert_len - delete;                                \
   if (insert_len) {                                                     \
-    assert(insert->start + insert_len <= insert->array_p->len);         \
     memcpy((void*) (_->items + position),                               \
-           insert->array_p->items + insert->start,                      \
            insert_len * sizeof(T));                                     \
+           insert->start_p,                                             \
   }                                                                     \
   return _;                                                             \
 }                                                                       \
