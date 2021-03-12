@@ -7,6 +7,7 @@ void macro_count_markers(mut_Marker_array_p markers, Buffer_p src)
 void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
 {
   Marker comma = new_marker(src, ",", T_COMMA);
+  Marker space = new_marker(src, " ", T_SPACE);
   mut_Marker_p     start  = (mut_Marker_p) Marker_array_start(markers);
   mut_Marker_mut_p cursor = start + 1;
   mut_Marker_p     end    = (mut_Marker_p) Marker_array_end(markers);
@@ -16,8 +17,7 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
   while (cursor < end) {
     if (cursor->token_type == T_OP_13 && previous == T_OP_13) {
       mut_Marker_p first_call_start = cursor + 1;
-      object.end = (cursor - 1 - start);
-      object.array_p = markers;
+      object.end_p = cursor - 1;
       size_t nesting = 0;
       cursor = first_call_start - 3;// Before the “::”.
       mut_Marker_mut_p start_of_line = NULL;
@@ -35,7 +35,7 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
         --cursor;
       }
       while (start_of_line->token_type == T_SPACE) ++start_of_line;
-      object.start = start_of_line - start;
+      object.start_p = start_of_line;
       cursor = first_call_start;
       mut_Marker_mut_p end_of_line = NULL;
       while (not end_of_line and cursor < end) {
@@ -72,23 +72,31 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             }
             ++segment_end;
           }
-          push_Marker_array(&replacement, segment_start);
-          push_Marker_array(&replacement, segment_start + 1);
+          mut_Marker_mut_p insertion_point = segment_start;
+          for (bool inside_parenthesis = false;
+               not inside_parenthesis && insertion_point < segment_end;
+               ++insertion_point) {
+            inside_parenthesis = T_TUPLE_START == insertion_point->token_type;
+            push_Marker_array(&replacement, insertion_point);
+          }
+          slice.start_p = segment_start;
+          slice.end_p   = insertion_point;
+          splice_Marker_array(&replacement, replacement.len, 0, &slice);
           splice_Marker_array(&replacement, replacement.len, 0, &object);
           push_Marker_array(&replacement, &comma);
-          slice.start = (segment_start + 2 - start);
-          slice.end   = (segment_end       - start);
-          slice.array_p = markers;
+          push_Marker_array(&replacement, &space);
+          slice.start_p = insertion_point;
+          slice.end_p   = segment_end;
           splice_Marker_array(&replacement, replacement.len, 0, &slice);
           if (segment_end < end_of_line) {
             push_Marker_array(&replacement, &comma);
+            push_Marker_array(&replacement, &space);
             segment_start = segment_end + 2;// Two tokens: “::”
             segment_end = segment_start;
           }
         }
-        slice.start = 0;
-        slice.end   = replacement.len;
-        slice.array_p = &replacement;
+        slice.start_p = Marker_array_start(&replacement);
+        slice.end_p   = Marker_array_end  (&replacement);
         splice_Marker_array(markers,
                             start_of_line - Marker_array_start(markers),
                             end_of_line - start_of_line,
