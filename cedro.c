@@ -219,7 +219,7 @@ mut_##T##_array_p init_##T##_array(mut_##T##_array_p _,                 \
 {                                                                       \
   _->len = 0;                                                           \
   _->capacity = initial_capacity + PADDING;                             \
-  _->items = malloc(_->capacity * sizeof(T));                           \
+  _->items = malloc(_->capacity * sizeof *_->items);                    \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
   _->last_p = NULL;                                                     \
@@ -246,7 +246,8 @@ mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
 {                                                                       \
   if (_->capacity < _->len + 1 + PADDING) {                             \
     _->capacity = 2*_->capacity + PADDING;                              \
-    _->items = realloc((void*) _->items, _->capacity * sizeof(T));      \
+    _->items = realloc((void*) _->items,                                \
+                       _->capacity * sizeof *_->items);                 \
   }                                                                     \
   *((mut_##T##_mut_p) (_->last_p = _->items + _->len++)) = *item;       \
   return _;                                                             \
@@ -275,19 +276,20 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
     insert_len = insert->end_p - insert->start_p;                       \
     if (_->len + insert_len - delete + PADDING >= _->capacity) {        \
       _->capacity = 2*_->capacity + PADDING;                            \
-      _->items = realloc((void*) _->items, _->capacity * sizeof(T));    \
+      _->items = realloc((void*) _->items,                              \
+                         _->capacity * sizeof *_->items);               \
     }                                                                   \
   }                                                                     \
                                                                         \
   size_t gap_end = position + insert_len;                               \
   memmove((void*) (_->items + gap_end),                                 \
           _->items + position + delete,                                 \
-          (_->len - delete - position) * sizeof(T));                    \
+          (_->len - delete - position) * sizeof *_->items);             \
   _->len = _->len + insert_len - delete;                                \
   if (insert_len) {                                                     \
     memcpy((void*) (_->items + position),                               \
-           insert_len * sizeof(T));                                     \
            insert->start_p,                                             \
+           insert_len * sizeof *_->items);                              \
   }                                                                     \
   return _;                                                             \
 }                                                                       \
@@ -302,7 +304,7 @@ mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _,               \
                                                                         \
   memmove((void*) (_->items + position),                                \
           _->items + position + delete,                                 \
-          (_->len - delete - position) * sizeof(T));                    \
+          (_->len - delete - position) * sizeof *_->items);             \
   _->len -= delete;                                                     \
   return _;                                                             \
 }                                                                       \
@@ -316,7 +318,7 @@ mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _,                  \
 {                                                                       \
   if (not _->len) return NULL;                                          \
   mut_##T##_p last_p = (mut_##T##_p) _->items + _->len - 1;             \
-  if (item_p) memmove((void*) last_p, item_p, sizeof(T));               \
+  if (item_p) memmove((void*) last_p, item_p, sizeof *_->items);        \
   else        drop_##T##_block((mut_##T##_p) last_p, last_p + 1);       \
   --_->len;                                                             \
   return _;                                                             \
@@ -728,7 +730,7 @@ void unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
         eol_pending = eol_pending || (m->len > 1 && '/' is text[1]);
       }
     }
-    fwrite(text, sizeof(*src->items), m->len, out);
+    fwrite(text, sizeof *src->items, m->len, out);
   }
 }
 
@@ -1093,7 +1095,7 @@ void read_file(mut_Buffer_p _, FilePath path)
   size_t size = ftell(input);
   init_Buffer(_, size);
   rewind(input);
-  _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
+  _->len = fread((mut_Byte_p) _->items, sizeof *_->items, size, input);
   if (feof(input)) {
     fprintf(stderr, "Unexpected EOF at %ld reading “%s”.\n", _->len, path);
   } else if (ferror(input)) {
@@ -1101,7 +1103,7 @@ void read_file(mut_Buffer_p _, FilePath path)
   } else {
     fprintf(stderr, "Read %ld bytes from “%s”.\n", _->len, path);
     memset((mut_Byte_p) _->items + _->len, 0,
-           (_->capacity - _->len) * sizeof(*_->items));
+           (_->capacity - _->len) * sizeof *_->items);
   }
   fclose(input); input = NULL;
 }
