@@ -186,20 +186,73 @@ typedef const struct T##_array_slice                                    \
   /**/                   *       T##_array_slice_mut_p;                 \
                                                                         \
 /**                                                                     \
-   A slice of an array where the elements are read-only.                \
+   A slice of an array where the elements are <b>mut</b>able.           \
                                                                         \
    Example:                                                             \
-   <code>T##_mut_array_slice s = { &items, &items + 10 };</code> */     \
+   <code>T##_mut_array a;</code>                                        \
+   <code>init_##T##_array(&a, 0);</code>                                \
+   <code>T##_mut_array_slice s;</code>                                  \
+   <code>init_##T##_array_slice(&s, &a, 3, 10);</code>                  \
+   <code>assert(&s->start_p == &a->items + 3;</code>                    \
+   <code>assert(&s->end_p   == &a->items + 10;</code>                   \
+*/                                                                      \
 typedef struct T##_array_mut_slice {                                    \
   /** Start address. */                                                 \
   mut_##T##_mut_p start_p;                                              \
   /** End addres. */                                                    \
   mut_##T##_mut_p end_p;                                                \
-} mut_##T##_array_mut_slice, * const mut_##T##_array_mut_slice_p,       \
-  /**/                       *       mut_##T##_array_mut_slice_mut_p;   \
+} /* Mutable slice of a mutable array whose items are read-only.        \
+   */     mut_##T##_array_mut_slice,                                    \
+  /* Pointer to mutable slice of a mutable array of read-only items. */ \
+  * const mut_##T##_array_mut_slice_p,                                  \
+  /* Mutable pointer to mutable slice of mutable read-only array.*/     \
+  *       mut_##T##_array_mut_slice_mut_p;                              \
+/**                                                                     \
+   A slice of an array where the elements are <b>const</b>ants.         \
+                                                                        \
+   Example:                                                             \
+   <code>T##_mut_array a;</code>                                        \
+   <code>init_##T##_array(&a, 0);</code>                                \
+   <code>T##_mut_array_slice s;</code>                                  \
+   <code>init_##T##_array_slice(&s, &a, 3, 10);</code>                  \
+   <code>assert(&s->start_p == &a->items + 3;</code>                    \
+   <code>assert(&s->end_p   == &a->items + 10;</code>                   \
+*/                                                                      \
 typedef const struct T##_array_mut_slice                                \
-/*   */ T##_array_mut_slice, * const T##_array_mut_slice_p,             \
-  /**/                       *       T##_array_mut_slice_mut_p;         \
+/* Slice of a mutable array whose items are read-only.                  \
+ */             T##_array_mut_slice,                                    \
+  /* Pointer to mutable slice of a mutable array of read-only items. */ \
+  * const       T##_array_mut_slice_p,                                  \
+  /* Mutable pointer to mutable slice of mutable read-only array.*/     \
+  *             T##_array_mut_slice_mut_p;                              \
+                                                                        \
+/** Initialize the slice to point at (*array_p)[`start`...`end`].       \
+    `end` can be 0, in which case the slice extends to                  \
+    the end of `array_p`. */                                            \
+mut_##T##_array_slice_p                                                 \
+init_##T##_array_slice(mut_##T##_array_slice_p _,                       \
+                       T##_array_p array_p,                             \
+                       size_t start, size_t end)                        \
+{                                                                       \
+  _->start_p = array_p->items + start;                                  \
+  if (end) _->end_p = array_p->items + end;                             \
+  else     _->end_p = array_p->items + array_p->len;                    \
+  return _;                                                             \
+}                                                                       \
+                                                                        \
+/** Initialize the slice to point at (*array_p)[`start`...`end`].       \
+    `end` can be 0, in which case the slice extends to                  \
+    the end of `array_p`. */                                            \
+mut_##T##_array_mut_slice_p                                             \
+init_##T##_array_mut_slice(mut_##T##_array_mut_slice_p _,               \
+                           mut_##T##_array_mut_p array_p,               \
+                           size_t start, size_t end)                    \
+{                                                                       \
+  _->start_p = (mut_##T##_mut_p) array_p->items + start;                \
+  if (end) _->end_p = (mut_##T##_mut_p) array_p->items + end;           \
+  else     _->end_p = (mut_##T##_mut_p) array_p->items + array_p->len;  \
+  return _;                                                             \
+}                                                                       \
                                                                         \
 void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
 {                                                                       \
