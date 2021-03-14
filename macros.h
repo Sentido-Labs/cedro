@@ -10,7 +10,7 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
   Marker space = new_marker(src, " ", T_SPACE);
   mut_Marker_p     start  = (mut_Marker_p) Marker_array_start(markers);
   mut_Marker_mut_p cursor = start + 1;
-  mut_Marker_p     end    = (mut_Marker_p) Marker_array_end(markers);
+  mut_Marker_mut_p end    = (mut_Marker_p) Marker_array_end(markers);
   mut_Marker_array_slice object;
   mut_Marker_array_slice slice;
   TokenType previous = T_NONE;
@@ -77,7 +77,6 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
                not inside_parenthesis && insertion_point < segment_end;
                ++insertion_point) {
             inside_parenthesis = T_TUPLE_START == insertion_point->token_type;
-            push_Marker_array(&replacement, insertion_point);
           }
           slice.start_p = segment_start;
           slice.end_p   = insertion_point;
@@ -102,6 +101,11 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
                             end_of_line - start_of_line,
                             &slice);
         drop_Marker_array(&replacement);
+        end = (mut_Marker_p) Marker_array_end(markers);
+        cursor = end_of_line;
+      } else {
+        log("Error: unterminated backstitch expression, started at line %ld",
+            line_number(src, first_call_start));
       }
       previous = cursor->token_type;
       ++cursor;
