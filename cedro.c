@@ -208,7 +208,7 @@ void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
 /** Initialize the array at the given pointer.                        \n\
     For local variables, use it like this:                            \n\
     \code{.c}                                                           \
-    mut_T##_array things;                                               \
+    mut_##T##_array things;                                             \
     init_##T##_array(&things, 100); ///< We expect around 100 items.    \
     {...}                                                               \
     drop_##T##_array(&things);                                          \
