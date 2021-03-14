@@ -214,8 +214,8 @@ void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
     drop_##T##_array(&things);                                          \
     \endcode                                                            \
  */                                                                     \
-mut_##T##_array_p init_##T##_array(mut_##T##_array_p _,                 \
-                                   size_t initial_capacity)             \
+mut_##T##_array_p                                                       \
+init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
 {                                                                       \
   _->len = 0;                                                           \
   _->capacity = initial_capacity + PADDING;                             \
@@ -228,7 +228,8 @@ mut_##T##_array_p init_##T##_array(mut_##T##_array_p _,                 \
 /** Release any resources allocated for this struct.                    \
     Returns `NULL` to enable convenient clearing of the pointer:        \
     `p = drop_##T##_array(p); // p is now NULL.` */                     \
-mut_##T##_array_p drop_##T##_array(mut_##T##_array_p _)                 \
+mut_##T##_array_p                                                       \
+drop_##T##_array(mut_##T##_array_p _)                                   \
 {                                                                       \
   drop_##T##_block((mut_##T##_p) _->items, _->items + _->len);          \
   _->len = 0;                                                           \
@@ -242,7 +243,8 @@ mut_##T##_array_p drop_##T##_array(mut_##T##_array_p _)                 \
 /** Push a bit copy of the element on the end/top of the array,         \
     resizing the array if needed.                                       \
     Returns the given array pointer. */                                 \
-mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
+mut_##T##_array_p                                                       \
+push_##T##_array(mut_##T##_array_p _, T##_p item)                       \
 {                                                                       \
   if (_->capacity < _->len + 1 + PADDING) {                             \
     _->capacity = 2*_->capacity + PADDING;                              \
@@ -260,9 +262,10 @@ mut_##T##_array_p push_##T##_array(mut_##T##_array_p _, T##_p item)     \
     as bit copies.                                                      \
     The `insert` slice, if given, must belong to a different array.     \
     Returns the given array pointer. */                                 \
-mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
-                                     size_t position, size_t delete,    \
-                                     T##_array_slice_p insert)          \
+mut_##T##_array_p                                                       \
+splice_##T##_array(mut_##T##_array_p _,                                 \
+                   size_t position, size_t delete,                      \
+                   T##_array_slice_p insert)                            \
 {                                                                       \
   assert(position + delete <= _->len);                                  \
   drop_##T##_block((mut_##T##_p) _->items + position,                   \
@@ -296,8 +299,8 @@ mut_##T##_array_p splice_##T##_array(mut_##T##_array_p _,               \
                                                                         \
 /** Delete `delete` elements from the array at `position`.              \
     Returns the given array pointer. */                                 \
-mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _,               \
-                                     size_t position, size_t delete)    \
+mut_##T##_array_p                                                       \
+delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
   drop_##T##_block((mut_##T##_p) _->items + position,                   \
                    _->items + position + delete);                       \
@@ -313,8 +316,8 @@ mut_##T##_array_p delete_##T##_array(mut_##T##_array_p _,               \
     copying its bits into `*item_p` unless `item_p` is `0`.             \
     Returns the given array pointer,                                    \
     or `NULL` if the array was empty. */                                \
-mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _,                  \
-                                  mut_##T##_p item_p)                   \
+mut_##T##_array_p                                                       \
+pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
 {                                                                       \
   if (not _->len) return NULL;                                          \
   mut_##T##_p last_p = (mut_##T##_p) _->items + _->len - 1;             \
@@ -326,21 +329,24 @@ mut_##T##_array_p pop_##T##_array(mut_##T##_array_p _,                  \
                                                                         \
 /** Return a pointer to the element at `position`.                      \
     or `NULL` if the index is out of range. */                          \
-T##_p get_##T##_array(T##_array_p _, size_t position)                   \
+T##_p                                                                   \
+get_##T##_array(T##_array_p _, size_t position)                         \
 {                                                                       \
   return (position >= _->len)? NULL: _->items + position;               \
 }                                                                       \
                                                                         \
 /** Return a mutable pointer to the element at `position`.              \
     or `NULL` if the index is out of range. */                          \
-mut_##T##_p get_mut_##T##_array(T##_array_p _, size_t position)         \
+mut_##T##_p                                                             \
+get_mut_##T##_array(T##_array_p _, size_t position)                     \
 {                                                                       \
   return (position >= _->len)? NULL: (mut_##T##_p) _->items + position; \
 }                                                                       \
                                                                         \
 /** Return a pointer to the start of the array (same as `_->items`),    \
     or `NULL` if the array was empty. */                                \
-T##_p T##_array_start(T##_array_p _)                                    \
+T##_p                                                                   \
+T##_array_start(T##_array_p _)                                          \
 {                                                                       \
   if (not _->len) return NULL;                                          \
   return _->items;                                                      \
@@ -348,7 +354,8 @@ T##_p T##_array_start(T##_array_p _)                                    \
                                                                         \
 /** Return a pointer to the next byte after                             \
     the element at the end of the array. */                             \
-T##_p T##_array_end(T##_array_p _)                                      \
+T##_p                                                                   \
+T##_array_end(T##_array_p _)                                            \
 {                                                                       \
   return _->items + _->len;                                             \
 }                                                                       \
