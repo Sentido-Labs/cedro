@@ -385,19 +385,21 @@ pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
 }                                                                       \
                                                                         \
 /** Return a pointer to the element at `position`.                      \
-    or `NULL` if the index is out of range. */                          \
+    Panics if the index is out of range. */                             \
 T##_p                                                                   \
 get_##T##_array(T##_array_p _, size_t position)                         \
 {                                                                       \
-  return (position >= _->len)? NULL: _->items + position;               \
+  assert(position < _->len);                                            \
+  return _->items + position;                                           \
 }                                                                       \
                                                                         \
 /** Return a mutable pointer to the element at `position`.              \
-    or `NULL` if the index is out of range. */                          \
+    Panics if the index is out of range. */                             \
 mut_##T##_p                                                             \
 get_mut_##T##_array(T##_array_p _, size_t position)                     \
 {                                                                       \
-  return (position >= _->len)? NULL: (mut_##T##_p) _->items + position; \
+  assert(position < _->len);                                            \
+  return (mut_##T##_p) _->items + position;                             \
 }                                                                       \
                                                                         \
 /** Return a pointer to the start of the array (same as `_->items`),    \
