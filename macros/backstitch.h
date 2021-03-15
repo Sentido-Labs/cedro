@@ -1,8 +1,9 @@
 /// Reorganize `obj::fn1(a)::fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
 void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
 {
-  Marker comma = new_marker(src, ",", T_COMMA);
-  Marker space = new_marker(src, " ", T_SPACE);
+  Marker comma     = new_marker(src, ",", T_COMMA);
+  Marker semicolon = new_marker(src, ";", T_SEMICOLON);
+  Marker space     = new_marker(src, " ", T_SPACE);
   mut_Marker_p     start  = (mut_Marker_p) Marker_array_start(markers);
   mut_Marker_mut_p cursor = start + 1;
   mut_Marker_mut_p end    = (mut_Marker_p) Marker_array_end(markers);
@@ -24,6 +25,7 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
               (object.end_p - 1)->token_type == T_COMMENT)) {
         --object.end_p;
       }
+      bool is_statement = true;
       size_t nesting = 0;
       mut_Marker_mut_p start_of_line = NULL;
       while (not start_of_line and cursor >= start) {
@@ -31,7 +33,10 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
           case T_SEMICOLON:
             start_of_line = cursor + 1;
             break;
-          case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+          case T_TUPLE_START: case T_INDEX_START:
+            if (nesting is 0) is_statement = false;
+            // Fall through.
+          case T_BLOCK_START:
             if (nesting is 0) start_of_line = cursor + 1;
             else              --nesting;
             break;
@@ -55,11 +60,17 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
         ++start_of_line;
       }
       object.start_p = start_of_line;
+      Marker object_indentation = indentation(src, object.start_p->start);
       cursor = first_call_start;
       mut_Marker_mut_p end_of_line = NULL;
       while (not end_of_line and cursor < end) {
         switch (cursor->token_type) {
           case T_SEMICOLON:
+            if (not is_statement) {
+              log("Warning: statement at line %lu misidentified as expression.",
+                  line_number(src, cursor->start));
+              is_statement = true;
+            }
             end_of_line = cursor;
             break;
           case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
@@ -131,8 +142,8 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
           slice.end_p   = insertion_point;
           splice_Marker_array(&replacement, replacement.len, 0, &slice);
           splice_Marker_array(&replacement, replacement.len, 0, &object);
+          assert(insertion_point != segment_end);
           if (insertion_point != segment_start &&
-              /*insertion_point != segment_end // Never happens anyway*/
               insertion_point->token_type != T_TUPLE_END) {
             push_Marker_array(&replacement, &comma);
             push_Marker_array(&replacement, &space);
@@ -142,8 +153,13 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
           splice_Marker_array(&replacement, replacement.len, 0, &slice);
 
           if (segment_end < end_of_line) {
-            push_Marker_array(&replacement, &comma);
-            push_Marker_array(&replacement, &space);
+            if (is_statement) {
+              push_Marker_array(&replacement, &semicolon);
+              push_Marker_array(&replacement, &object_indentation);
+            } else {
+              push_Marker_array(&replacement, &comma);
+              push_Marker_array(&replacement, &space);
+            }
             segment_start = segment_end + 1;// One token: “,”
             // Trim space before next segment.
             while (segment_start != end_of_line &&

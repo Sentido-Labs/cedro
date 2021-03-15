@@ -629,6 +629,39 @@ size_t line_number(Buffer_p src, size_t position)
   return line_number;
 }
 
+/** Extract the indentation of the line for the character at `index`,
+    including the preceding `LF` character if it exists.
+ */
+Marker indentation(Buffer_p src, size_t index)
+{
+  Byte_mut_p start_of_line = get_Byte_array(src, index);
+  Byte_p start = Byte_array_start(src);
+  Byte_p end   = Byte_array_end(src);
+  while (*start_of_line is_not '\n') {
+    if (start_of_line is start) break;
+    --start_of_line;
+  }
+  // If *start_of_line is not '\n' here, there is no LF to re-use.
+  // This can only happen at the very fist line of the file,
+  // which should have no indentation anyway.
+  // Handling the hypothetical case where the first line of the file is indented
+  // is not worth the complication.
+  mut_Marker indentation = {
+    .start = start_of_line - start,
+    .len   = 0,
+    .token_type = T_SPACE
+  };
+  Byte_mut_p end_of_indentation = start_of_line + 1;
+  while (end_of_indentation is_not end) {
+    if (*end_of_indentation is_not ' ' &&
+        *end_of_indentation is_not '\t') break;
+    ++end_of_indentation;
+  }
+  indentation.start = start_of_line      - start;
+  indentation.len   = end_of_indentation - start_of_line;
+  return indentation;
+}
+
 /** Copy the characters between `start` and `end` into the given slice,
  *  as many as they fit. If the slice is too small, the content is truncated
  *  with a Unicode ellipsis symbol “…” at the end.
