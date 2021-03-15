@@ -89,6 +89,7 @@ typedef enum TokenType {
   /** `= += -= *= /= %= <<= >>= &= ^= |=`        */ T_OP_14,
   /** `,`                                        */ T_COMMA /* = T_OP_15 */,
   /** End of line: `;`                               */ T_SEMICOLON,
+  /** Backstitch: `@`                                */ T_BACKSTITCH,
   /** Ellipsis: `...`                                */ T_ELLIPSIS,
   /** Other token that is not part of the C grammar. */ T_OTHER
 } TokenType;
@@ -105,6 +106,7 @@ static const unsigned char * const TOKEN_NAME[] = {
   B("Op 7"), B("Op 8"), B("Op 9"), B("Op 10"), B("Op 11"), B("Op 12"),
   B("Op 13"), B("Op 14"),
   B("Comma (op 15)"), B("Semicolon"),
+  B("Backstitch"),
   B("Ellipsis"),
   B("OTHER")
 };
@@ -1072,7 +1074,10 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
             default:  TOKEN1(T_OP_9);
           }
           break;
-       default: TOKEN1(T_OTHER);
+        case '@':
+          TOKEN1(T_BACKSTITCH);
+          break;
+        default: TOKEN1(T_OTHER);
       }
     }
     mut_Marker marker;

@@ -13,13 +13,21 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
   mut_Marker_mut_p end    = (mut_Marker_p) Marker_array_end(markers);
   mut_Marker_array_slice object;
   mut_Marker_array_slice slice;
-  TokenType previous = T_NONE;
   while (cursor < end) {
-    if (cursor->token_type == T_OP_13 && previous == T_OP_13) {
-      mut_Marker_p first_call_start = cursor + 1;
-      object.end_p = cursor - 1;
+    if (cursor->token_type == T_BACKSTITCH) {
+      mut_Marker_mut_p first_call_start = cursor + 1;
+      // Trim space before first segment.
+      while (first_call_start != end &&
+             first_call_start->token_type == T_SPACE) {
+        ++first_call_start;
+      }
+      object.end_p = cursor; // Object ends before the “@”.
+      // Trim space after object, between it and backstitch operator.
+      while (object.end_p != start &&
+             (object.end_p - 1)->token_type == T_SPACE) {
+        --object.end_p;
+      }
       size_t nesting = 0;
-      cursor = first_call_start - 3;// Before the “::”.
       mut_Marker_mut_p start_of_line = NULL;
       while (not start_of_line and cursor >= start) {
         switch (cursor->token_type) {
@@ -34,7 +42,11 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
         }
         --cursor;
       }
-      while (start_of_line->token_type == T_SPACE) ++start_of_line;
+      // Trim space before object.
+      while (start_of_line != first_call_start &&
+             start_of_line->token_type == T_SPACE) {
+        ++start_of_line;
+      }
       object.start_p = start_of_line;
       cursor = first_call_start;
       mut_Marker_mut_p end_of_line = NULL;
@@ -53,13 +65,14 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
       }
       if (end_of_line) {
         mut_Marker_array replacement;
+        // The factor of 2 here is a heuristic to avoid relocations in general.
         init_Marker_array(&replacement, 2 * (end_of_line - start_of_line));
         mut_Marker_mut_p segment_start = first_call_start;
         mut_Marker_mut_p segment_end   = segment_start;
         while (segment_end < end_of_line) {
           // Look for segment end.
           while (segment_end < end_of_line) {
-            if (not nesting and segment_end->token_type is T_OP_13) break;
+            if (not nesting and segment_end->token_type is T_COMMA) break;
             switch (segment_end->token_type) {
               case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
                 ++nesting;
@@ -72,13 +85,19 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             }
             ++segment_end;
           }
+          // Trim space after segment.
+          while (segment_end != segment_start &&
+                 (segment_end - 1)->token_type == T_SPACE) {
+            --segment_end;
+          }
 
           mut_Marker_mut_p insertion_point = segment_start;
           if (segment_start->token_type == T_INDEX_START ||
               segment_start->token_type == T_OP_1) {
             // If the segment starts with “[”, “.”, or “->”,
-            // then this is then the correct insertion point.
+            // then this is already the correct insertion point.
           } else {
+            // Default case, a function call.
             for (bool inside_parenthesis = false;
                  not inside_parenthesis && insertion_point < segment_end;
                  ++insertion_point) {
@@ -90,15 +109,23 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
           slice.end_p   = insertion_point;
           splice_Marker_array(&replacement, replacement.len, 0, &slice);
           splice_Marker_array(&replacement, replacement.len, 0, &object);
-          push_Marker_array(&replacement, &comma);
-          push_Marker_array(&replacement, &space);
+          if (insertion_point != segment_start) {
+            push_Marker_array(&replacement, &comma);
+            push_Marker_array(&replacement, &space);
+          }
           slice.start_p = insertion_point;
           slice.end_p   = segment_end;
           splice_Marker_array(&replacement, replacement.len, 0, &slice);
+
           if (segment_end < end_of_line) {
             push_Marker_array(&replacement, &comma);
             push_Marker_array(&replacement, &space);
-            segment_start = segment_end + 2;// Two tokens: “::”
+            segment_start = segment_end + 1;// One token: “,”
+            // Trim space before next segment.
+            while (segment_start != end_of_line &&
+                   segment_start->token_type == T_SPACE) {
+              ++segment_start;
+            }
             segment_end = segment_start;
           }
         }
@@ -116,7 +143,6 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             line_number(src, first_call_start->start));
       }
     }
-    previous = cursor->token_type;
     ++cursor;
   }
 }
