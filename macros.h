@@ -97,7 +97,8 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
 
           mut_Marker_mut_p insertion_point = segment_start;
           if (segment_start->token_type == T_INDEX_START ||
-              segment_start->token_type == T_OP_1) {
+              segment_start->token_type == T_OP_1 ||
+              segment_start->token_type == T_OP_14) {
             // If the segment starts with “[”, “.”, or “->”,
             // then this is already the correct insertion point.
           } else {
