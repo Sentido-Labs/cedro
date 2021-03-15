@@ -33,16 +33,25 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
       mut_Marker_mut_p start_of_line = NULL;
       while (not start_of_line and cursor >= start) {
         switch (cursor->token_type) {
-          case T_SEMICOLON: start_of_line = cursor + 1; break;
+          case T_SEMICOLON:
+            start_of_line = cursor + 1;
+            break;
           case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
             if (nesting is 0) start_of_line = cursor + 1;
             else              --nesting;
             break;
           case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
-            ++nesting; break;
+            ++nesting;
+            break;
           default: break;
         }
         --cursor;
+      }
+      assert(!!start_of_line == !nesting);
+      if (nesting) {
+        log("Unclosed group in line %lu",
+            line_number(src, start_of_line->start));
+        return;
       }
       // Trim space before object.
       while (start_of_line != first_call_start &&
@@ -55,9 +64,12 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
       mut_Marker_mut_p end_of_line = NULL;
       while (not end_of_line and cursor < end) {
         switch (cursor->token_type) {
-          case T_SEMICOLON: end_of_line = cursor; break;
+          case T_SEMICOLON:
+            end_of_line = cursor;
+            break;
           case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
-            ++nesting; ++cursor; break;
+            ++nesting;
+            break;
           case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
             if (nesting is 0) end_of_line = cursor;
             else              --nesting;
@@ -65,6 +77,11 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
           default: break;
         }
         ++cursor;
+      }
+      if (nesting) {
+        log("Unclosed group in line %lu",
+            line_number(src, first_call_start->start));
+        return;
       }
       if (end_of_line) {
         mut_Marker_array replacement;
@@ -87,6 +104,11 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
                 break;
             }
             ++segment_end;
+          }
+          if (nesting) {
+            log("Unclosed group in line %lu",
+                line_number(src, segment_start->start));
+            return;
           }
           // Trim space after segment.
           while (segment_end != segment_start &&
@@ -114,7 +136,9 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
           slice.end_p   = insertion_point;
           splice_Marker_array(&replacement, replacement.len, 0, &slice);
           splice_Marker_array(&replacement, replacement.len, 0, &object);
-          if (insertion_point != segment_start) {
+          if (insertion_point != segment_start &&
+              /*insertion_point != segment_end // Never happens anyway*/
+              insertion_point->token_type != T_TUPLE_END) {
             push_Marker_array(&replacement, &comma);
             push_Marker_array(&replacement, &space);
           }
@@ -143,7 +167,7 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
                             &slice);
         drop_Marker_array(&replacement);
         end = (mut_Marker_p) Marker_array_end(markers);
-        cursor = end_of_line;
+        cursor = end_of_line + replacement.len - (end_of_line - start_of_line);
       } else {
         log("Error: unterminated backstitch expression, started at line %ld",
             line_number(src, first_call_start->start));
