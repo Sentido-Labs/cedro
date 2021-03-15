@@ -664,7 +664,7 @@ Marker new_marker(mut_Buffer_p src,
   if (end - start >= text_len) {
     const char first_character = text[0];
     for (;;++start) {
-      start = memchr(start, first_character, src->len);
+      if (!(start = memchr(start, first_character, src->len))) break;
       Byte_mut_p p1 = start;
       Byte_mut_p p2 = (Byte_p) text;
       while (*p2 && *p1 == *p2 && p1 != end) { ++p1; ++p2; }
