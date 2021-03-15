@@ -678,9 +678,9 @@ Marker new_marker(mut_Buffer_p src,
   if (match) {
     marker.start = match - Byte_array_start(src);
   } else {
+    marker.start = src->len;
     Byte_mut_p p2 = (Byte_p) text;
     while (*p2) push_Byte_array(src, p2++);
-    marker.start = src->len;
   }
   marker.len = text_len;
   marker.token_type = token_type;
