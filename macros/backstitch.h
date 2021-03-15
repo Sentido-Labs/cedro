@@ -1,8 +1,3 @@
-void macro_count_markers(mut_Marker_array_p markers, Buffer_p src)
-{
-  fprintf(stderr, "Markers: %ld\n", markers->len);
-}
-
 /// Reorganize `obj::fn1(a)::fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
 void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
 {
@@ -175,19 +170,4 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
     }
     ++cursor;
   }
-}
-
-void macro_function_pointer(mut_Marker_array_p markers, Buffer_p src)
-{
-  fprintf(stderr, "TODO: reorganize function_pointer(void fname(arg1, arg2)) as void (*fname)(arg1, arg2)\n");
-}
-
-void macro_fn(mut_Marker_array_p markers, Buffer_p src)
-{
-  fprintf(stderr, "TODO: reorganize fn fname(arg1: type1, arg2: mut type2) -> void {...} as void fname(const type1 arg1, type2 arg2) {...}\n");
-}
-
-void macro_let(mut_Marker_array_p markers, Buffer_p src)
-{
-  fprintf(stderr, "TODO: reorganize let x: int = 3; as int x = 3;\n");
 }

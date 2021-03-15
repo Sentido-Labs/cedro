@@ -1173,7 +1173,11 @@ void read_file(mut_Buffer_p _, FilePath path)
 }
 
 /***************** macros *****************/
-#include "macros.h"
+#include "macros/fn.h"
+#include "macros/let.h"
+#include "macros/function_pointer.h"
+#include "macros/backstitch.h"
+#include "macros/count_markers.h"
 
 const char* const usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"

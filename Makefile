@@ -9,14 +9,14 @@ run: $(NAME)
 	./$(NAME) $(NAME).c
 .PHONY: run
 
-$(NAME): $(NAME).c macros.h Makefile
+$(NAME): $(NAME).c macros/*.h Makefile
 	$(CC_STRICT) -o $@ $<
 
 doc:
 	$(MAKE) -C doc
 .PHONY: doc
 
-test: $(NAME)-test.c $(NAME) macros.h Makefile
+test: $(NAME)-test.c $(NAME) macros/*.h Makefile
 	$(CC_STRICT) -o $@ $<
 	./test
 .PHONY: test
