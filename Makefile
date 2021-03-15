@@ -16,6 +16,11 @@ doc:
 	$(MAKE) -C doc
 .PHONY: doc
 
+test: $(NAME)-test.c $(NAME) macros.h Makefile
+	$(CC_STRICT) -o $@ $<
+	./test
+.PHONY: test
+
 clean:
 	rm -f $(NAME)
 	$(MAKE) -C doc clean
