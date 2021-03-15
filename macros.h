@@ -72,12 +72,20 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             }
             ++segment_end;
           }
+
           mut_Marker_mut_p insertion_point = segment_start;
-          for (bool inside_parenthesis = false;
-               not inside_parenthesis && insertion_point < segment_end;
-               ++insertion_point) {
-            inside_parenthesis = T_TUPLE_START == insertion_point->token_type;
+          if (segment_start->token_type == T_INDEX_START ||
+              segment_start->token_type == T_OP_1) {
+            // If the segment starts with “[”, “.”, or “->”,
+            // then this is then the correct insertion point.
+          } else {
+            for (bool inside_parenthesis = false;
+                 not inside_parenthesis && insertion_point < segment_end;
+                 ++insertion_point) {
+              inside_parenthesis = T_TUPLE_START == insertion_point->token_type;
+            }
           }
+
           slice.start_p = segment_start;
           slice.end_p   = insertion_point;
           splice_Marker_array(&replacement, replacement.len, 0, &slice);
