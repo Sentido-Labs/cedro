@@ -115,12 +115,9 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
         log("Error: unterminated backstitch expression, started at line %ld",
             line_number(src, first_call_start->start));
       }
-      previous = cursor->token_type;
-      ++cursor;
-    } else {
-      previous = cursor->token_type;
-      ++cursor;
     }
+    previous = cursor->token_type;
+    ++cursor;
   }
 }
 
