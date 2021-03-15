@@ -18,13 +18,15 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
       mut_Marker_mut_p first_call_start = cursor + 1;
       // Trim space before first segment.
       while (first_call_start != end &&
-             first_call_start->token_type == T_SPACE) {
+             (first_call_start->token_type == T_SPACE ||
+              first_call_start->token_type == T_COMMENT)) {
         ++first_call_start;
       }
       object.end_p = cursor; // Object ends before the “@”.
       // Trim space after object, between it and backstitch operator.
       while (object.end_p != start &&
-             (object.end_p - 1)->token_type == T_SPACE) {
+             ((object.end_p - 1)->token_type == T_SPACE ||
+              (object.end_p - 1)->token_type == T_COMMENT)) {
         --object.end_p;
       }
       size_t nesting = 0;
@@ -44,7 +46,8 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
       }
       // Trim space before object.
       while (start_of_line != first_call_start &&
-             start_of_line->token_type == T_SPACE) {
+             (start_of_line->token_type == T_SPACE ||
+              start_of_line->token_type == T_COMMENT)) {
         ++start_of_line;
       }
       object.start_p = start_of_line;
@@ -87,7 +90,8 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
           }
           // Trim space after segment.
           while (segment_end != segment_start &&
-                 (segment_end - 1)->token_type == T_SPACE) {
+                 ((segment_end - 1)->token_type == T_SPACE ||
+                  (segment_end - 1)->token_type == T_COMMENT)) {
             --segment_end;
           }
 
@@ -123,7 +127,8 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             segment_start = segment_end + 1;// One token: “,”
             // Trim space before next segment.
             while (segment_start != end_of_line &&
-                   segment_start->token_type == T_SPACE) {
+                   (segment_start->token_type == T_SPACE ||
+                    segment_start->token_type == T_COMMENT)) {
               ++segment_start;
             }
             segment_end = segment_start;
