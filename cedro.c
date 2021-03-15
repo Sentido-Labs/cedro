@@ -657,24 +657,23 @@ void indent_log(size_t indent)
 Marker new_marker(mut_Buffer_p src,
                   const char * const text, TokenType token_type)
 {
-  Byte_mut_p start = Byte_array_start(src);
-  Byte_mut_p match = NULL;
-  Byte_p     end   = Byte_array_end(src);
+  Byte_mut_p cursor = Byte_array_start(src);
+  Byte_mut_p match  = NULL;
+  Byte_p     end    = Byte_array_end(src);
   size_t text_len = strlen(text);
-  if (end - start >= text_len) {
+  if (end - cursor >= text_len) {
     const char first_character = text[0];
-    for (;;++start) {
-      if (!(start = memchr(start, first_character, src->len))) break;
-      Byte_mut_p p1 = start;
+    for (; (cursor = memchr(cursor, first_character, src->len)); ++cursor) {
+      Byte_mut_p p1 = cursor;
       Byte_mut_p p2 = (Byte_p) text;
-      while (*p2 && *p1 == *p2 && p1 != end) { ++p1; ++p2; }
+      while (*p2 && p1 != end && *p1 == *p2) { ++p1; ++p2; }
       if (*p2 is 0) {
-        match = start;
+        match = cursor;
         break;
       }
     }
   }
-  mut_Marker marker;
+  mut_Marker marker = { .start = 0, .len = text_len, .token_type = token_type };
   if (match) {
     marker.start = match - Byte_array_start(src);
   } else {
@@ -682,8 +681,6 @@ Marker new_marker(mut_Buffer_p src,
     Byte_mut_p p2 = (Byte_p) text;
     while (*p2) push_Byte_array(src, p2++);
   }
-  marker.len = text_len;
-  marker.token_type = token_type;
 
   return marker;
 }
