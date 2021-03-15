@@ -614,13 +614,17 @@ SourceCode preprocessor(SourceCode start, SourceCode end)
 
 
 
-/** Compute the line number for the given byte index. */
-size_t line_number(Buffer_p src, size_t index)
+/** Compute the line number for the given position,
+    which is a cursor position. */
+size_t line_number(Buffer_p src, size_t position)
 {
   size_t line_number = 1;
-  if (index <= src->len) {
-    mut_SourceCode pointer = &src->items[index];
-    while (pointer is_not src->items) if (*(--pointer) is '\n') ++line_number;
+  mut_SourceCode pointer = src->items;
+
+  while ((pointer =
+          memchr(pointer, '\n', src->items + position - pointer ))) {
+    ++pointer;
+    ++line_number;
   }
   return line_number;
 }
