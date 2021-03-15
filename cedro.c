@@ -609,11 +609,11 @@ SourceCode preprocessor(SourceCode start, SourceCode end)
 
 
 /** Compute the line number for the given byte index. */
-size_t line_number(Buffer_p src, SourceCode cursor)
+size_t line_number(Buffer_p src, size_t index)
 {
   size_t line_number = 1;
-  if (cursor > src->items && cursor - src->items <= src->len) {
-    mut_SourceCode pointer = cursor;
+  if (index <= src->len) {
+    mut_SourceCode pointer = &src->items[index];
     while (pointer is_not src->items) if (*(--pointer) is '\n') ++line_number;
   }
   return line_number;
@@ -1276,7 +1276,8 @@ int main(int argc, char** argv)
 
     drop_Marker_array(&markers);
 
-    log("\nRead %ld lines.", line_number((Buffer_p)&src, cursor) - 1);
+    log("\nRead %ld lines.",
+        line_number((Buffer_p)&src, cursor - src.items) - 1);
 
     drop_Buffer(&src);
   }
