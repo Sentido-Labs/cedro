@@ -39,6 +39,8 @@ typedef struct Options {
   bool discard_space;
   /// Skip comments, or include them in the markers array.
   bool discard_comments;
+  /// Apply the macros.
+  bool apply_macros;
   /// Print markers array.
   bool print_markers;
 } Options, *Options_p;
@@ -1213,6 +1215,7 @@ int main(int argc, char** argv)
   Options options = { // Remember to keep the usage strings updated.
     .discard_comments = true,
     .discard_space    = true,
+    .apply_macros     = true,
     .print_markers    = false,
   };
 
@@ -1229,6 +1232,9 @@ int main(int argc, char** argv)
       } else if (str_eq("--discard-space", arg) ||
                  str_eq("--not-discard-space", arg)) {
         options.discard_space = flag_value;
+      } else if (str_eq("--apply-macros", arg) ||
+                 str_eq("--not-apply-macros", arg)) {
+        options.apply_macros = flag_value;
       } else if (str_eq("--print-markers", arg) ||
                  str_eq("--not-print-markers", arg)) {
         options.print_markers = flag_value;
@@ -1261,14 +1267,16 @@ int main(int argc, char** argv)
 
     resolve_types(&markers, &src);
 
-    log("Running macro count_markers:");
-    macro_count_markers(&markers, &src);
-    log("Running macro fn:");
-    macro_fn(&markers, &src);
-    log("Running macro let:");
-    macro_let(&markers, &src);
-    log("Running macro backstitch:");
-    macro_backstitch(&markers, &src);
+    if (options.apply_macros) {
+      log("Running macro count_markers:");
+      macro_count_markers(&markers, &src);
+      log("Running macro fn:");
+      macro_fn(&markers, &src);
+      log("Running macro let:");
+      macro_let(&markers, &src);
+      log("Running macro backstitch:");
+      macro_backstitch(&markers, &src);
+    }
 
     if (options.print_markers) {
       print_markers(&markers, &src, 0, 0, options);
