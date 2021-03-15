@@ -470,7 +470,7 @@ SourceCode number(SourceCode start, SourceCode end)
     ++cursor;
     while (cursor < end) {
       c = *cursor;
-      if (in('1',c,'9') or c is '.') {
+      if (in('0',c,'9') or c is '.') {
         ++cursor;
       } else if (c is 'u' or c is 'U' or c is 'l' or c is 'L') {
         ++cursor;
