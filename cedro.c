@@ -15,6 +15,7 @@
  *
  * Created: 2020-11-25 22:41
  */
+#define CEDRO_VERSION "1.0"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1226,6 +1227,7 @@ const char* const usage_es =
     "  --enable-core-dump     Activa volcado de memoria al estrellarse.\n"
     "  --not-enable-core-dump Desactiva volcado de memoria al estrellarse.\n"
     "                         (implícito)\n"
+    "  --version          Muestra la versión: " CEDRO_VERSION "\n"
     ;
 const char* const usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
@@ -1238,16 +1240,8 @@ const char* const usage_en =
     "\n"
     "  --enable-core-dump     Enable core dump on crash.\n"
     "  --not-enable-core-dump Disable core dump on crash. (default)\n"
+    "  --version          Show version: " CEDRO_VERSION "\n"
     ;
-void usage()
-{
-  char* lang = getenv("LANG");
-  if (0 is strncmp(lang, "es", 2)) {
-    fprintf(stderr, usage_es);
-  } else {
-    fprintf(stderr, usage_en);
-  }
-}
 
 int main(int argc, char** argv)
 {
@@ -1280,9 +1274,14 @@ int main(int argc, char** argv)
       } else if (str_eq("--enable-core-dump", arg) ||
                  str_eq("--not-enable-core-dump", arg)) {
         enable_core_dump = flag_value;
+      } else if (str_eq("--version", arg)) {
+        fprintf(stderr, CEDRO_VERSION "\n");
       } else {
-        usage();
-        return 1;
+        fprintf(stderr,
+                0 is strncmp(getenv("LANG"), "es", 2)?
+                usage_es:
+                usage_en);
+        return str_eq("-h", arg) || str_eq("--help", arg)? 0: 1;
       }
     }
   }
