@@ -11,12 +11,12 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
   mut_Marker_array_slice slice;
   while (cursor < end) {
     if (cursor->token_type == T_BACKSTITCH) {
-      mut_Marker_mut_p first_call_start = cursor + 1;
+      mut_Marker_mut_p first_segment_start = cursor + 1;
       // Trim space before first segment.
-      while (first_call_start != end &&
-             (first_call_start->token_type == T_SPACE ||
-              first_call_start->token_type == T_COMMENT)) {
-        ++first_call_start;
+      while (first_segment_start != end &&
+             (first_segment_start->token_type == T_SPACE ||
+              first_segment_start->token_type == T_COMMENT)) {
+        ++first_segment_start;
       }
       object.end_p = cursor; // Object ends before the “@”.
       // Trim space after object, between it and backstitch operator.
@@ -54,14 +54,14 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
         return;
       }
       // Trim space before object.
-      while (start_of_line != first_call_start &&
+      while (start_of_line != first_segment_start &&
              (start_of_line->token_type == T_SPACE ||
               start_of_line->token_type == T_COMMENT)) {
         ++start_of_line;
       }
       object.start_p = start_of_line;
       Marker object_indentation = indentation(src, object.start_p->start);
-      cursor = first_call_start;
+      cursor = first_segment_start;
       mut_Marker_mut_p end_of_line = NULL;
       while (not end_of_line and cursor < end) {
         switch (cursor->token_type) {
@@ -86,14 +86,14 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
       }
       if (nesting) {
         log("Unclosed group in line %lu",
-            line_number(src, first_call_start->start));
+            line_number(src, first_segment_start->start));
         return;
       }
       if (end_of_line) {
         mut_Marker_array replacement;
         // The factor of 2 here is a heuristic to avoid relocations in general.
         init_Marker_array(&replacement, 2 * (end_of_line - start_of_line));
-        mut_Marker_mut_p segment_start = first_call_start;
+        mut_Marker_mut_p segment_start = first_segment_start;
         mut_Marker_mut_p segment_end   = segment_start;
         while (segment_end < end_of_line) {
           // Look for segment end.
@@ -181,7 +181,7 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
         cursor = end_of_line + replacement.len - (end_of_line - start_of_line);
       } else {
         log("Error: unterminated backstitch expression, started at line %ld",
-            line_number(src, first_call_start->start));
+            line_number(src, first_segment_start->start));
       }
     }
     ++cursor;
