@@ -1,7 +1,6 @@
+/** \file */
 /**
- * @file */
-/**
- * @mainpage
+ * \mainpage
  * The Cedro C pre-processor.
  *   - [Data structures](cedro_8c.html#nested-classes)
  *   - [Macros](cedro_8c.html#define-members)
@@ -10,8 +9,8 @@
  *   - [Functions](cedro_8c.html#func-members)
  *   - [Variables](cedro_8c.html#var-members)
  *
- * @author Alberto González Palomo https://sentido-labs.com
- * @copyright ©2021 Alberto González Palomo https://sentido-labs.com
+ * \author Alberto González Palomo https://sentido-labs.com
+ * \copyright ©2021 Alberto González Palomo https://sentido-labs.com
  *
  * Created: 2020-11-25 22:41
  */
@@ -147,7 +146,8 @@ void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 }
 
 #define CONST_AND_MUT_VARIANT(T, NAME) T NAME
-/* With C11 we could have const/mut variants:
+/* First GCC supporting this is 4.6. https://gcc.gnu.org/wiki/C11Status
+   With C11 we could have const/mut variants:
 #define CONST_AND_MUT_VARIANT(T, NAME) union { T NAME; mut_##T mut_##NAME; }
  */
 
