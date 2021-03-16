@@ -54,8 +54,7 @@ void test_array()
 
   mut_Byte_array text_array = {
     strlen((char*const) text) + 1, strlen((char*const) text) + 1,
-    (mut_Byte_p) text,
-    NULL
+    (mut_Byte_p) text
   };
   mut_Byte_array_slice slice;// = { &text_array 25, 25 + 35,  };
   init_Byte_array_slice(&slice, &text_array, 25, 25 + 35);

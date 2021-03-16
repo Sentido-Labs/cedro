@@ -170,8 +170,6 @@ typedef struct T##_array {                                              \
   size_t capacity;                                                      \
   /** The items stored in this array. */                                \
   CONST_AND_MUT_VARIANT(T##_mut_p, items);                              \
-  /** Pointer to last element. */                                       \
-  T##_mut_p last_p;                                                     \
 } mut_##T##_array, * const mut_##T##_array_p, * mut_##T##_array_mut_p;  \
 typedef const struct T##_array                                          \
 /*   */ T##_array, * const       T##_array_p, *       T##_array_mut_p;  \
@@ -279,7 +277,6 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
   _->items = malloc(_->capacity * sizeof *_->items);                    \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
-  _->last_p = NULL;                                                     \
   return _;                                                             \
 }                                                                       \
 /** Release any resources allocated for this struct.                    \
@@ -291,7 +288,6 @@ drop_##T##_array(mut_##T##_array_p _)                                   \
   drop_##T##_block((mut_##T##_p) _->items, _->items + _->len);          \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
-  _->last_p = NULL;                                                     \
   free((mut_##T##_mut_p) (_->items));                                   \
   *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
   return NULL;                                                          \
@@ -308,7 +304,7 @@ push_##T##_array(mut_##T##_array_p _, T##_p item)                       \
     _->items = realloc((void*) _->items,                                \
                        _->capacity * sizeof *_->items);                 \
   }                                                                     \
-  *((mut_##T##_mut_p) (_->last_p = _->items + _->len++)) = *item;       \
+  *((mut_##T##_mut_p) _->items + _->len++) = *item;                     \
   return _;                                                             \
 }                                                                       \
                                                                         \
