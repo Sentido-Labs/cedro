@@ -1,3 +1,4 @@
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
 /** \file */
 /**
  * \mainpage
