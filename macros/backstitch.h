@@ -176,7 +176,7 @@ void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
                             start_of_line - Marker_array_start(markers),
                             end_of_line - start_of_line,
                             &slice);
-        drop_Marker_array(&replacement);
+        destruct_Marker_array(&replacement);
         end = (mut_Marker_p) Marker_array_end(markers);
         cursor = end_of_line + replacement.len - (end_of_line - start_of_line);
       } else {

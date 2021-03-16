@@ -150,12 +150,12 @@ void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 #define CONST_AND_MUT_VARIANT(T, NAME) union { T NAME; mut_##T mut_##NAME; }
  */
 
-/** DROP_BLOCK is a block of code that releases the resources for a block
+/** DESTRUCT_BLOCK is a block of code that releases the resources for a block
     of objects of type T, between `mut_##T##_p cursor` and `T##_p end`.\n
-    For instance: { while (cursor != end) drop_##T(cursor++); } \n
+    For instance: { while (cursor != end) destruct_##T(cursor++); } \n
     If the type does not need any clean-up, just use `{}`.
 */
-#define DEFINE_ARRAY_OF(T, PADDING, DROP_BLOCK)                         \
+#define DEFINE_ARRAY_OF(T, PADDING, DESTRUCT_BLOCK)                     \
   /** The constant `PADDING_##T##_ARRAY` = `PADDING`                    \
       defines how many items are physically available                   \
       after those valid elements.                                     \n\
@@ -256,9 +256,9 @@ init_##T##_array_mut_slice(mut_##T##_array_mut_slice_p _,               \
   return _;                                                             \
 }                                                                       \
                                                                         \
-void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
+void destruct_##T##_block(mut_##T##_p cursor, T##_p end)                \
 {                                                                       \
-  DROP_BLOCK                                                            \
+  DESTRUCT_BLOCK                                                        \
 }                                                                       \
 /** Initialize the array at the given pointer.                        \n\
     For local variables, use it like this:                            \n\
@@ -266,7 +266,7 @@ void drop_##T##_block(mut_##T##_p cursor, T##_p end)                    \
     mut_##T##_array things;                                             \
     init_##T##_array(&things, 100); ///< We expect around 100 items.    \
     {...}                                                               \
-    drop_##T##_array(&things);                                          \
+    destruct_##T##_array(&things);                                      \
     \endcode                                                            \
  */                                                                     \
 mut_##T##_array_p                                                       \
@@ -281,11 +281,11 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
 }                                                                       \
 /** Release any resources allocated for this struct.                    \
     Returns `NULL` to enable convenient clearing of the pointer:        \
-    `p = drop_##T##_array(p); // p is now NULL.` */                     \
+    `p = destruct_##T##_array(p); // p is now NULL.` */                 \
 mut_##T##_array_p                                                       \
-drop_##T##_array(mut_##T##_array_p _)                                   \
+destruct_##T##_array(mut_##T##_array_p _)                               \
 {                                                                       \
-  drop_##T##_block((mut_##T##_p) _->items, _->items + _->len);          \
+  destruct_##T##_block((mut_##T##_p) _->items, _->items + _->len);      \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
   free((mut_##T##_mut_p) (_->items));                                   \
@@ -321,7 +321,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
                    T##_array_slice_p insert)                            \
 {                                                                       \
   assert(position + delete <= _->len);                                  \
-  drop_##T##_block((mut_##T##_p) _->items + position,                   \
+  destruct_##T##_block((mut_##T##_p) _->items + position,               \
                    _->items + position + delete);                       \
                                                                         \
   size_t insert_len = 0;                                                \
@@ -355,7 +355,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
 mut_##T##_array_p                                                       \
 delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
-  drop_##T##_block((mut_##T##_p) _->items + position,                   \
+  destruct_##T##_block((mut_##T##_p) _->items + position,               \
                    _->items + position + delete);                       \
                                                                         \
   memmove((void*) (_->items + position),                                \
@@ -375,7 +375,7 @@ pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
   if (not _->len) return NULL;                                          \
   mut_##T##_p last_p = (mut_##T##_p) _->items + _->len - 1;             \
   if (item_p) memmove((void*) last_p, item_p, sizeof *_->items);        \
-  else        drop_##T##_block((mut_##T##_p) last_p, last_p + 1);       \
+  else        destruct_##T##_block((mut_##T##_p) last_p, last_p + 1);   \
   --_->len;                                                             \
   return _;                                                             \
 }                                                                       \
@@ -428,7 +428,7 @@ DEFINE_ARRAY_OF(Byte, 8, {});
 typedef mut_Byte_array mut_Buffer, *mut_Buffer_p;
 typedef     Byte_array     Buffer, *    Buffer_p;
 #define init_Buffer init_Byte_array
-#define drop_Buffer drop_Byte_array
+#define destruct_Buffer destruct_Byte_array
 #define PADDING_Buffer PADDING_Byte_ARRAY
 
 typedef Byte_p         SourceCode; /**< 0-terminated. */
@@ -1323,12 +1323,12 @@ int main(int argc, char** argv)
       unparse(&markers, &src, options, stderr);
     }
 
-    drop_Marker_array(&markers);
+    destruct_Marker_array(&markers);
 
     log("\nRead %ld lines.",
         line_number((Buffer_p)&src, cursor - src.items) - 1);
 
-    drop_Buffer(&src);
+    destruct_Buffer(&src);
   }
 
   return 0;
