@@ -32,7 +32,7 @@
 #include <assert.h>
 #include <sys/resource.h>
 
-#define log(...) { fprintf(stderr, __VA_ARGS__); fputc('\n', stderr); }
+#define log(...) fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)
 
 /** Parameters set by command line options. */
 typedef struct Options {
