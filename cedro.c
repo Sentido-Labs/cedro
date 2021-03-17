@@ -233,7 +233,7 @@ typedef const struct T##_array_mut_slice                                \
 /** Initialize the slice to point at (*array_p)[`start`...`end`].       \
     `end` can be 0, in which case the slice extends to                  \
     the end of `array_p`. */                                            \
-mut_##T##_array_slice_p                                                 \
+void                                                                    \
 init_##T##_array_slice(mut_##T##_array_slice_p _,                       \
                        T##_array_p array_p,                             \
                        size_t start, size_t end)                        \
@@ -241,13 +241,12 @@ init_##T##_array_slice(mut_##T##_array_slice_p _,                       \
   _->start_p = array_p->items + start;                                  \
   if (end) _->end_p = array_p->items + end;                             \
   else     _->end_p = array_p->items + array_p->len;                    \
-  return _;                                                             \
 }                                                                       \
                                                                         \
 /** Initialize the slice to point at (*array_p)[`start`...`end`].       \
     `end` can be 0, in which case the slice extends to                  \
     the end of `array_p`. */                                            \
-mut_##T##_array_mut_slice_p                                             \
+void                                                                    \
 init_##T##_array_mut_slice(mut_##T##_array_mut_slice_p _,               \
                            mut_##T##_array_mut_p array_p,               \
                            size_t start, size_t end)                    \
@@ -255,7 +254,6 @@ init_##T##_array_mut_slice(mut_##T##_array_mut_slice_p _,               \
   _->start_p = (mut_##T##_mut_p) array_p->items + start;                \
   if (end) _->end_p = (mut_##T##_mut_p) array_p->items + end;           \
   else     _->end_p = (mut_##T##_mut_p) array_p->items + array_p->len;  \
-  return _;                                                             \
 }                                                                       \
                                                                         \
 void destruct_##T##_block(mut_##T##_p cursor, T##_p end)                \
@@ -271,7 +269,7 @@ void destruct_##T##_block(mut_##T##_p cursor, T##_p end)                \
     destruct_##T##_array(&things);                                      \
     \endcode                                                            \
  */                                                                     \
-mut_##T##_array_p                                                       \
+void                                                                    \
 init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
 {                                                                       \
   _->len = 0;                                                           \
@@ -279,12 +277,9 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
   _->items = malloc(_->capacity * sizeof *_->items);                    \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
-  return _;                                                             \
 }                                                                       \
-/** Release any resources allocated for this struct.                    \
-    Returns `NULL` to enable convenient clearing of the pointer:        \
-    `p = destruct_##T##_array(p); // p is now NULL.` */                 \
-mut_##T##_array_p                                                       \
+/** Release any resources allocated for this struct. */                 \
+void                                                                    \
 destruct_##T##_array(mut_##T##_array_p _)                               \
 {                                                                       \
   destruct_##T##_block((mut_##T##_p) _->items, _->items + _->len);      \
@@ -292,13 +287,11 @@ destruct_##T##_array(mut_##T##_array_p _)                               \
   _->capacity = 0;                                                      \
   free((mut_##T##_mut_p) (_->items));                                   \
   *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
-  return NULL;                                                          \
 }                                                                       \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
-    resizing the array if needed.                                       \
-    Returns the given array pointer. */                                 \
-mut_##T##_array_p                                                       \
+    resizing the array if needed. */                                    \
+void                                                                    \
 push_##T##_array(mut_##T##_array_p _, T##_p item)                       \
 {                                                                       \
   if (_->capacity < _->len + 1 + PADDING) {                             \
@@ -307,7 +300,6 @@ push_##T##_array(mut_##T##_array_p _, T##_p item)                       \
                        _->capacity * sizeof *_->items);                 \
   }                                                                     \
   *((mut_##T##_mut_p) _->items + _->len++) = *item;                     \
-  return _;                                                             \
 }                                                                       \
                                                                         \
 /** Splice the given slice in place of the removed elements,            \
@@ -315,9 +307,8 @@ push_##T##_array(mut_##T##_array_p _, T##_p item)                       \
     Starting at `position`, `delete` elements are deleted and           \
     the elements in the `insert` slice are inserted there               \
     as bit copies.                                                      \
-    The `insert` slice, if given, must belong to a different array.     \
-    Returns the given array pointer. */                                 \
-mut_##T##_array_p                                                       \
+    The `insert` slice, if given, must belong to a different array. */  \
+void                                                                    \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
                    T##_array_slice_p insert)                            \
@@ -349,12 +340,10 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
            insert->start_p,                                             \
            insert_len * sizeof *_->items);                              \
   }                                                                     \
-  return _;                                                             \
 }                                                                       \
                                                                         \
-/** Delete `delete` elements from the array at `position`.              \
-    Returns the given array pointer. */                                 \
-mut_##T##_array_p                                                       \
+/** Delete `delete` elements from the array at `position`. */           \
+void                                                                    \
 delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
   destruct_##T##_block((mut_##T##_p) _->items + position,               \
@@ -364,22 +353,20 @@ delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
           _->items + position + delete,                                 \
           (_->len - delete - position) * sizeof *_->items);             \
   _->len -= delete;                                                     \
-  return _;                                                             \
 }                                                                       \
                                                                         \
 /** Remove the element at the end/top of the array,                     \
-    copying its bits into `*item_p` unless `item_p` is `0`.             \
-    Returns the given array pointer,                                    \
-    or `NULL` if the array was empty. */                                \
-mut_##T##_array_p                                                       \
+    copying its bits into `*item_p` unless `item_p` is `0`,             \
+    in which case destruct_##T##_block()                                \
+    is called on those elements. */                                     \
+void                                                                    \
 pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
 {                                                                       \
-  if (not _->len) return NULL;                                          \
+  if (not _->len) return;                                               \
   mut_##T##_p last_p = (mut_##T##_p) _->items + _->len - 1;             \
   if (item_p) memmove((void*) last_p, item_p, sizeof *_->items);        \
   else        destruct_##T##_block((mut_##T##_p) last_p, last_p + 1);   \
   --_->len;                                                             \
-  return _;                                                             \
 }                                                                       \
                                                                         \
 /** Return a pointer to the element at `position`.                      \
@@ -400,12 +387,10 @@ get_mut_##T##_array(T##_array_p _, size_t position)                     \
   return (mut_##T##_p) _->items + position;                             \
 }                                                                       \
                                                                         \
-/** Return a pointer to the start of the array (same as `_->items`),    \
-    or `NULL` if the array was empty. */                                \
+/** Return a pointer to the start of the array (same as `_->items`) */  \
 T##_p                                                                   \
 T##_array_start(T##_array_p _)                                          \
 {                                                                       \
-  if (not _->len) return NULL;                                          \
   return _->items;                                                      \
 }                                                                       \
                                                                         \
