@@ -1,5 +1,6 @@
 CC=gcc -g
-CC_STRICT=$(CC) -g -std=c99 -pedantic-errors -Wall
+#ANALYZE=-fanalyzer
+CC_STRICT=$(CC) -g -std=c99 -pedantic-errors -Wall $(ANALYZE)
 NAME=cedro
 
 all: $(NAME)
