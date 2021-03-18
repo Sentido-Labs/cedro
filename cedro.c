@@ -138,6 +138,12 @@ TYPEDEF(Marker, {
     TokenType token_type; /**< Token type. */
   });
 
+/** Error while processing markers. */
+TYPEDEF(Error, {
+    size_t position;      /**< Position at which the problem was noticed. */
+    const char * message; /**< Message for user. */
+  });
+
 /** Initialize a marker with the given values. */
 void init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 {
