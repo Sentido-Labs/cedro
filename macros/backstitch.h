@@ -1,13 +1,14 @@
 /// Reorganize `obj::fn1(a)::fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
 void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
 {
-  Marker comma     = new_marker(src, ",", T_COMMA);
-  Marker semicolon = new_marker(src, ";", T_SEMICOLON);
-  Marker space     = new_marker(src, " ", T_SPACE);
   mut_Marker_p     start  = (mut_Marker_p) Marker_array_start(markers);
   mut_Marker_mut_p cursor = start;
   mut_Marker_mut_p end    = (mut_Marker_p) Marker_array_end(markers);
   mut_Error err = { .position = 0, .message = NULL };
+
+  Marker comma     = new_marker(src, ",", T_COMMA);
+  Marker semicolon = new_marker(src, ";", T_SEMICOLON);
+  Marker space     = new_marker(src, " ", T_SPACE);
   mut_Marker_array_slice object;
   mut_Marker_array_slice slice;
   while (cursor < end) {
