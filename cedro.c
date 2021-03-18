@@ -58,7 +58,9 @@ typedef enum TokenType {
   /** No token, used as marker for uninitialized data. */ T_NONE,
   /** Identifier.                                    */ T_IDENTIFIER,
   /** Type name.                                     */ T_TYPE,
+  /** Type struct.                                   */ T_TYPE_STRUCT,
   /** Type qualifier.                                */ T_TYPE_QUALIFIER,
+  /** Type definition.                               */ T_TYPEDEF,
   /** Control flow keyword.                          */ T_CONTROL_FLOW,
   /** Number, either integer or float.               */ T_NUMBER,
   /** String including the quotes: `"ABC"`           */ T_STRING,
@@ -67,6 +69,7 @@ typedef enum TokenType {
       See [Wikipedia, Basic ASCII control codes](https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Basic_ASCII_control_codes)    */ T_SPACE,
   /** Comment block or line.                         */ T_COMMENT,
   /** Preprocessor directive.                        */ T_PREPROCESSOR,
+  /** Generic macro.                                 */ T_GENERIC_MACRO,
   /** Start of a block: `{`                          */ T_BLOCK_START,
   /** End of a block: `}`                            */ T_BLOCK_END,
   /** Start of a tuple: `(`                          */ T_TUPLE_START,
@@ -98,10 +101,12 @@ typedef enum TokenType {
 } TokenType;
 static const unsigned char * const TOKEN_NAME[] = {
   B("NONE"),
-  B("Identifier"), B("Type"), B("Type qualifier"), B("Control flow"),
+  B("Identifier"),
+  B("Type"), B("Type struct"), B("Type qualifier"), B("Type definition"),
+  B("Control flow"),
   B("Number"), B("String"), B("Character"),
   B("Space"), B("Comment"),
-  B("Preprocessor"),
+  B("Preprocessor"), B("Generic macro"),
   B("Block start"), B("Block end"), B("Tuple start"), B("Tuple end"),
   B("Index start"), B("Index end"),
   B("Group start"), B("Group end"),
@@ -891,7 +896,7 @@ TokenType keyword_or_identifier(SourceCode start, SourceCode end)
         return T_CONTROL_FLOW;
       }
       if (mem_eq(start, "double", 6) || mem_eq(start, "struct", 6)) {
-        return T_TYPE;
+        return T_TYPE_STRUCT;
       }
       if (mem_eq(start, "extern", 6) || mem_eq(start, "inline", 6) ||
           mem_eq(start, "signed", 6) || mem_eq(start, "static", 6)){
@@ -904,6 +909,9 @@ TokenType keyword_or_identifier(SourceCode start, SourceCode end)
     case 7:
       if (mem_eq(start, "default", 7)) {
         return T_CONTROL_FLOW;
+      }
+      if (mem_eq(start, "typedef", 7)) {
+        return T_TYPEDEF;
       }
       if (mem_eq(start, "complex", 7)) {
         return T_TYPE;
@@ -919,6 +927,9 @@ TokenType keyword_or_identifier(SourceCode start, SourceCode end)
       }
       if (mem_eq(start, "_Alignof", 8)) {
         return T_OP_2;
+      }
+      if (mem_eq(start, "_Generic", 8)) {
+        return T_GENERIC_MACRO;
       }
       break;
     case 9:
@@ -1156,6 +1167,7 @@ void resolve_types(mut_Marker_array_p markers, Buffer_p src)
           --p;
           switch (p->token_type) {
             case T_TYPE_QUALIFIER:
+            case T_TYPE_STRUCT:
             case T_TYPE:
             case T_SPACE:
             case T_COMMENT:
