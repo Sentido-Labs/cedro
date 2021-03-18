@@ -1203,6 +1203,11 @@ typedef char*const FilePath;
 void read_file(mut_Buffer_p _, FilePath path)
 {
   mut_File_p input = fopen(path, "r");
+  if (!input) {
+    fprintf(stderr, "File not found: %s", path);
+    init_Buffer(_, 0);
+    return;
+  }
   fseek(input, 0, SEEK_END);
   size_t size = ftell(input);
   init_Buffer(_, size);
