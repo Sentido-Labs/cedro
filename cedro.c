@@ -659,6 +659,14 @@ Marker indentation(Buffer_p src, size_t index)
 /** Copy the characters between `start` and `end` into the given slice,
  *  as many as they fit. If the slice is too small, the content is truncated
  *  with a Unicode ellipsis symbol “…” at the end.
+ *
+ *  To extract the text for `Marker_p m` from `Byte_p src`:
+ *  ```
+ *  extract_string(src->items + m->start,
+ *                 src->items + m->start + m->len,
+ *                 &slice);
+ *  ```
+ *
  *  @param[in] start of a source code segment.
  *  @param[in] end of a source code segment.
  *  @param[out] slice buffer to receive the bytes copied from the segment.
