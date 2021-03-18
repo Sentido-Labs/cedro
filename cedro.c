@@ -1156,6 +1156,72 @@ SourceCode parse(Buffer_p src, mut_Marker_array_p markers)
   return cursor;
 }
 
+Marker_p
+find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
+{
+  Marker_mut_p start_of_line = cursor;
+  size_t nesting = 0;
+  while (start_of_line >= start) {
+    switch (start_of_line->token_type) {
+      case T_SEMICOLON:
+        ++start_of_line;
+        goto found;
+        break;
+      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+        if (nesting is 0) {
+          ++start_of_line;
+          goto found;
+        } else {
+          --nesting;
+        }
+        break;
+      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+        ++nesting;
+        break;
+      default: break;
+    }
+    --start_of_line;
+  }
+found:
+
+  if (nesting is_not 0 or start_of_line < start) {
+    err->message = "Excess group closings.";
+    err->position = cursor->start;
+  }
+
+  return start_of_line;
+}
+
+Marker_p
+find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
+{
+  Marker_mut_p end_of_line = cursor;
+  size_t nesting = 0;
+  while (end_of_line is_not end) {
+    switch (end_of_line->token_type) {
+      case T_SEMICOLON: goto found; break;
+      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+        ++nesting;
+        break;
+      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+        if (nesting is 0) goto found;
+        else              --nesting;
+        break;
+      default: break;
+    }
+    ++end_of_line;
+  }
+found:
+
+  if (nesting is_not 0 or end_of_line is end) {
+    err->message = "Unclosed group.";
+    err->position = cursor->start;
+  }
+
+  return end_of_line;
+}
+
+
 /** Resolve the types of expressions. W.I.P. */
 void resolve_types(mut_Marker_array_p markers, Buffer_p src)
 {
