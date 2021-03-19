@@ -334,8 +334,10 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
            _->items + _->len < insert->start_p);                        \
     assert(insert->end_p >= insert->start_p);                           \
     insert_len = insert->end_p - insert->start_p;                       \
-    if (_->len + insert_len - delete + PADDING >= _->capacity) {        \
-      _->capacity = 2*_->capacity + PADDING;                            \
+    size_t new_len = _->len + insert_len - delete;                      \
+    if (new_len >= _->capacity) {                                       \
+      while (new_len >= _->capacity) _->capacity = 2*_->capacity;       \
+      _->capacity += PADDING;                                           \
       _->items = realloc((void*) _->items,                              \
                          _->capacity * sizeof *_->items);               \
     }                                                                   \
