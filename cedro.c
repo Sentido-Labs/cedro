@@ -1164,8 +1164,10 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
   while (start_of_line >= start) {
     switch (start_of_line->token_type) {
       case T_SEMICOLON:
-        ++start_of_line;
-        goto found;
+        if (nesting is 0) {
+          ++start_of_line;
+          goto found;
+        }
         break;
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
         if (nesting is 0) {
@@ -1199,7 +1201,9 @@ find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
   size_t nesting = 0;
   while (end_of_line is_not end) {
     switch (end_of_line->token_type) {
-      case T_SEMICOLON: goto found; break;
+      case T_SEMICOLON:
+        if (nesting is 0) goto found;
+        break;
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
         ++nesting;
         break;
