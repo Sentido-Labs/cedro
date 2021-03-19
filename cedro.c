@@ -669,23 +669,43 @@ Marker indentation(Buffer_p src, size_t index)
  *                 &slice);
  *  ```
  *
- *  @param[in] start of a source code segment.
- *  @param[in] end of a source code segment.
- *  @param[out] slice buffer to receive the bytes copied from the segment.
+ *  @param[in] start marker pointer.
+ *  @param[in] end marker pointer.
+ *  @param[in] src byte buffer with the source code.
+ *  @param[out] string Byte buffer to receive the bytes copied from the segment.
  */
-SourceCode extract_string(SourceCode start, SourceCode end, mut_Buffer_p slice)
+void extract_src(Marker_p start, Marker_p end,
+                 Buffer_p src, mut_Buffer_p string)
 {
-  size_t len = end - start;
-  if (len >= slice->len - 4) {
-    memcpy((void*) slice->items, start, slice->len - 4);
-    mut_Byte_mut_p p = (mut_Byte_mut_p) slice->items + slice->len - 4;
-    *(p++) = 0xE2; *(p++) = 0x80; *(p++) = 0xA6;// UTF-8 ellipsis: “…”
-    len = slice->len;
-  } else {
-    memcpy((void*) slice->items, start, len);
+  if (end > start) {
+    SourceCode start_byte = src->items + start->start;
+    SourceCode   end_byte = src->items + (end-1)->start + (end-1)->len;
+    Byte_array_slice insert = {
+      .start_p = start_byte,
+      .end_p   =   end_byte
+    };
+    splice_Byte_array(string, string->len, 0, &insert);
   }
-  ((mut_Byte_mut_p) slice->items)[len] = 0;
-  return slice->items;
+}
+
+void push_str(mut_Buffer_p _, const char * const str)
+{
+  Byte_array_slice insert = {
+    .start_p = (Byte_p) str,
+    .end_p   = (Byte_p) str + strlen(str)
+  };
+  splice_Byte_array(_, _->len, 0, &insert);
+}
+
+const char * as_c_string(mut_Buffer_p _)
+{
+  if (_->len == _->capacity) {
+    push_Byte_array(_, 0);
+    --_->len;
+  } else {
+    *((mut_Byte_p) _->items + _->len) = 0;
+  }
+  return (const char * const) _->items;
 }
 
 /** Indent by the given number of double spaces, for the next `fprintf()`. */
@@ -744,8 +764,9 @@ void print_markers(Marker_array_p markers, Buffer_p src,
                    Options options)
 {
   size_t indent = 0;
-  mut_Byte slice_data[80];
-  mut_Buffer slice = { .capacity = 80, .len = 0, .items = &slice_data[0] };
+  mut_Buffer token_text;
+  init_Buffer(&token_text, 80);
+
   const char * const spacing = "                                ";
   const size_t spacing_len = strlen(spacing);
 
@@ -754,11 +775,10 @@ void print_markers(Marker_array_p markers, Buffer_p src,
   Marker_p m_end   = end?
       get_Marker_array(markers, end):
       Marker_array_end(markers);
-  mut_SourceCode token = NULL;
+  const char * token = NULL;
   for (Marker_mut_p m = m_start; m is_not m_end; ++m) {
-    token = extract_string(src->items + m->start,
-                           src->items + m->start + m->len,
-                           &slice);
+    extract_src(m, m+1, src, &token_text);
+    token = as_c_string(&token_text);
 
     const char * const spc = m->len <= spacing_len?
         spacing + m->len:
@@ -790,6 +810,8 @@ void print_markers(Marker_array_p markers, Buffer_p src,
         log_indent(indent, "%s %s← %s", token, spc, TOKEN_NAME[m->token_type]);
     }
   }
+
+  destruct_Buffer(&token_text);
 }
 
 /* Format the markers back into source code form.
