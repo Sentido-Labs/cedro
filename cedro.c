@@ -1314,8 +1314,8 @@ const char* const usage_es =
     "  --not-print-markers    No imprime los marcadores. (implícito)\n"
     "\n"
     "  --enable-core-dump     Activa volcado de memoria al estrellarse.\n"
-    "  --not-enable-core-dump Desactiva volcado de memoria al estrellarse.\n"
     "                         (implícito)\n"
+    "  --not-enable-core-dump Desactiva volcado de memoria al estrellarse.\n"
     "  --version          Muestra la versión: " CEDRO_VERSION "\n"
     ;
 const char* const usage_en =
@@ -1327,8 +1327,8 @@ const char* const usage_en =
     "  --not-discard-comments Does not discard comments.\n"
     "  --not-print-markers    Does not print the markers. (default)\n"
     "\n"
-    "  --enable-core-dump     Enable core dump on crash.\n"
-    "  --not-enable-core-dump Disable core dump on crash. (default)\n"
+    "  --enable-core-dump     Enable core dump on crash. (default)\n"
+    "  --not-enable-core-dump Disable core dump on crash.\n"
     "  --version          Show version: " CEDRO_VERSION "\n"
     ;
 
@@ -1341,7 +1341,7 @@ int main(int argc, char** argv)
     .print_markers    = false,
   };
 
-  bool enable_core_dump = false;
+  bool enable_core_dump = true;
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
