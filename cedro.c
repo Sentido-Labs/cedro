@@ -687,14 +687,16 @@ Marker indentation(Buffer_p src, size_t index)
 void extract_src(Marker_p start, Marker_p end,
                  Buffer_p src, mut_Buffer_p string)
 {
-  if (end > start) {
-    SourceCode start_byte = src->items + start->start;
-    SourceCode   end_byte = src->items + (end-1)->start + (end-1)->len;
+  Marker_mut_p cursor = start;
+  while (cursor < end) {
+    SourceCode start_byte = src->items + cursor->start;
+    SourceCode   end_byte = src->items + cursor->start + cursor->len;
     Byte_array_slice insert = {
       .start_p = start_byte,
       .end_p   =   end_byte
     };
     splice_Byte_array(string, string->len, 0, &insert);
+    ++cursor;
   }
 }
 
