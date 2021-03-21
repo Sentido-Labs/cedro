@@ -700,7 +700,8 @@ void push_str(mut_Buffer_p _, const char * const str)
 const char * as_c_string(mut_Buffer_p _)
 {
   if (_->len == _->capacity) {
-    push_Byte_array(_, 0);
+    Byte terminator = '\0';
+    push_Byte_array(_, &terminator);
     --_->len;
   } else {
     *((mut_Byte_p) _->items + _->len) = 0;
