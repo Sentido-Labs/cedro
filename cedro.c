@@ -299,6 +299,16 @@ destruct_##T##_array(mut_##T##_array_p _)                               \
   free((mut_##T##_mut_p) (_->items));                                   \
   *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
 }                                                                       \
+/** Abandon any resources allocated for this struct.                    \
+    This just indicates that we transferred ownership somewhere else.   \
+ */                                                                     \
+static void                                                             \
+abandon_##T##_array(mut_##T##_array_p _)                                \
+{                                                                       \
+  _->len = 0;                                                           \
+  _->capacity = 0;                                                      \
+  *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
+}                                                                       \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
     resizing the array if needed. */                                    \
