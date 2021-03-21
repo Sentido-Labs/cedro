@@ -319,7 +319,7 @@ abandon_##T##_array(mut_##T##_array_p _)                                \
 static void                                                             \
 push_##T##_array(mut_##T##_array_p _, T##_p item_p)                     \
 {                                                                       \
-  assert(item_p is_not NULL);                                               \
+  assert(item_p is_not NULL);                                           \
   if (_->capacity < _->len + 1 + PADDING) {                             \
     _->capacity = 2*_->capacity + PADDING;                              \
     _->items = realloc((void*) _->items,                                \

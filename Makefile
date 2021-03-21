@@ -21,6 +21,9 @@ test: $(NAME)-test.c $(NAME) macros/*.h Makefile
 	./test
 .PHONY: test
 
+# gcc -fanalyzer needs at least GCC 10.
+# http://cppcheck.sourceforge.net/
+# https://sparse.docs.kernel.org/en/latest/
 check: $(NAME).c macros/*.h Makefile
 	mkdir -p doc/cppcheck
 	cpp $(NAME).c >$(NAME).i
