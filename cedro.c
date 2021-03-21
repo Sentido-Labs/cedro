@@ -26,8 +26,8 @@
 #define is     ==
 #define in(min, x, max) (x >= min && x <= max)
 #include <string.h> // For memcpy(), memmove().
-#define mem_eq(start, bytes, len) (0 == memcmp(start, bytes, len))
-#define str_eq(a, b)              (0 == strcmp(a, b))
+#define mem_eq(start, bytes, len) (0 is memcmp(start, bytes, len))
+#define str_eq(a, b)              (0 is strcmp(a, b))
 
 #include <assert.h>
 #include <sys/resource.h>
@@ -319,7 +319,7 @@ abandon_##T##_array(mut_##T##_array_p _)                                \
 static void                                                             \
 push_##T##_array(mut_##T##_array_p _, T##_p item_p)                     \
 {                                                                       \
-  assert(item_p != NULL);                                               \
+  assert(item_p is_not NULL);                                               \
   if (_->capacity < _->len + 1 + PADDING) {                             \
     _->capacity = 2*_->capacity + PADDING;                              \
     _->items = realloc((void*) _->items,                                \
@@ -729,7 +729,7 @@ push_str(mut_Buffer_p _, const char * const str)
 static const char *
 as_c_string(mut_Buffer_p _)
 {
-  if (_->len == _->capacity) {
+  if (_->len is _->capacity) {
     Byte terminator = '\0';
     push_Byte_array(_, &terminator);
     --_->len;
@@ -765,7 +765,7 @@ new_marker(mut_Buffer_p src, const char * const text, TokenType token_type)
     for (; (cursor = memchr(cursor, first_character, src->len)); ++cursor) {
       Byte_mut_p p1 = cursor;
       Byte_mut_p p2 = (Byte_p) text;
-      while (*p2 && p1 != end && *p1 == *p2) { ++p1; ++p2; }
+      while (*p2 && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
       if (*p2 is 0) {
         match = cursor;
         break;
@@ -1437,7 +1437,7 @@ int main(int argc, char** argv)
 
   if (enable_core_dump) {
     struct rlimit core_limit = { RLIM_INFINITY, RLIM_INFINITY };
-    assert(0 == setrlimit(RLIMIT_CORE, &core_limit));
+    assert(0 is setrlimit(RLIMIT_CORE, &core_limit));
   }
 
   for (int i = 1; i < argc; ++i) {
