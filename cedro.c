@@ -317,14 +317,22 @@ abandon_##T##_array(mut_##T##_array_p _)                                \
 /** Push a bit copy of the element on the end/top of the array,         \
     resizing the array if needed. */                                    \
 static void                                                             \
+ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
+{                                                                       \
+  minimum += PADDING;                                                   \
+  if (minimum <= _->capacity) return;                                   \
+  _->capacity = 2*_->capacity + PADDING;                                \
+  if (minimum > _->capacity) _->capacity = minimum;                     \
+  _->items = realloc((void*) _->items, _->capacity * sizeof *_->items); \
+}                                                                       \
+                                                                        \
+/** Push a bit copy of the element on the end/top of the array,         \
+    resizing the array if needed. */                                    \
+static void                                                             \
 push_##T##_array(mut_##T##_array_p _, T##_p item_p)                     \
 {                                                                       \
   assert(item_p is_not NULL);                                           \
-  if (_->capacity < _->len + 1 + PADDING) {                             \
-    _->capacity = 2*_->capacity + PADDING;                              \
-    _->items = realloc((void*) _->items,                                \
-                       _->capacity * sizeof *_->items);                 \
-  }                                                                     \
+  ensure_capacity_##T##_array(_, _->len + 1);                           \
   *((mut_##T##_p) _->items + _->len++) = *item_p;                       \
 }                                                                       \
                                                                         \
@@ -339,23 +347,19 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
                    T##_array_slice_p insert)                            \
 {                                                                       \
-  assert(position + delete <= _->len);                                  \
+  assert(delete <= _->len && position + delete <= _->len);              \
   destruct_##T##_block((mut_##T##_p) _->items + position,               \
                    _->items + position + delete);                       \
                                                                         \
   size_t insert_len = 0;                                                \
+  size_t new_len = _->len - delete;                                     \
   if (insert) {                                                         \
     assert(_->items          > insert->end_p ||                         \
            _->items + _->len < insert->start_p);                        \
     assert(insert->end_p >= insert->start_p);                           \
     insert_len = insert->end_p - insert->start_p;                       \
-    size_t new_len = _->len + insert_len - delete;                      \
-    if (new_len >= _->capacity) {                                       \
-      while (new_len >= _->capacity) _->capacity = 2*_->capacity;       \
-      _->capacity += PADDING;                                           \
-      _->items = realloc((void*) _->items,                              \
-                         _->capacity * sizeof *_->items);               \
-    }                                                                   \
+    new_len += insert_len;                                              \
+    ensure_capacity_##T##_array(_, new_len);                            \
   }                                                                     \
                                                                         \
   size_t gap_end = position + insert_len;                               \
