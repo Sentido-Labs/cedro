@@ -915,6 +915,7 @@ unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
         fputc(' ', out);
         continue;
       } else if (m->token_type is T_PREPROCESSOR) {
+        fputc('\n', out);
         eol_pending = true;
       } else if (m->token_type is T_COMMENT) {
         // If not eol_pending, set it if this is a line comment.
