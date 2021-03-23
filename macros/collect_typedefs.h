@@ -63,9 +63,23 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
           --segment_end;
         }
 
-        log("FOUND TYPEDEF");
+        Marker_mut_p name_start = segment_end - 1;
+        if (name_start->token_type is T_TUPLE_END) {
+          size_t nesting = 0;
+          while (name_start is_not segment_start) {
+            if      (name_start->token_type is T_TUPLE_END  ) ++nesting;
+            else if (name_start->token_type is T_TUPLE_START) --nesting;
+            --name_start;
+            if (not nesting) break;
+          }
+          if (name_start is_not segment_start and
+              name_start->token_type is T_TUPLE_END) {
+            while (name_start is_not segment_start &&
+                   name_start->token_type is_not T_IDENTIFIER) --name_start;
+          }
+        }
         mut_Typedef instance = {
-          .name = *(segment_end - 1),
+          .name  = *name_start,
           .value = { 0, 0, NULL }
         };
         init_Marker_array(&instance.value, 10);
@@ -79,8 +93,8 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
         } else {
           type_value_end = segment_end - 1;
         }
-        for (Marker_mut_p m = segment_start; m is_not segment_end - 1; ++m) {
-          if (m->token_type is_not T_SPACE) {
+        for (Marker_mut_p m = segment_start; m is_not segment_end; ++m) {
+          if (m is_not name_start and m->token_type is_not T_SPACE) {
             push_Marker_array(&instance.value, m);
           }
         }
@@ -129,12 +143,15 @@ static void macro_collect_typedefs(Marker_array_p markers, Buffer_p src)
   } else {
     while (cursor is_not end) {
       delete_Byte_array(&string_buffer, 0, string_buffer.len);
+
       typedef_pos = cursor - start;
       size_t line_number = prev_line_number +
           count_line_ends_between(src, prev_typedef_pos, typedef_pos);
       push_printf(&string_buffer, "--- Typedef at line %d: ", line_number);
       extract_src(&cursor->name, (&cursor->name) + 1, src, &string_buffer);
       prev_typedef_pos = typedef_pos;
+      prev_line_number = line_number;
+
       push_str(&string_buffer, " ← ");
       Marker_mut_p v = Marker_array_start(&cursor->value);
       Marker_p v_end = Marker_array_end  (&cursor->value);
