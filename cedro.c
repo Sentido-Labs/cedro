@@ -374,6 +374,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
 static void                                                             \
 delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
+  assert(position + delete <= _->len);                                  \
   destruct_##T##_block((mut_##T##_p) _->items + position,               \
                    _->items + position + delete);                       \
                                                                         \
