@@ -1,4 +1,5 @@
 TYPEDEF(Typedef, {
+    size_t token_index;
     mut_Marker name;
     mut_Marker_array value;
   });
@@ -23,6 +24,12 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
 
   while (cursor is_not end) {
     if (cursor->token_type is T_TYPEDEF) {
+      mut_Typedef instance = {
+        .token_index = cursor - start,
+        .name  = { 0, 0, T_NONE },
+        .value = { 0, 0, NULL }
+      };
+
       if (++cursor is end) break;
       while (cursor->token_type is T_SPACE && cursor is_not end) ++cursor;
       if (cursor is end) break;
@@ -78,10 +85,8 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
                    name_start->token_type is_not T_IDENTIFIER) --name_start;
           }
         }
-        mut_Typedef instance = {
-          .name  = *name_start,
-          .value = { 0, 0, NULL }
-        };
+
+        instance.name = *name_start;
         init_Marker_array(&instance.value, 10);
 
         if (type_value_end) {
@@ -144,7 +149,7 @@ static void macro_collect_typedefs(Marker_array_p markers, Buffer_p src)
     while (cursor is_not end) {
       delete_Byte_array(&string_buffer, 0, string_buffer.len);
 
-      typedef_pos = cursor - start;
+      typedef_pos = get_Marker_array(markers, cursor->token_index)->start;
       size_t line_number = prev_line_number +
           count_line_ends_between(src, prev_typedef_pos, typedef_pos);
       push_printf(&string_buffer, "--- Typedef at line %d: ", line_number);
