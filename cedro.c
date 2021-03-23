@@ -1557,7 +1557,7 @@ int main(int argc, char** argv)
     if (options.print_markers) {
       print_markers(&markers, &src, 0, 0, options);
     } else {
-      unparse(&markers, &src, options, stderr);
+      unparse(&markers, &src, options, stdout);
     }
 
     destruct_Marker_array(&markers);
