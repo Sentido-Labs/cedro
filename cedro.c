@@ -1363,6 +1363,44 @@ read_file(mut_Buffer_p _, FilePath path)
 #include "macros/backstitch.h"
 #include "macros/count_markers.h"
 
+#include <time.h>
+/** Returns the time in seconds, as a double precision floating point value. */
+static double
+benchmark(mut_Buffer_p src_p, Options_p options)
+{
+  const size_t repetitions = 100;
+  time_t start, end;
+  time(&start);
+
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
+  for (size_t i = repetitions + 1; i; --i) {
+    delete_Marker_array(&markers, 0, markers.len);
+
+    parse(src_p, &markers);
+
+    //resolve_types(&markers, src_p);
+
+    if (options->apply_macros) {
+      /*log("Running macro count_markers:");
+      macro_count_markers(&markers, src_p);
+      log("Running macro collect_typedefs:");
+      macro_collect_typedefs(&markers, src_p);
+      log("Running macro fn:");
+      macro_fn(&markers, src_p);
+      log("Running macro let:");
+      macro_let(&markers, src_p);*/
+      //log("Running macro backstitch:");
+      macro_backstitch(&markers, src_p);
+    }
+    fputc('.', stderr);
+  }
+  destruct_Marker_array(&markers);
+
+  time(&end);
+  return difftime(end, start) / (double) repetitions;
+}
+
 static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
@@ -1376,6 +1414,7 @@ usage_es =
     "  --enable-core-dump     Activa volcado de memoria al estrellarse.\n"
     "                         (implícito)\n"
     "  --not-enable-core-dump Desactiva volcado de memoria al estrellarse.\n"
+    "  --benchmark        Realiza una medición de rendimiento.\n"
     "  --version          Muestra la versión: " CEDRO_VERSION "\n"
     ;
 static const char* const
@@ -1390,6 +1429,7 @@ usage_en =
     "\n"
     "  --enable-core-dump     Enable core dump on crash. (default)\n"
     "  --not-enable-core-dump Disable core dump on crash.\n"
+    "  --benchmark        Run a performance benchmark.\n"
     "  --version          Show version: " CEDRO_VERSION "\n"
     ;
 
@@ -1403,6 +1443,7 @@ int main(int argc, char** argv)
   };
 
   bool enable_core_dump = true;
+  bool run_benchmark    = false;
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
@@ -1424,6 +1465,8 @@ int main(int argc, char** argv)
       } else if (str_eq("--enable-core-dump", arg) ||
                  str_eq("--not-enable-core-dump", arg)) {
         enable_core_dump = flag_value;
+      } else if (str_eq("--benchmark", arg)) {
+        run_benchmark = true;
       } else if (str_eq("--version", arg)) {
         fprintf(stderr, CEDRO_VERSION "\n");
       } else {
@@ -1447,6 +1490,17 @@ int main(int argc, char** argv)
 
     mut_Buffer src;
     read_file(&src, arg);
+
+    if (run_benchmark) {
+      double t = benchmark(&src, &options);
+      if (t < 1.0) {
+        t *= 1000.0;
+        log("%.fms for %s", t, arg);
+      } else {
+        log("%.1fs for %s", t, arg);
+      }
+      continue;
+    }
 
     mut_Marker_array markers;
     init_Marker_array(&markers, 8192);
