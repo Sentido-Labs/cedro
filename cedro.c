@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <iso646.h>
@@ -724,6 +725,7 @@ extract_src(Marker_p start, Marker_p end, Buffer_p src, mut_Buffer_p string)
   }
 }
 
+/** Append the C string bytes to the end of the given buffer. */
 static void
 push_str(mut_Buffer_p _, const char * const str)
 {
@@ -732,6 +734,27 @@ push_str(mut_Buffer_p _, const char * const str)
     .end_p   = (Byte_p) str + strlen(str)
   };
   splice_Byte_array(_, _->len, 0, &insert);
+}
+
+static void
+push_printf(mut_Buffer_p _, const char * const fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+
+  ensure_capacity_Byte_array(_, _->len + 80);
+  size_t available = _->capacity - _->len;
+  size_t needed = vsnprintf((char*) Byte_array_end(_), available - 1,
+                            fmt, args);
+  if (needed > available) {
+    ensure_capacity_Byte_array(_, _->len + needed + 1);
+    available = _->capacity - _->len;
+    vsnprintf((char*) Byte_array_end(_), available - 1,
+              fmt, args);
+  }
+  _->len += needed;
+
+  va_end(args);
 }
 
 static const char *
