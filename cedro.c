@@ -639,20 +639,23 @@ preprocessor(SourceCode start, SourceCode end)
 
 
 
-/** Compute the line number for the given position,
-    which is a cursor position. */
+/** Compute the number of LF characters between the given positions.
+
+    To get the line number at `pos`:
+    ```1 + count_line_ends_between(src, 0, position);```
+ */
 static size_t
-line_number(Buffer_p src, size_t position)
+count_line_ends_between(Buffer_p src, size_t start, size_t position)
 {
-  size_t line_number = 1;
-  mut_SourceCode pointer = src->items;
+  size_t count = 0;
+  mut_SourceCode pointer = src->items + start;
 
   while ((pointer =
           memchr(pointer, '\n', src->items + position - pointer ))) {
     ++pointer;
-    ++line_number;
+    ++count;
   }
-  return line_number;
+  return count;
 }
 
 /** Extract the indentation of the line for the character at `index`,
@@ -1533,7 +1536,7 @@ int main(int argc, char** argv)
     destruct_Marker_array(&markers);
 
     log("\nRead %ld lines.",
-        line_number((Buffer_p)&src, cursor - src.items) - 1);
+        count_line_ends_between((Buffer_p)&src, 0, cursor - src.items) - 1);
 
     destruct_Buffer(&src);
   }

@@ -30,7 +30,9 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
       size_t nesting = 0;
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
-        log("At line %lu: %s", line_number(src, err.position), err.message);
+        log("At line %lu: %s",
+            1 + count_line_ends_between(src, 0, err.position),
+            err.message);
         err.message = NULL;
       } else {
         // Trim space before object.
@@ -46,7 +48,9 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             find_line_end(cursor, end, &err);
         cursor = end_of_line;
         if (err.message) {
-          log("At line %lu: %s", line_number(src, err.position), err.message);
+          log("At line %lu: %s",
+              count_line_ends_between(src, 0, err.position),
+              err.message);
           err.message = NULL;
         } else {
           bool is_statement =
@@ -77,7 +81,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             }
             if (nesting) {
               log("Unclosed group in line %lu",
-                  line_number(src, segment_start->start));
+                  count_line_ends_between(src, 0, segment_start->start));
               return;
             }
             // Trim space after segment.
