@@ -1392,6 +1392,7 @@ read_file(mut_Buffer_p _, FilePath path)
 #include "macros/function_pointer.h"
 #include "macros/backstitch.h"
 #include "macros/count_markers.h"
+#include "macros/collect_typedefs.h"
 
 #include <time.h>
 /** Returns the time in seconds, as a double precision floating point value. */
@@ -1542,6 +1543,8 @@ int main(int argc, char** argv)
     if (options.apply_macros) {
       log("Running macro count_markers:");
       macro_count_markers(&markers, &src);
+      log("Running macro collect_typedefs:");
+      macro_collect_typedefs(&markers, &src);
       log("Running macro fn:");
       macro_fn(&markers, &src);
       log("Running macro let:");
