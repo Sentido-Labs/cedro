@@ -110,9 +110,11 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             slice.end_p   = insertion_point;
             splice_Marker_array(&replacement, replacement.len, 0, &slice);
             splice_Marker_array(&replacement, replacement.len, 0, &object);
-            assert(insertion_point is_not segment_end);
-            if (insertion_point is_not segment_start &&
-                insertion_point->token_type is_not T_TUPLE_END) {
+            if (insertion_point is segment_end) {
+              log("Syntax error in line %ld",
+                  1 + count_line_ends_between(src, 0, segment_start->start));
+              return;
+            } else if (insertion_point->token_type is_not T_TUPLE_END) {
               push_Marker_array(&replacement, &comma);
               push_Marker_array(&replacement, &space);
             }
