@@ -1,4 +1,4 @@
-/// Reorganize `obj::fn1(a)::fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
+/// Reorganize `obj @ fn1(a), fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
 static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
 {
   mut_Marker_p     start  = (mut_Marker_p) Marker_array_start(markers);
@@ -93,16 +93,21 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
 
             mut_Marker_mut_p insertion_point = segment_start;
             if (segment_start->token_type is T_INDEX_START ||
-                segment_start->token_type is T_OP_1 ||
+                segment_start->token_type is T_OP_1        ||
                 segment_start->token_type is T_OP_14) {
               // If the segment starts with “[”, “.”, or “->”,
               // then this is already the correct insertion point.
             } else {
-              // Default case, a function call.
+              // Assume function call, look for parenthesis:
               for (bool inside_parenthesis = false;
-                   not inside_parenthesis && insertion_point < segment_end;
+                   not inside_parenthesis and insertion_point < segment_end;
                    ++insertion_point) {
                 inside_parenthesis = T_TUPLE_START is insertion_point->token_type;
+              }
+              if (insertion_point is segment_end) {
+                // No parenthesis found, this is clearly not a function call.
+                // Useful for prefix declaration like: const @ int x, float y;
+                insertion_point = segment_start;
               }
             }
 
@@ -110,10 +115,8 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
             slice.end_p   = insertion_point;
             splice_Marker_array(&replacement, replacement.len, 0, &slice);
             splice_Marker_array(&replacement, replacement.len, 0, &object);
-            if (insertion_point is segment_end) {
-              log("Syntax error in line %ld",
-                  1 + count_line_ends_between(src, 0, segment_start->start));
-              return;
+            if (insertion_point is segment_start) {
+              push_Marker_array(&replacement, &space);
             } else if (insertion_point->token_type is_not T_TUPLE_END) {
               push_Marker_array(&replacement, &comma);
               push_Marker_array(&replacement, &space);
