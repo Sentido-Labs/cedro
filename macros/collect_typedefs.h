@@ -5,9 +5,8 @@ TYPEDEF(Typedef, {
   });
 
 DEFINE_ARRAY_OF(Typedef, 0, {
-    mut_Typedef_mut_p p = (mut_Typedef_mut_p) cursor;
     while (cursor is_not end) {
-      destruct_Marker_array(&p++->value);
+      destruct_Marker_array(&(cursor++->value));
     }
   });
 
@@ -123,6 +122,8 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
       ++cursor;
     }
   }
+
+  destruct_Buffer(&string_buffer);
 }
 
 static void macro_collect_typedefs(Marker_array_p markers, Buffer_p src)
@@ -184,5 +185,6 @@ static void macro_collect_typedefs(Marker_array_p markers, Buffer_p src)
     }
   }
 
+  destruct_Typedef_array(&typedefs);
   destruct_Buffer(&string_buffer);
 }
