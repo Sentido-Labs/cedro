@@ -1436,10 +1436,10 @@ benchmark(mut_Buffer_p src_p, Options_p options)
 static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
-    "  --discard-spaces   Descarta los espacios en blanco. (implícito)\n"
+    "  --discard-space    Descarta los espacios en blanco. (implícito)\n"
     "  --discard-comments Descarta los comentarios. (implícito)\n"
     "  --print-markers    Imprime los marcadores.\n"
-    "  --not-discard-spaces   No descarta los espacios.\n"
+    "  --not-discard-space    No descarta los espacios.\n"
     "  --not-discard-comments No descarta los comentarios.\n"
     "  --not-print-markers    No imprime los marcadores. (implícito)\n"
     "\n"
@@ -1452,10 +1452,10 @@ usage_es =
 static const char* const
 usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
-    "  --discard-spaces   Discards all whitespace. (default)\n"
+    "  --discard-space    Discards all whitespace. (default)\n"
     "  --discard-comments Discards the comments. (default)\n"
     "  --print-markers    Prints the markers.\n"
-    "  --not-discard-spaces   Does not discard whitespace.\n"
+    "  --not-discard-space    Does not discard whitespace.\n"
     "  --not-discard-comments Does not discard comments.\n"
     "  --not-print-markers    Does not print the markers. (default)\n"
     "\n"
