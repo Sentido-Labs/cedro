@@ -1562,6 +1562,7 @@ int main(int argc, char** argv)
 
     destruct_Marker_array(&markers);
 
+    fflush(stdout);
     log("\nRead %ld lines.",
         count_line_ends_between((Buffer_p)&src, 0, cursor - src.items) - 1);
 
