@@ -1522,6 +1522,11 @@ int main(int argc, char** argv)
     assert(0 is setrlimit(RLIMIT_CORE, &core_limit));
   }
 
+  if (run_benchmark) {
+    options.print_markers = false;
+    options.apply_macros = false;
+  }
+
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
     if (arg[0] is '-') continue;
