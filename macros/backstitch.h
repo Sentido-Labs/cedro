@@ -68,12 +68,18 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
               ++segment_end;
             }
             if (nesting) {
-              log("Unclosed group in line %lu",
+              log("Syntax error in line %lu: unclosed group.",
                   count_line_ends_between(src, 0, segment_start->start));
               return;
             }
             // Trim space after segment.
             skip_space_back(segment_start, segment_end);
+
+            if (segment_end is segment_start) {
+              log("Syntax warning in line %ld: empty backstitch segment.",
+                  1 + count_line_ends_between(src, 0, segment_start->start));
+              segment_end = ++segment_start;
+              continue;
             }
 
             mut_Marker_mut_p insertion_point = segment_start;
@@ -89,22 +95,29 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
                    ++insertion_point) {
                 inside_parenthesis = T_TUPLE_START is insertion_point->token_type;
               }
-              if (insertion_point is segment_end) {
-                // No parenthesis found, this is clearly not a function call.
-                // Useful for prefix declaration like: const @ int x, float y;
-                insertion_point = segment_start;
-              }
+              // If insertion_point is segment_end, no parenthesis were found:
+              // this is clearly not a function call.
+              // Useful for prefix declaration like: const @ int x, float y;
             }
 
-            slice.start_p = segment_start;
-            slice.end_p   = insertion_point;
-            splice_Marker_array(&replacement, replacement.len, 0, &slice);
-            splice_Marker_array(&replacement, replacement.len, 0, &object);
             if (insertion_point is segment_start) {
+              splice_Marker_array(&replacement, replacement.len, 0, &object);
+              if ((segment_start+1)->token_type == T_SPACE) {
+                push_Marker_array(&replacement, &space);
+              }
+            } else if (insertion_point is segment_end) {
+              insertion_point = segment_start;
+              splice_Marker_array(&replacement, replacement.len, 0, &object);
               push_Marker_array(&replacement, &space);
-            } else if (insertion_point->token_type is_not T_TUPLE_END) {
-              push_Marker_array(&replacement, &comma);
-              push_Marker_array(&replacement, &space);
+            } else {
+              slice.start_p = segment_start;
+              slice.end_p   = insertion_point;
+              splice_Marker_array(&replacement, replacement.len, 0, &slice);
+              splice_Marker_array(&replacement, replacement.len, 0, &object);
+              if (insertion_point->token_type is_not T_TUPLE_END) {
+                push_Marker_array(&replacement, &comma);
+                push_Marker_array(&replacement, &space);
+              }
             }
             slice.start_p = insertion_point;
             slice.end_p   = segment_end;
