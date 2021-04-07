@@ -294,15 +294,42 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
-/** Release any resources allocated for this struct. */                 \
+/** Initialize the array at the given pointer, as a view into a         \
+    constant C array.                                                \n \
+    Can be used for copy-on-write strings:                           \n \
+    \code{.c}                                                           \
+    mut_char_array text;                                                \
+    init_from_constant_char_array(&text, "abce", 4);                    \
+    push_char_array(&text, 'f');                                        \
+    {...}                                                               \
+    destruct_char_array(&text);                                         \
+    \endcode                                                            \
+ */                                                                     \
+static void                                                             \
+init_from_constant_##T##_array(mut_##T##_array_p _,                     \
+                               const T* items, size_t len)              \
+{                                                                       \
+  _->len = len;                                                         \
+  _->capacity = len;                                                    \
+  _->items = items;                                                     \
+  /* Used malloc() here instead of calloc() because we need realloc()   \
+     later anyway, so better keep the exact same behaviour. */          \
+}                                                                       \
+/** Release any resources allocated for this struct.                 \n \
+    Safe to call also for objects initialized as views over constants   \
+    with `init_from_constant_##T##_array()`.                            \
+ */                                                                     \
 static void                                                             \
 destruct_##T##_array(mut_##T##_array_p _)                               \
 {                                                                       \
-  destruct_##T##_block((mut_##T##_p) _->items, _->items + _->len);      \
   _->len = 0;                                                           \
-  _->capacity = 0;                                                      \
-  free((mut_##T##_mut_p) (_->items));                                   \
-  *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
+  if (0 != _->capacity) {                                               \
+    /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
+    destruct_##T##_block((mut_##T##_p) _->items, _->items + _->len);    \
+    free((mut_##T##_mut_p) (_->items));                                 \
+    *((mut_##T##_mut_p *) &(_->items)) = NULL;                          \
+    _->capacity = 0;                                                    \
+  }                                                                     \
 }                                                                       \
 /** Abandon any resources allocated for this struct.                    \
     This just indicates that we transferred ownership somewhere else.   \
@@ -322,9 +349,16 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 {                                                                       \
   minimum += PADDING;                                                   \
   if (minimum <= _->capacity) return;                                   \
-  _->capacity = 2*_->capacity + PADDING;                                \
-  if (minimum > _->capacity) _->capacity = minimum;                     \
-  _->items = realloc((void*) _->items, _->capacity * sizeof *_->items); \
+  if (0 == _->capacity) {                                               \
+    /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
+    _->capacity = minimum + PADDING;                                    \
+    _->items = malloc(_->capacity * sizeof *_->items);                  \
+  } else {                                                              \
+    _->capacity = 2*_->capacity + PADDING;                              \
+    if (minimum > _->capacity) _->capacity = minimum;                   \
+    _->items = realloc((void*) _->items,                                \
+                       _->capacity * sizeof *_->items);                 \
+  }
 }                                                                       \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
