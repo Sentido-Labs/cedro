@@ -66,17 +66,17 @@ typedef enum TokenType {
   /** Number, either integer or float.               */ T_NUMBER,
   /** String including the quotes: `"ABC"`           */ T_STRING,
   /** Character including the apostrophes: ```'A'``` */ T_CHARACTER,
-  /** Whitespace, a block of either `SP`, `HT`, `LF` or `CR`.
+  /** Whitespace, a block of `SP`, `HT`, `LF` or `CR`.
       See [Wikipedia, Basic ASCII control codes](https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Basic_ASCII_control_codes)    */ T_SPACE,
   /** Comment block or line.                         */ T_COMMENT,
   /** Preprocessor directive.                        */ T_PREPROCESSOR,
   /** Generic macro.                                 */ T_GENERIC_MACRO,
   /** Start of a block: `{`                          */ T_BLOCK_START,
-  /** End of a block: `}`                            */ T_BLOCK_END,
+  /** End   of a block: `}`                          */ T_BLOCK_END,
   /** Start of a tuple: `(`                          */ T_TUPLE_START,
-  /** End of a tuple: `)`                            */ T_TUPLE_END,
+  /** End   of a tuple: `)`                          */ T_TUPLE_END,
   /** Start of an array index: `[`                   */ T_INDEX_START,
-  /** End of an array index: `]`                     */ T_INDEX_END,
+  /** End   of an array index: `]`                   */ T_INDEX_END,
   /** Invisible grouping of tokens, for instance for operator precedence.
                                                      */ T_GROUP_START,
   /** End invisible grouping of tokens.              */ T_GROUP_END,
@@ -276,8 +276,8 @@ destruct_##T##_block(mut_##T##_mut_p cursor, T##_p end)                 \
   DESTRUCT_BLOCK                                                        \
 }                                                                       \
                                                                         \
-/** Initialize the array at the given pointer.                        \n \
-    For local variables, use it like this:                            \n\
+/** Initialize the array at the given pointer.                       \n \
+    For local variables, use it like this:                           \n \
     \code{.c}                                                           \
     mut_##T##_array things;                                             \
     init_##T##_array(&things, 100); ///< We expect around 100 items.    \
@@ -315,7 +315,7 @@ abandon_##T##_array(mut_##T##_array_p _)                                \
   *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
 }                                                                       \
                                                                         \
-/** Push a bit copy of the element on the end/top of the array,         \
+/** Make sure that the array is ready to hold `minimum` elements,       \
     resizing the array if needed. */                                    \
 static void                                                             \
 ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
@@ -1330,7 +1330,7 @@ resolve_types(mut_Marker_array_p markers, Buffer_p src)
     if (T_SPACE is m->token_type || T_COMMENT is m->token_type) continue;
     if (previous) {
       if ((T_TUPLE_START is m->token_type || T_OP_14 is m->token_type) &&
-          T_IDENTIFIER  is previous->token_type) {
+          T_IDENTIFIER is previous->token_type) {
         mut_Marker_mut_p p = previous;
         while (p is_not m_start) {
           --p;
