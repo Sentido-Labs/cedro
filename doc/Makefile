@@ -5,7 +5,7 @@ CSS=cedro.css
 
 doc: ../*.c ../*.h Makefile Doxyfile
 	doxygen
-	cd tree-sitter; doxygen
+	sustituye --old='([^ ])\\n[ ]{4,}' --new='\1</div>\n<div class="line">' html/
 
 Doxyfile:
 	doxygen -g

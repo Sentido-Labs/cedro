@@ -167,8 +167,8 @@ init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
  */
 
 /** DESTRUCT_BLOCK is a block of code that releases the resources for a block
-    of objects of type T, between `mut_##T##_p cursor` and `T##_p end`.\n
-    For instance: { while (cursor != end) destruct_##T(cursor++); } \n
+    of objects of type T, between `mut_T_p cursor` and `T_p end`. \n
+    For instance: { while (cursor != end) destruct_T(cursor++); } \n
     If the type does not need any clean-up, just use `{}`.
 */
 #define DEFINE_ARRAY_OF(T, PADDING, DESTRUCT_BLOCK)                     \
@@ -190,8 +190,12 @@ typedef struct T##_array {                                              \
 typedef const struct T##_array                                          \
 /*   */ T##_array, * const       T##_array_p, *       T##_array_mut_p;  \
                                                                         \
-/** Example:                                                            \
-    <code>T##_array_slice s = { &items, &items + 10 };</code> */        \
+/**                                                                     \
+   Example:                                                             \
+   \code{.c}                                                            \
+   T##_array_slice s = { &items, &items + 10 };                         \
+   \endcode                                                             \
+*/                                                                      \
 typedef struct T##_array_slice {                                        \
   /** Start address. */                                                 \
   T##_mut_p start_p;                                                    \
@@ -207,12 +211,14 @@ typedef const struct T##_array_slice                                    \
    A slice of an array where the elements are <b>mut</b>able.           \
                                                                         \
    Example:                                                             \
-   <code>T##_mut_array a;</code>                                        \
-   <code>init_##T##_array(&a, 0);</code>                                \
-   <code>T##_mut_array_slice s;</code>                                  \
-   <code>init_##T##_array_slice(&s, &a, 3, 10);</code>                  \
-   <code>assert(&s->start_p == &a->items + 3;</code>                    \
-   <code>assert(&s->end_p   == &a->items + 10;</code>                   \
+   \code{.c}                                                            \
+   T##_mut_array a;\n                                                   \
+   init_##T##_array(&a, 0);\n                                           \
+   T##_mut_array_slice s;\n                                             \
+   init_##T##_array_slice(&s, &a, 3, 10);\n                             \
+   assert(&s->start_p == &a->items + 3);\n                              \
+   assert(&s->end_p   == &a->items + 10);                               \
+   \endcode                                                             \
 */                                                                      \
 typedef struct T##_array_mut_slice {                                    \
   /** Start address. */                                                 \
@@ -229,12 +235,14 @@ typedef struct T##_array_mut_slice {                                    \
    A slice of an array where the elements are <b>const</b>ants.         \
                                                                         \
    Example:                                                             \
-   <code>T##_mut_array a;</code>                                        \
-   <code>init_##T##_array(&a, 0);</code>                                \
-   <code>T##_mut_array_slice s;</code>                                  \
-   <code>init_##T##_array_slice(&s, &a, 3, 10);</code>                  \
-   <code>assert(&s->start_p == &a->items + 3;</code>                    \
-   <code>assert(&s->end_p   == &a->items + 10;</code>                   \
+   \code{.c}                                                            \
+   T##_mut_array a;\n                                                   \
+   init_##T##_array(&a, 0);\n                                           \
+   T##_mut_array_slice s;\n                                             \
+   init_##T##_array_slice(&s, &a, 3, 10);\n                             \
+   assert(&s->start_p == &a->items + 3);\n                              \
+   assert(&s->end_p   == &a->items + 10);                               \
+   \endcode                                                             \
 */                                                                      \
 typedef const struct T##_array_mut_slice                                \
 /* Slice of a mutable array whose items are read-only.                  \
@@ -279,10 +287,10 @@ destruct_##T##_block(mut_##T##_mut_p cursor, T##_p end)                 \
 /** Initialize the array at the given pointer.                       \n \
     For local variables, use it like this:                           \n \
     \code{.c}                                                           \
-    mut_##T##_array things;                                             \
-    init_##T##_array(&things, 100); ///< We expect around 100 items.    \
-    {...}                                                               \
-    destruct_##T##_array(&things);                                      \
+    mut_##T##_array things;\n                                           \
+    init_##T##_array(&things, 100); ///< We expect around 100 items.\n  \
+    {...}\n                                                             \
+    destruct_##T##_array(&things);\n                                    \
     \endcode                                                            \
  */                                                                     \
 static void                                                             \
@@ -298,11 +306,11 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
     constant C array.                                                \n \
     Can be used for copy-on-write strings:                           \n \
     \code{.c}                                                           \
-    mut_char_array text;                                                \
-    init_from_constant_char_array(&text, "abce", 4);                    \
-    push_char_array(&text, 'f');                                        \
-    {...}                                                               \
-    destruct_char_array(&text);                                         \
+    mut_char_array text;\n                                              \
+    init_from_constant_char_array(&text, "abce", 4);\n                  \
+    push_char_array(&text, 'f');\n                                      \
+    {...}\n                                                             \
+    destruct_char_array(&text);\n                                       \
     \endcode                                                            \
  */                                                                     \
 static void                                                             \
@@ -358,7 +366,7 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
     if (minimum > _->capacity) _->capacity = minimum;                   \
     _->items = realloc((void*) _->items,                                \
                        _->capacity * sizeof *_->items);                 \
-  }
+  }                                                                     \
 }                                                                       \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
@@ -733,9 +741,9 @@ indentation(Buffer_p src, size_t index)
  *
  *  To extract the text for `Marker_p m` from `Byte_p src`:
  *  ```
- *  extract_string(src->items + m->start,
- *                 src->items + m->start + m->len,
- *                 &slice);
+ *  extract_src(src->items + m->start,
+ *              src->items + m->start + m->len,
+ *              &slice);
  *  ```
  *
  *  @param[in] start marker pointer.
