@@ -15,18 +15,10 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
     if (cursor->token_type is T_BACKSTITCH) {
       mut_Marker_mut_p first_segment_start = cursor + 1;
       // Trim space before first segment.
-      while (first_segment_start is_not end &&
-             (first_segment_start->token_type is T_SPACE ||
-              first_segment_start->token_type is T_COMMENT)) {
-        ++first_segment_start;
-      }
+      skip_space_forward(first_segment_start, end);
       object.end_p = cursor; // Object ends before the “@”.
       // Trim space after object, between it and backstitch operator.
-      while (object.end_p is_not start &&
-             ((object.end_p - 1)->token_type is T_SPACE ||
-              (object.end_p - 1)->token_type is T_COMMENT)) {
-        --object.end_p;
-      }
+      skip_space_back(start, object.end_p);
       size_t nesting = 0;
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
@@ -36,11 +28,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
         err.message = NULL;
       } else {
         // Trim space before object.
-        while (start_of_line is_not first_segment_start &&
-               (start_of_line->token_type is T_SPACE ||
-                start_of_line->token_type is T_COMMENT)) {
-          ++start_of_line;
-        }
+        skip_space_forward(start_of_line, first_segment_start);
         object.start_p = start_of_line;
         Marker object_indentation = indentation(src, object.start_p->start);
         cursor = first_segment_start;
@@ -85,10 +73,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
               return;
             }
             // Trim space after segment.
-            while (segment_end is_not segment_start &&
-                   ((segment_end - 1)->token_type is T_SPACE ||
-                    (segment_end - 1)->token_type is T_COMMENT)) {
-              --segment_end;
+            skip_space_back(segment_start, segment_end);
             }
 
             mut_Marker_mut_p insertion_point = segment_start;
@@ -135,11 +120,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
               }
               segment_start = segment_end + 1;// One token: “,”
               // Trim space before next segment.
-              while (segment_start is_not end_of_line &&
-                     (segment_start->token_type is T_SPACE ||
-                      segment_start->token_type is T_COMMENT)) {
-                ++segment_start;
-              }
+              skip_space_forward(segment_start, end_of_line);
               segment_end = segment_start;
             }
           }

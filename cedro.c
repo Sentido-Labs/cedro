@@ -1248,6 +1248,12 @@ parse(Buffer_p src, mut_Marker_array_p markers)
   return cursor;
 }
 
+/** Skip forward all `T_SPACE` and `T_COMMENT` markers. */
+#define skip_space_forward(start, end) while (start is_not end and (start->token_type is T_SPACE or start->token_type is T_COMMENT)) ++start
+
+/** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
+#define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
+
 static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
