@@ -1248,7 +1248,7 @@ parse(Buffer_p src, mut_Marker_array_p markers)
   return cursor;
 }
 
-static Marker_p
+static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
   Marker_mut_p start_of_line = cursor;
@@ -1286,7 +1286,7 @@ found:
   return start_of_line;
 }
 
-static Marker_p
+static inline Marker_p
 find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
 {
   Marker_mut_p end_of_line = cursor;
