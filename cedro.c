@@ -1394,12 +1394,18 @@ read_file(mut_Buffer_p _, FilePath path)
 }
 
 /***************** macros *****************/
-#include "macros/fn.h"
-#include "macros/let.h"
-#include "macros/function_pointer.h"
-#include "macros/backstitch.h"
-#include "macros/count_markers.h"
-#include "macros/collect_typedefs.h"
+typedef void (*MacroFunction_p)(mut_Marker_array_p markers, mut_Buffer_p src);
+typedef const struct Macro {
+  MacroFunction_p function;
+  const char* name;
+} Macro, * Macro_p;
+#include "macros.h"
+#define MACROS_DECLARE
+const Macro macros[] = {
+#include "macros.h"
+  { NULL, NULL }
+};
+#undef  MACROS_DECLARE
 
 #include <time.h>
 /** Returns the time in seconds, as a double precision floating point value. */
@@ -1534,6 +1540,13 @@ int main(int argc, char** argv)
     mut_Buffer src;
     read_file(&src, arg);
 
+    mut_Marker_array markers;
+    init_Marker_array(&markers, 8192);
+
+    SourceCode cursor = parse(&src, &markers);
+
+    resolve_types(&markers, &src);
+
     if (run_benchmark) {
       double t = benchmark(&src, &options);
       if (t < 1.0) {
@@ -1542,33 +1555,21 @@ int main(int argc, char** argv)
       } else {
         log("%.1fs for %s", t, arg);
       }
-      continue;
-    }
-
-    mut_Marker_array markers;
-    init_Marker_array(&markers, 8192);
-
-    SourceCode cursor = parse(&src, &markers);
-
-    resolve_types(&markers, &src);
-
-    if (options.apply_macros) {
-      log("Running macro count_markers:");
-      macro_count_markers(&markers, &src);
-      log("Running macro collect_typedefs:");
-      macro_collect_typedefs(&markers, &src);
-      log("Running macro fn:");
-      macro_fn(&markers, &src);
-      log("Running macro let:");
-      macro_let(&markers, &src);
-      log("Running macro backstitch:");
-      macro_backstitch(&markers, &src);
-    }
-
-    if (options.print_markers) {
-      print_markers(&markers, &src, 0, 0, options);
     } else {
-      unparse(&markers, &src, options, stdout);
+      if (options.apply_macros) {
+        Macro_p macro = macros;
+        while (macro->name && macro->function) {
+          log("Running macro %s:", macro->name);
+          macro->function(&markers, &src);
+          ++macro;
+        }
+      }
+
+      if (options.print_markers) {
+        print_markers(&markers, &src, 0, 0, options);
+      } else {
+        unparse(&markers, &src, options, stdout);
+      }
     }
 
     destruct_Marker_array(&markers);
