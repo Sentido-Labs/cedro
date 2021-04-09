@@ -1402,7 +1402,7 @@ typedef const struct Macro {
 } Macro, * Macro_p;
 #include "macros.h"
 #define MACROS_DECLARE
-const Macro macros[] = {
+Macro macros[] = {
 #include "macros.h"
   { NULL, NULL }
 };
