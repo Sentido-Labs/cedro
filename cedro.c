@@ -323,6 +323,15 @@ init_from_constant_##T##_array(mut_##T##_array_p _,                     \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
+/** Heap-allocate and initialize a mut_##T##_array.                     \
+ */                                                                     \
+static mut_##T##_array_p                                                \
+new_##T##_array(size_t initial_capacity)                                \
+{                                                                       \
+  mut_##T##_array_p _ = malloc(sizeof mut_##T##_array);                 \
+  init_##T##_array(_, initial_capacity);                                \
+  return _;                                                             \
+}                                                                       \
 /** Release any resources allocated for this struct.                 \n \
     Safe to call also for objects initialized as views over constants   \
     with `init_from_constant_##T##_array()`.                            \
@@ -338,6 +347,18 @@ destruct_##T##_array(mut_##T##_array_p _)                               \
     *((mut_##T##_mut_p *) &(_->items)) = NULL;                          \
     _->capacity = 0;                                                    \
   }                                                                     \
+}                                                                       \
+/** Delete this heap-allocated struct,                                  \
+    and release any resources allocated for it.                      \n \
+    Same as `destruct_##T##_array(_); free(_);`.                     \n \
+    Safe to call also for objects initialized as views over constants   \
+    with `init_from_constant_##T##_array()`.                            \
+ */                                                                     \
+static void                                                             \
+free_##T##_array(mut_##T##_array_p _)                                   \
+{                                                                       \
+  destruct_##T##_array(_);                                              \
+  free(_);                                                              \
 }                                                                       \
 /** Abandon any resources allocated for this struct.                    \
     This just indicates that we transferred ownership somewhere else.   \
