@@ -18,8 +18,8 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
   Marker_mut_p cursor = start;
   Marker_p     end    = Marker_array_end(markers);
 
-  mut_Buffer string_buffer;
-  init_Buffer(&string_buffer, 20);
+  mut_Byte_array string_buffer;
+  init_Byte_array(&string_buffer, 20);
 
   while (cursor is_not end) {
     if (cursor->token_type is T_TYPEDEF) {
@@ -123,10 +123,10 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
     }
   }
 
-  destruct_Buffer(&string_buffer);
+  destruct_Byte_array(&string_buffer);
 }
 
-static void macro_collect_typedefs(Marker_array_p markers, Buffer_p src)
+static void macro_collect_typedefs(Marker_array_p markers, Byte_array_p src)
 {
   mut_Typedef_array typedefs;
   init_Typedef_array(&typedefs, 20);
@@ -137,8 +137,8 @@ static void macro_collect_typedefs(Marker_array_p markers, Buffer_p src)
   Typedef_mut_p cursor = start;
   Typedef_p     end    = Typedef_array_end(&typedefs);
 
-  mut_Buffer string_buffer;
-  init_Buffer(&string_buffer, 20);
+  mut_Byte_array string_buffer;
+  init_Byte_array(&string_buffer, 20);
   size_t typedef_pos, prev_typedef_pos = 0, prev_line_number = 1;
 
   if (err.message) {
@@ -186,5 +186,5 @@ static void macro_collect_typedefs(Marker_array_p markers, Buffer_p src)
   }
 
   destruct_Typedef_array(&typedefs);
-  destruct_Buffer(&string_buffer);
+  destruct_Byte_array(&string_buffer);
 }

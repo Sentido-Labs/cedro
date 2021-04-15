@@ -1,5 +1,5 @@
 /// Reorganize `obj @ fn1(a), fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
-static void macro_backstitch(mut_Marker_array_p markers, mut_Buffer_p src)
+static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
   mut_Marker_p     start  = (mut_Marker_p) Marker_array_start(markers);
   mut_Marker_mut_p cursor = start;

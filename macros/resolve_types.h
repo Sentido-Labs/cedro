@@ -1,6 +1,6 @@
 /** Resolve the types of expressions. W.I.P. */
 static void
-resolve_types(mut_Marker_array_p markers, Buffer_p src)
+resolve_types(mut_Marker_array_p markers, Byte_array_p src)
 {
   mut_Marker_p m_start = (mut_Marker_p) Marker_array_start(markers);
   mut_Marker_p m_end   = (mut_Marker_p) Marker_array_end(markers);

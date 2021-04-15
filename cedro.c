@@ -171,23 +171,15 @@ typedef const uint8_t
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
  *  for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
-typedef mut_Byte_array mut_Buffer, *mut_Buffer_p;
-typedef     Byte_array     Buffer, *    Buffer_p;
-#define init_Buffer init_Byte_array
-#define destruct_Buffer destruct_Byte_array
-#define PADDING_Buffer PADDING_Byte_ARRAY
-
-typedef Byte_p         SourceCode; /**< 0-terminated. */
-typedef Byte_mut_p mut_SourceCode; /**< 0-terminated. */
 
 /* Lexer definitions. */
 
 /** Match an identifier. */
-static SourceCode
-identifier(SourceCode start, SourceCode end)
+static Byte_p
+identifier(Byte_p start, Byte_p end)
 {
   if (end <= start) return NULL;
-  mut_SourceCode cursor = start;
+  Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
   if (in('a',c,'z') or in('A',c,'Z') or c is '_') {
     ++cursor;
@@ -206,11 +198,11 @@ identifier(SourceCode start, SourceCode end)
 /** Match a number.
     This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
     Rejecting that is left to the compiler. */
-static SourceCode
-number(SourceCode start, SourceCode end)
+static Byte_p
+number(Byte_p start, Byte_p end)
 {
   if (end <= start) return NULL;
-  mut_SourceCode cursor = start;
+  Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
   if (c >= '1' and c <= '9') {
     ++cursor;
@@ -245,11 +237,11 @@ number(SourceCode start, SourceCode end)
 }
 
 /** Match a string literal. */
-static SourceCode
-string(SourceCode start, SourceCode end)
+static Byte_p
+string(Byte_p start, Byte_p end)
 {
   if (*start is_not '"' or end <= start) return NULL;
-  mut_SourceCode cursor = start + 1;
+  Byte_mut_p cursor = start + 1;
   while (cursor is_not end and *cursor is_not '"') {
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
     ++cursor;
@@ -258,21 +250,21 @@ string(SourceCode start, SourceCode end)
 }
 
 /** Match an `#include <...>` directive. */
-static SourceCode
-system_include(SourceCode start, SourceCode end)
+static Byte_p
+system_include(Byte_p start, Byte_p end)
 {
   if (*start is_not '<' or end <= start) return NULL;
-  mut_SourceCode cursor = start + 1;
+  Byte_mut_p cursor = start + 1;
   while (cursor is_not end and *cursor is_not '>') ++cursor;
   return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
 /** Match a character literal. */
-static SourceCode
-character(SourceCode start, SourceCode end)
+static Byte_p
+character(Byte_p start, Byte_p end)
 {
   if (*start is_not '\'' or end <= start) return NULL;
-  mut_SourceCode cursor = start + 1;
+  Byte_mut_p cursor = start + 1;
   while (cursor is_not end and *cursor is_not '\'') {
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
     ++cursor;
@@ -281,18 +273,18 @@ character(SourceCode start, SourceCode end)
 }
 
 /** Match whitespace: one or more space, TAB, CR, or NL characters. */
-static SourceCode
-space(SourceCode start, SourceCode end)
+static Byte_p
+space(Byte_p start, Byte_p end)
 {
   if (end <= start) return NULL;
-  mut_SourceCode cursor = start;
+  Byte_mut_p cursor = start;
   while (cursor < end) {
     switch (*cursor) {
       case ' ': case '\t': case '\n': case '\r':
         ++cursor;
         break;
       case '\\':
-        // No need to check bounds thanks to PADDING_Buffer.
+        // No need to check bounds thanks to PADDING_Byte_array.
         if (*(cursor + 1) is_not '\n') goto exit;
         ++cursor;
         break;
@@ -306,11 +298,11 @@ exit:
 }
 
 /** Match a comment block. */
-static SourceCode
-comment(SourceCode start, SourceCode end)
+static Byte_p
+comment(Byte_p start, Byte_p end)
 {
   if (*start is_not '/' or end <= start + 1) return NULL;
-  mut_SourceCode cursor = start + 1;
+  Byte_mut_p cursor = start + 1;
   if (*cursor is '/') {
     ++cursor;
     while (cursor < end and *cursor is_not '\n') ++cursor;
@@ -328,22 +320,22 @@ comment(SourceCode start, SourceCode end)
 }
 
 /** Match a line comment. */
-static SourceCode
-comment_line(SourceCode start, SourceCode end)
+static Byte_p
+comment_line(Byte_p start, Byte_p end)
 {
   if (*start is_not '/' or end <= start + 1) return NULL;
-  mut_SourceCode cursor = start + 1;
+  Byte_mut_p cursor = start + 1;
   if (*cursor is_not '/') return NULL;
   while (cursor < end && *cursor is_not '\n') ++cursor;
   return cursor;
 }
 
 /** Match a pre-processor directive. */
-static SourceCode
-preprocessor(SourceCode start, SourceCode end)
+static Byte_p
+preprocessor(Byte_p start, Byte_p end)
 {
   if (*start is_not '#' or end <= start) return NULL;
-  mut_SourceCode cursor = start + 1;
+  Byte_mut_p cursor = start + 1;
   if (cursor is end) return cursor;
   mut_Byte c = *cursor;
   if (in('a',c,'z') or in('A',c,'Z') or c is '_') {
@@ -371,10 +363,10 @@ preprocessor(SourceCode start, SourceCode end)
     ```1 + count_line_ends_between(src, 0, position);```
  */
 static size_t
-count_line_ends_between(Buffer_p src, size_t start, size_t position)
+count_line_ends_between(Byte_array_p src, size_t start, size_t position)
 {
   size_t count = 0;
-  mut_SourceCode pointer = src->items + start;
+  Byte_mut_p pointer = src->items + start;
 
   while ((pointer =
           memchr(pointer, '\n', src->items + position - pointer ))) {
@@ -388,7 +380,7 @@ count_line_ends_between(Buffer_p src, size_t start, size_t position)
     including the preceding `LF` character if it exists.
  */
 static Marker
-indentation(Buffer_p src, size_t index)
+indentation(Byte_array_p src, size_t index)
 {
   Byte_mut_p start_of_line = get_Byte_array(src, index);
   Byte_p start = Byte_array_start(src);
@@ -435,12 +427,12 @@ indentation(Buffer_p src, size_t index)
  *  @param[out] string Byte buffer to receive the bytes copied from the segment.
  */
 static void
-extract_src(Marker_p start, Marker_p end, Buffer_p src, mut_Buffer_p string)
+extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p string)
 {
   Marker_mut_p cursor = start;
   while (cursor < end) {
-    SourceCode start_byte = src->items + cursor->start;
-    SourceCode   end_byte = src->items + cursor->start + cursor->len;
+    Byte_p start_byte = src->items + cursor->start;
+    Byte_p   end_byte = src->items + cursor->start + cursor->len;
     Byte_array_slice insert = {
       .start_p = start_byte,
       .end_p   =   end_byte
@@ -452,7 +444,7 @@ extract_src(Marker_p start, Marker_p end, Buffer_p src, mut_Buffer_p string)
 
 /** Append the C string bytes to the end of the given buffer. */
 static void
-push_str(mut_Buffer_p _, const char * const str)
+push_str(mut_Byte_array_p _, const char * const str)
 {
   Byte_array_slice insert = {
     .start_p = (Byte_p) str,
@@ -462,7 +454,7 @@ push_str(mut_Buffer_p _, const char * const str)
 }
 
 static void
-push_printf(mut_Buffer_p _, const char * const fmt, ...)
+push_printf(mut_Byte_array_p _, const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
@@ -483,7 +475,7 @@ push_printf(mut_Buffer_p _, const char * const fmt, ...)
 }
 
 static const char *
-as_c_string(mut_Buffer_p _)
+as_c_string(mut_Byte_array_p _)
 {
   if (_->len is _->capacity) {
     Byte terminator = '\0';
@@ -510,7 +502,7 @@ indent_log(size_t indent)
  *  and return a marker poiting there.
  */
 static Marker
-new_marker(mut_Buffer_p src, const char * const text, TokenType token_type)
+new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
 {
   Byte_mut_p cursor = Byte_array_start(src);
   Byte_mut_p match  = NULL;
@@ -548,13 +540,13 @@ new_marker(mut_Buffer_p src, const char * const text, TokenType token_type)
  *  @param[in] options formatting options.
  */
 static void
-print_markers(Marker_array_p markers, Buffer_p src,
+print_markers(Marker_array_p markers, Byte_array_p src,
               size_t start, size_t end,
               Options options)
 {
   size_t indent = 0;
-  mut_Buffer token_text;
-  init_Buffer(&token_text, 80);
+  mut_Byte_array token_text;
+  init_Byte_array(&token_text, 80);
 
   const char * const spacing = "                                ";
   const size_t spacing_len = strlen(spacing);
@@ -600,7 +592,7 @@ print_markers(Marker_array_p markers, Buffer_p src,
     }
   }
 
-  destruct_Buffer(&token_text);
+  destruct_Byte_array(&token_text);
 }
 
 /* Format the markers back into source code form.
@@ -610,7 +602,7 @@ print_markers(Marker_array_p markers, Buffer_p src,
  * @param[in] out FILE pointer where the source code will be written.
  */
 static void
-unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
+unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
 {
   Marker_p m_end = Marker_array_end(markers);
   bool eol_pending = false;
@@ -673,7 +665,7 @@ unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
    `sizeof _Alignof`
  */
 static TokenType
-keyword_or_identifier(SourceCode start, SourceCode end)
+keyword_or_identifier(Byte_p start, Byte_p end)
 {
   switch (end - start) {
     case 2:
@@ -773,13 +765,13 @@ keyword_or_identifier(SourceCode start, SourceCode end)
    appending the new markers to whatever was already there.
    Remember to empty the `markers` array before calling this function
    if you are re-parsing from scratch. */
-static SourceCode
-parse(Buffer_p src, mut_Marker_array_p markers)
+static Byte_p
+parse(Byte_array_p src, mut_Marker_array_p markers)
 {
-  assert(PADDING_Buffer >= 8); // Must be greater than the longest keyword.
-  mut_SourceCode cursor = src->items;
-  SourceCode end = src->items + src->len;
-  mut_SourceCode prev_cursor = NULL;
+  assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
+  Byte_mut_p cursor = src->items;
+  Byte_p end = src->items + src->len;
+  Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
   bool include_mode = false;
   bool define_mode  = false;
@@ -791,7 +783,7 @@ parse(Buffer_p src, mut_Marker_array_p markers)
     prev_cursor = cursor;
 
     TokenType token_type = T_NONE;
-    mut_SourceCode token_end = NULL;
+    Byte_mut_p token_end = NULL;
     if        ((token_end = identifier(cursor, end))) {
       TOKEN1(keyword_or_identifier(cursor, token_end));
       if (token_end is cursor) log("error T_IDENTIFIER");
@@ -1052,17 +1044,17 @@ typedef FILE* mut_File_p;
 typedef char*const FilePath;
 /** Read a file into the given buffer. Errors are printed to `stderr`. */
 static void
-read_file(mut_Buffer_p _, FilePath path)
+read_file(mut_Byte_array_p _, FilePath path)
 {
   mut_File_p input = fopen(path, "r");
   if (!input) {
     fprintf(stderr, "File not found: %s", path);
-    init_Buffer(_, 0);
+    init_Byte_array(_, 0);
     return;
   }
   fseek(input, 0, SEEK_END);
   size_t size = ftell(input);
-  init_Buffer(_, size);
+  init_Byte_array(_, size);
   rewind(input);
   _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
   if (feof(input)) {
@@ -1078,7 +1070,8 @@ read_file(mut_Buffer_p _, FilePath path)
 }
 
 /***************** macros *****************/
-typedef void (*MacroFunction_p)(mut_Marker_array_p markers, mut_Buffer_p src);
+typedef void (*MacroFunction_p)(mut_Marker_array_p markers,
+                                mut_Byte_array_p src);
 typedef const struct Macro {
   MacroFunction_p function;
   const char* name;
@@ -1094,7 +1087,7 @@ Macro macros[] = {
 #include <time.h>
 /** Returns the time in seconds, as a double precision floating point value. */
 static double
-benchmark(mut_Buffer_p src_p, Options_p options)
+benchmark(mut_Byte_array_p src_p, Options_p options)
 {
   const size_t repetitions = 100;
   time_t start, end;
@@ -1219,13 +1212,13 @@ int main(int argc, char** argv)
     char* arg = argv[i];
     if (arg[0] is '-') continue;
 
-    mut_Buffer src;
+    mut_Byte_array src;
     read_file(&src, arg);
 
     mut_Marker_array markers;
     init_Marker_array(&markers, 8192);
 
-    SourceCode cursor = parse(&src, &markers);
+    Byte_p cursor = parse(&src, &markers);
 
     if (run_benchmark) {
       double t = benchmark(&src, &options);
@@ -1256,9 +1249,9 @@ int main(int argc, char** argv)
 
     fflush(stdout);
     log("\nRead %ld lines.",
-        count_line_ends_between((Buffer_p)&src, 0, cursor - src.items) - 1);
+        count_line_ends_between((Byte_array_p)&src, 0, cursor - src.items) - 1);
 
-    destruct_Buffer(&src);
+    destruct_Byte_array(&src);
   }
 
   return 0;
