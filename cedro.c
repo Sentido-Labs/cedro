@@ -27,8 +27,9 @@
 #define is     ==
 #define in(min, x, max) (x >= min && x <= max)
 #include <string.h> // For memcpy(), memmove().
-#define mem_eq(start, bytes, len) (0 is memcmp(start, bytes, len))
-#define str_eq(a, b)              (0 is strcmp(a, b))
+#define mem_eq(a, b, len)   (0 is memcmp(a, b, len))
+#define str_eq(a, b)        (0 is strcmp(a, b))
+#define strn_eq(a, b, len)  (0 is strncmp(a, b, len))
 
 #include <assert.h>
 #include <sys/resource.h>
@@ -1168,7 +1169,7 @@ int main(int argc, char** argv)
     char* arg = argv[i];
     if (arg[0] is '-') {
       bool flag_value = true;
-      if (0 is strncmp("--not-", arg, 6)) flag_value = false;
+      if (strn_eq("--not-", arg, 6)) flag_value = false;
       if (str_eq("--discard-comments", arg) ||
           str_eq("--not-discard-comments", arg)) {
         options.discard_comments = flag_value;
@@ -1189,10 +1190,9 @@ int main(int argc, char** argv)
       } else if (str_eq("--version", arg)) {
         fprintf(stderr, CEDRO_VERSION "\n");
       } else {
-        fprintf(stderr,
-                0 is strncmp(getenv("LANG"), "es", 2)?
-                usage_es:
-                usage_en);
+        log(strn_eq(getenv("LANG"), "es", 2)?
+            usage_es:
+            usage_en);
         return str_eq("-h", arg) || str_eq("--help", arg)? 0: 1;
       }
     }
