@@ -647,7 +647,7 @@ unparse(Marker_array_p markers, Buffer_p src, Options options, FILE* out)
         eol_pending = eol_pending || (m->len > 1 && '/' is text[1]);
       }
     }
-    fwrite(text, sizeof *src->items, m->len, out);
+    fwrite(text, sizeof(*src->items), m->len, out);
   }
 }
 
@@ -1064,7 +1064,7 @@ read_file(mut_Buffer_p _, FilePath path)
   size_t size = ftell(input);
   init_Buffer(_, size);
   rewind(input);
-  _->len = fread((mut_Byte_p) _->items, sizeof *_->items, size, input);
+  _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
   if (feof(input)) {
     fprintf(stderr, "Unexpected EOF at %ld reading “%s”.\n", _->len, path);
   } else if (ferror(input)) {
@@ -1072,7 +1072,7 @@ read_file(mut_Buffer_p _, FilePath path)
   } else {
     fprintf(stderr, "Read %ld bytes from “%s”.\n", _->len, path);
     memset((mut_Byte_p) _->items + _->len, 0,
-           (_->capacity - _->len) * sizeof *_->items);
+           (_->capacity - _->len) * sizeof(*_->items));
   }
   fclose(input); input = NULL;
 }

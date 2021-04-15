@@ -139,7 +139,7 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
 {                                                                       \
   _->len = 0;                                                           \
   _->capacity = initial_capacity + PADDING;                             \
-  _->items = malloc(_->capacity * sizeof *_->items);                    \
+  _->items = malloc(_->capacity * sizeof(*_->items));                   \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
@@ -169,7 +169,7 @@ init_from_constant_##T##_array(mut_##T##_array_p _,                     \
 static mut_##T##_array_p                                                \
 new_##T##_array(size_t initial_capacity)                                \
 {                                                                       \
-  mut_##T##_array_p _ = malloc(sizeof mut_##T##_array);                 \
+  mut_##T##_array_p _ = malloc(sizeof(T##_array));                      \
   init_##T##_array(_, initial_capacity);                                \
   return _;                                                             \
 }                                                                       \
@@ -222,12 +222,12 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
   if (0 == _->capacity) {                                               \
     /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
     _->capacity = minimum + PADDING;                                    \
-    _->items = malloc(_->capacity * sizeof *_->items);                  \
+    _->items = malloc(_->capacity * sizeof(*_->items));                 \
   } else {                                                              \
     _->capacity = 2*_->capacity + PADDING;                              \
     if (minimum > _->capacity) _->capacity = minimum;                   \
     _->items = realloc((void*) _->items,                                \
-                       _->capacity * sizeof *_->items);                 \
+                       _->capacity * sizeof(*_->items));                \
   }                                                                     \
 }                                                                       \
                                                                         \
@@ -270,12 +270,12 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
   size_t gap_end = position + insert_len;                               \
   memmove((void*) (_->items + gap_end),                                 \
           _->items + position + delete,                                 \
-          (_->len - delete - position) * sizeof *_->items);             \
+          (_->len - delete - position) * sizeof(*_->items));            \
   _->len = _->len + insert_len - delete;                                \
   if (insert_len) {                                                     \
     memcpy((void*) (_->items + position),                               \
            insert->start_p,                                             \
-           insert_len * sizeof *_->items);                              \
+           insert_len * sizeof(*_->items));                             \
   }                                                                     \
 }                                                                       \
                                                                         \
@@ -289,7 +289,7 @@ delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
                                                                         \
   memmove((void*) (_->items + position),                                \
           _->items + position + delete,                                 \
-          (_->len - delete - position) * sizeof *_->items);             \
+          (_->len - delete - position) * sizeof(*_->items));            \
   _->len -= delete;                                                     \
 }                                                                       \
                                                                         \
@@ -302,7 +302,7 @@ pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
 {                                                                       \
   if (not _->len) return;                                               \
   mut_##T##_p last_p = (mut_##T##_p) _->items + _->len - 1;             \
-  if (item_p) memmove((void*) last_p, item_p, sizeof *_->items);        \
+  if (item_p) memmove((void*) last_p, item_p, sizeof(*_->items));       \
   else        destruct_##T##_block((mut_##T##_p) last_p, last_p + 1);   \
   --_->len;                                                             \
 }                                                                       \
