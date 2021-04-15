@@ -1,12 +1,6 @@
 /* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
 /** \file Array template definition. */
 
-#define CONST_AND_MUT_VARIANT(T, NAME) T NAME
-/* First GCC supporting this is 4.6. https://gcc.gnu.org/wiki/C11Status
-   With C11 we could have const/mut variants:
-#define CONST_AND_MUT_VARIANT(T, NAME) union { T NAME; mut_##T mut_##NAME; }
- */
-
 /** DESTRUCT_BLOCK is a block of code that releases the resources for a block
     of objects of type T, between `mut_T_p cursor` and `T_p end`. \n
     For instance: { while (cursor != end) destruct_T(cursor++); } \n
@@ -26,7 +20,7 @@ typedef struct T##_array {                                              \
   /** Maximum length before reallocation is needed. */                  \
   size_t capacity;                                                      \
   /** The items stored in this array. */                                \
-  CONST_AND_MUT_VARIANT(T##_mut_p, items);                              \
+  T##_mut_p items;                                                      \
 } mut_##T##_array, * const mut_##T##_array_p, * mut_##T##_array_mut_p;  \
 typedef const struct T##_array                                          \
 /*   */ T##_array, * const       T##_array_p, *       T##_array_mut_p;  \
