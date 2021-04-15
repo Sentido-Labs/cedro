@@ -181,7 +181,7 @@ static void                                                             \
 destruct_##T##_array(mut_##T##_array_p _)                               \
 {                                                                       \
   _->len = 0;                                                           \
-  if (0 != _->capacity) {                                               \
+  if (_->capacity is_not 0) {                                           \
     /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
     destruct_##T##_block((mut_##T##_p) _->items, _->items + _->len);    \
     free((mut_##T##_mut_p) (_->items));                                 \
@@ -230,7 +230,7 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 {                                                                       \
   minimum += PADDING;                                                   \
   if (minimum <= _->capacity) return;                                   \
-  if (0 == _->capacity) {                                               \
+  if (_->capacity is 0) {                                               \
     /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
     _->capacity = minimum + PADDING;                                    \
     _->items = malloc(_->capacity * sizeof(*_->items));                 \

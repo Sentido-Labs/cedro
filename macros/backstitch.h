@@ -11,7 +11,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker space     = new_marker(src, " ", T_SPACE);
   mut_Marker_array_slice object;
   mut_Marker_array_slice slice;
-  while (cursor < end) {
+  while (cursor is_not end) {
     if (cursor->token_type is T_BACKSTITCH) {
       mut_Marker_mut_p first_segment_start = cursor + 1;
       // Trim space before first segment.
@@ -37,7 +37,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         cursor = end_of_line;
         if (err.message) {
           log("At line %lu: %s",
-              count_line_ends_between(src, 0, err.position),
+              1 + count_line_ends_between(src, 0, err.position),
               err.message);
           err.message = NULL;
         } else {
