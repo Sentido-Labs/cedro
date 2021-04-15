@@ -9,7 +9,7 @@ run: $(NAME)
 	./$(NAME) $(NAME).c
 .PHONY: run
 
-$(NAME): $(NAME).c macros/*.h Makefile
+$(NAME): $(NAME).c array.h macros.h macros/*.h Makefile
 	$(CC_STRICT) -o $@ $<
 	$(CC_STRICT) -O -o $@-release $<
 
@@ -17,7 +17,7 @@ doc:
 	$(MAKE) -C doc
 .PHONY: doc
 
-test: $(NAME)-test.c $(NAME) macros/*.h Makefile
+test: $(NAME)-test.c $(NAME)
 	$(CC_STRICT) -o $@ $<
 	./test
 .PHONY: test
