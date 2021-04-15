@@ -479,8 +479,7 @@ static const char *
 as_c_string(mut_Byte_array_p _)
 {
   if (_->len is _->capacity) {
-    Byte terminator = '\0';
-    push_Byte_array(_, &terminator);
+    push_Byte_array(_, '\0');
     --_->len;
   } else {
     *((mut_Byte_p) _->items + _->len) = 0;
@@ -527,7 +526,7 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
   } else {
     marker.start = src->len;
     Byte_mut_p p2 = (Byte_p) text;
-    while (*p2) push_Byte_array(src, p2++);
+    while (*p2) push_Byte_array(src, *(p2++));
   }
 
   return marker;
@@ -942,7 +941,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     mut_Marker marker;
     init_Marker(&marker,
                 cursor - src->items, token_end - src->items, token_type);
-    push_Marker_array(markers, &marker);
+    push_Marker_array(markers, marker);
     cursor = token_end;
 
     switch (token_type) {

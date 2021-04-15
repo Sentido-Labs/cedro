@@ -201,15 +201,26 @@ free_##T##_array(mut_##T##_array_p _)                                   \
   destruct_##T##_array(_);                                              \
   free(_);                                                              \
 }                                                                       \
-/** Abandon any resources allocated for this struct.                    \
-    This just indicates that we transferred ownership somewhere else.   \
+/** Transfer ownership of any resources allocated for this struct.      \
+    This just indicates that the caller is no longer responsible for    \
+    releasing those resources.                                       \n \
+   Example:                                                             \
+   \code{.c}                                                            \
+   T##_array a; init_##T##_array(&a, 10);\n                             \
+   store_in_another_object(&obj, &transfer_##T##_array(&a));\n           \
+   \/\* No need to destruct a here. It is now obj’s problem. \*\/\n     \
+   \/\/ However, it is still safe to call destruct_##T##_array():\n     \
+   destruct_##T##_array(&a); \/\/ No effect since we transferred it.    \
+   \endcode                                                             \
  */                                                                     \
-static void                                                             \
-abandon_##T##_array(mut_##T##_array_p _)                                \
+static mut_##T##_array                                                  \
+transfer_##T##_array(mut_##T##_array_p _)                               \
 {                                                                       \
+  mut_##T##_array transferred_copy = *_;                                \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
   *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
+  return transferred_copy;                                              \
 }                                                                       \
                                                                         \
 /** Make sure that the array is ready to hold `minimum` elements,       \
@@ -234,11 +245,10 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 /** Push a bit copy of the element on the end/top of the array,         \
     resizing the array if needed. */                                    \
 static void                                                             \
-push_##T##_array(mut_##T##_array_p _, T##_p item_p)                     \
+push_##T##_array(mut_##T##_array_p _, T item)                           \
 {                                                                       \
-  assert(item_p is_not NULL);                                           \
   ensure_capacity_##T##_array(_, _->len + 1);                           \
-  *((mut_##T##_p) _->items + _->len++) = *item_p;                       \
+  *((mut_##T##_p) _->items + _->len++) = item;                          \
 }                                                                       \
                                                                         \
 /** Splice the given slice in place of the removed elements,            \

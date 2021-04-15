@@ -103,20 +103,20 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             if (insertion_point is segment_start) {
               splice_Marker_array(&replacement, replacement.len, 0, &object);
               if ((segment_start+1)->token_type == T_SPACE) {
-                push_Marker_array(&replacement, &space);
+                push_Marker_array(&replacement, space);
               }
             } else if (insertion_point is segment_end) {
               insertion_point = segment_start;
               splice_Marker_array(&replacement, replacement.len, 0, &object);
-              push_Marker_array(&replacement, &space);
+              push_Marker_array(&replacement, space);
             } else {
               slice.start_p = segment_start;
               slice.end_p   = insertion_point;
               splice_Marker_array(&replacement, replacement.len, 0, &slice);
               splice_Marker_array(&replacement, replacement.len, 0, &object);
               if (insertion_point->token_type is_not T_TUPLE_END) {
-                push_Marker_array(&replacement, &comma);
-                push_Marker_array(&replacement, &space);
+                push_Marker_array(&replacement, comma);
+                push_Marker_array(&replacement, space);
               }
             }
             slice.start_p = insertion_point;
@@ -125,11 +125,11 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
             if (segment_end < end_of_line) {
               if (is_statement) {
-                push_Marker_array(&replacement, &semicolon);
-                push_Marker_array(&replacement, &object_indentation);
+                push_Marker_array(&replacement, semicolon);
+                push_Marker_array(&replacement, object_indentation);
               } else {
-                push_Marker_array(&replacement, &comma);
-                push_Marker_array(&replacement, &space);
+                push_Marker_array(&replacement, comma);
+                push_Marker_array(&replacement, space);
               }
               segment_start = segment_end + 1;// One token: “,”
               // Trim space before next segment.

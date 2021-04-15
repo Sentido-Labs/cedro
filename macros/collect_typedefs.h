@@ -91,7 +91,7 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
         if (type_value_end) {
           for (Marker_mut_p m = type_value_start; m is_not type_value_end; ++m) {
             if (m->token_type is_not T_SPACE) {
-              push_Marker_array(&instance.value, m);
+              push_Marker_array(&instance.value, *m);
             }
           }
         } else {
@@ -99,12 +99,12 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
         }
         for (Marker_mut_p m = segment_start; m is_not segment_end; ++m) {
           if (m is_not name_start and m->token_type is_not T_SPACE) {
-            push_Marker_array(&instance.value, m);
+            push_Marker_array(&instance.value, *m);
           }
         }
 
-        push_Typedef_array(typedefs, &instance);
-        abandon_Marker_array(&instance.value);
+        push_Typedef_array(typedefs, instance);
+        transfer_Marker_array(&instance.value);
 
         if (segment_end < end_of_line) {
           segment_start = segment_end + 1;// One token: “,”
