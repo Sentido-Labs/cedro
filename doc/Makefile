@@ -6,6 +6,9 @@ CSS=cedro.css
 doc: ../*.c ../*.h Makefile Doxyfile
 	doxygen
 	sustituye --old='([^ ])\\n[ ]{4,}' --new='\1</div>\n<div class="line">' html/
+	sustituye --old='\\/\\/' --new='//' html/
+	sustituye --old='\\/\\\*' --new='/*' html/
+	sustituye --old='\\\*\\/' --new='*/' html/
 
 Doxyfile:
 	doxygen -g

@@ -411,16 +411,19 @@ indentation(Byte_array_p src, size_t index)
   return indentation;
 }
 
-/** Copy the characters between `start` and `end` into the given slice,
- *  as many as they fit. If the slice is too small, the content is truncated
- *  with a Unicode ellipsis symbol “…” at the end.
+/** Copy the characters between `start` and `end` into the given Byte array.
  *
  *  To extract the text for `Marker_p m` from `Byte_p src`:
  *  ```
- *  extract_src(src->items + m->start,
- *              src->items + m->start + m->len,
- *              &slice);
+ *  mut_Byte_array string; init_Byte_array(&string, 20);
+ *  extract_src(m, m + 1, src, &string);
+ *  destruct_Byte_array(&string);
  *  ```
+ *  If you want string.items to be a zero-terminated C string:
+ *  ```
+ *  push_Byte_array(&string, '\0');
+ *  ```
+ *  or use `as_c_string(mut_Byte_array_p _)`.
  *
  *  @param[in] start marker pointer.
  *  @param[in] end marker pointer.
@@ -971,6 +974,10 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
 /** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
 #define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
 
+/**
+   Find start of line that contains `cursor`,
+   looking back no further than `start`.
+ */
 static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
@@ -1134,7 +1141,7 @@ usage_es =
     "                         (implícito)\n"
     "  --not-enable-core-dump Desactiva volcado de memoria al estrellarse.\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
-    "  --version          Muestra la versión: " CEDRO_VERSION "\n"
+    "  --version          Muestra la versión: " CEDRO_VERSION
     ;
 static const char* const
 usage_en =
@@ -1149,7 +1156,7 @@ usage_en =
     "  --enable-core-dump     Enable core dump on crash. (default)\n"
     "  --not-enable-core-dump Disable core dump on crash.\n"
     "  --benchmark        Run a performance benchmark.\n"
-    "  --version          Show version: " CEDRO_VERSION "\n"
+    "  --version          Show version: " CEDRO_VERSION
     ;
 
 int main(int argc, char** argv)
