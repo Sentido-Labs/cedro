@@ -14,9 +14,41 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   while (cursor is_not end) {
     if (cursor->token_type is T_BACKSTITCH) {
       mut_Marker_mut_p first_segment_start = cursor + 1;
-      // Trim space before first segment.
-      skip_space_forward(first_segment_start, end);
       object.end_p = cursor; // Object ends before the “@”.
+      // Trim space before first segment, or affix declarator.
+      skip_space_forward(first_segment_start, end);
+      if (first_segment_start is end) {
+        log("Syntax error in line %lu: unfinished backstitch operator.",
+            count_line_ends_between(src, 0, first_segment_start->start));
+        return;
+      }
+      Marker_mut_p prefix = NULL, suffix = NULL;
+      if (first_segment_start->token_type is T_ELLIPSIS) {
+        ++first_segment_start;
+        skip_space_forward(first_segment_start, end);
+        if (first_segment_start is end) {
+          log("Syntax error in line %lu: unfinished affix declarator.",
+              count_line_ends_between(src, 0, first_segment_start->start));
+          return;
+        }
+        if (first_segment_start->token_type is_not T_IDENTIFIER) {
+          log("Syntax error in line %lu: invalid affix, must be an identifier.",
+              count_line_ends_between(src, 0, first_segment_start->start));
+          return;
+        }
+        suffix = first_segment_start++;
+        skip_space_forward(first_segment_start, end);
+      } else if (first_segment_start->token_type is T_IDENTIFIER) {
+        mut_Marker_mut_p m = first_segment_start + 1;
+        skip_space_forward(m, end);
+        if (m is_not end) {
+          if (m->token_type is T_ELLIPSIS) {
+            prefix = first_segment_start;
+            first_segment_start = m + 1;
+            skip_space_forward(first_segment_start, end);
+          }
+        }
+      }
       // Trim space after object, between it and backstitch operator.
       skip_space_back(start, object.end_p);
       size_t nesting = 0;
@@ -112,7 +144,24 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             } else {
               slice.start_p = segment_start;
               slice.end_p   = insertion_point;
-              splice_Marker_array(&replacement, replacement.len, 0, &slice);
+              if (prefix || suffix) {
+                while (slice.end_p != segment_start) {
+                  --slice.end_p;
+                  if (slice.end_p->token_type is T_IDENTIFIER) break;
+                }
+                splice_Marker_array(&replacement, replacement.len, 0, &slice);
+                if (prefix) {
+                  push_Marker_array(&replacement, *prefix);
+                } else {
+                  push_Marker_array(&replacement, *slice.end_p++);
+                  push_Marker_array(&replacement, *suffix);
+                }
+                slice.start_p = slice.end_p;
+                slice.end_p   = insertion_point;
+                splice_Marker_array(&replacement, replacement.len, 0, &slice);
+              } else {
+                splice_Marker_array(&replacement, replacement.len, 0, &slice);
+              }
               splice_Marker_array(&replacement, replacement.len, 0, &object);
               if (insertion_point->token_type is_not T_TUPLE_END) {
                 push_Marker_array(&replacement, comma);
