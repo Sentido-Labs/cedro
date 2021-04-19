@@ -151,7 +151,7 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
  */                                                                     \
 static void                                                             \
 init_from_constant_##T##_array(mut_##T##_array_p _,                     \
-                               const T* items, size_t len)              \
+                               T* items, size_t len)                    \
 {                                                                       \
   _->len = len;                                                         \
   _->capacity = len;                                                    \
@@ -257,7 +257,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
                    T##_array_slice_p insert)                            \
 {                                                                       \
-  assert(delete <= _->len && position + delete <= _->len);              \
+  assert(position + delete <= _->len);                                  \
   destruct_##T##_block((mut_##T##_p) _->items + position,               \
                        _->items + position + delete);                   \
                                                                         \
