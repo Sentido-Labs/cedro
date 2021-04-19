@@ -118,7 +118,7 @@ typedef enum TokenType {
   /** Other token that is not part of the C grammar. */ T_OTHER
 } TokenType;
 static const unsigned char * const
-TOKEN_NAME[] = {
+TokenType_STRING[] = {
   B("NONE"),
   B("Identifier"),
   B("Type"), B("Type struct"), B("Type qualifier"), B("Type definition"),
@@ -571,11 +571,11 @@ print_markers(Marker_array_p markers, Byte_array_p src,
     switch (m->token_type) {
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
         log_indent(indent++,
-                   "%s %s← %s", token, spc, TOKEN_NAME[m->token_type]);
+                   "%s %s← %s", token, spc, TokenType_STRING[m->token_type]);
         break;
       case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
         log_indent(--indent,
-                   "%s %s← %s", token, spc, TOKEN_NAME[m->token_type]);
+                   "%s %s← %s", token, spc, TokenType_STRING[m->token_type]);
         break;
       case T_GROUP_START: case T_GROUP_END:
         /* Invisible grouping of tokens. */
@@ -591,7 +591,8 @@ print_markers(Marker_array_p markers, Byte_array_p src,
         }
         break;
       default:
-        log_indent(indent, "%s %s← %s", token, spc, TOKEN_NAME[m->token_type]);
+        log_indent(indent,
+                   "%s %s← %s", token, spc, TokenType_STRING[m->token_type]);
     }
   }
 
@@ -1085,7 +1086,7 @@ typedef const struct Macro {
 } Macro, * Macro_p;
 #include "macros.h"
 #define MACROS_DECLARE
-Macro macros[] = {
+static Macro macros[] = {
 #include "macros.h"
   { NULL, NULL }
 };
