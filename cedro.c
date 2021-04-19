@@ -36,6 +36,22 @@
 
 #define log(...) fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)
 
+/** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
+    and constant types 〈T〉 and 〈T〉_p (pointer to constant).
+
+    You can define similar types for an existing type, for instance `uint8_t`:
+    ```
+    typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
+    typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
+    ```
+*/
+#define TYPEDEF_STRUCT(T, TYPE)                                          \
+  typedef struct T TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p; \
+  typedef const struct T      T, *             T##_mut_p, * const T##_p
+#define TYPEDEF(T, TYPE)                                                 \
+  typedef     TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p;      \
+  typedef const TYPE     T, * const       T##_p, *       T##_mut_p
+
 /** Parameters set by command line options. */
 typedef struct Options {
   /// Whether to skip space tokens, or include them in the markers array.
@@ -126,28 +142,15 @@ TOKEN_NAME[] = {
 #define is_operator(token_type) (token_type >= T_OP_1 && token_type <= T_COMMA)
 #define is_fence(token_type) (token_type >= T_BLOCK_START && token_type <= T_GROUP_END)
 
-/** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
-    and constant types 〈T〉 and 〈T〉_p (pointer to constant).
-
-    You can define similar types for an existing type, for instance `uint8_t`:
-    ```
-    typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
-    typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
-    ```
-*/
-#define TYPEDEF(T, STRUCT)                                                    \
-  typedef struct T STRUCT mut_##T, * mut_##T##_mut_p, * const mut_##T##_p;    \
-  typedef const struct T        T, * const T##_p,     *             T##_mut_p
-
 /** Marks a C token in the source code. */
-TYPEDEF(Marker, {
+TYPEDEF_STRUCT(Marker, {
     size_t start;         /**< Start position, in bytes/chars. */
     size_t len;           /**< Length, in bytes/chars. */
     TokenType token_type; /**< Token type. */
   });
 
 /** Error while processing markers. */
-TYPEDEF(Error, {
+TYPEDEF_STRUCT(Error, {
     size_t position;      /**< Position at which the problem was noticed. */
     const char * message; /**< Message for user. */
   });
@@ -165,10 +168,7 @@ init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 
 DEFINE_ARRAY_OF(Marker, 0, {});
 
-typedef uint8_t
-/*   */ mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
-typedef const uint8_t
-/*   */     Byte, * const     Byte_p, *      Byte_mut_p;
+TYPEDEF(Byte, uint8_t);
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
  *  for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});

@@ -1,4 +1,4 @@
-TYPEDEF(Typedef, {
+TYPEDEF_STRUCT(Typedef, {
     size_t token_index;
     mut_Marker name;
     mut_Marker_array value;

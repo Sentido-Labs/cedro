@@ -24,7 +24,7 @@ Doxyfile:
 	sed --in-place 's:^\(GENERATE_LATEX\s\+\)=\s*YES:\1= NO:g' Doxyfile
 	sed --in-place 's:^\(MACRO_EXPANSION\s\+\)=\s*NO:\1= YES:g' Doxyfile
 	sed --in-place 's:^\(EXPAND_ONLY_PREDEF\s\+\)=\s*NO:\1= YES:g' Doxyfile
-	sed --in-place 's:^\(EXPAND_AS_DEFINED\s\+\)=\s*:\1= DEFINE_ARRAY_OF TYPEDEF:g' Doxyfile
+	sed --in-place 's:^\(EXPAND_AS_DEFINED\s\+\)=\s*:\1= DEFINE_ARRAY_OF TYPEDEF TYPEDEF_STRUCT:g' Doxyfile
 
 clean:
 	rm -rf html latex tree-sitter/html tree-sitter/latex
