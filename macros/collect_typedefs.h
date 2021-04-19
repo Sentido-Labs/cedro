@@ -103,8 +103,7 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
           }
         }
 
-        push_Typedef_array(typedefs, instance);
-        transfer_Marker_array(&instance.value);
+        push_Typedef_array(typedefs, move_Typedef(&instance));
 
         if (segment_end < end_of_line) {
           segment_start = segment_end + 1;// One token: “,”

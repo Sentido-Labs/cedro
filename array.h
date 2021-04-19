@@ -202,14 +202,14 @@ free_##T##_array(mut_##T##_array_p _)                                   \
    Example:                                                             \
    \code{.c}                                                            \
    T##_array a; init_##T##_array(&a, 10);\n                             \
-   store_in_another_object(&obj, &transfer_##T##_array(&a));\n          \
+   store_in_another_object(&obj, &move_##T##_array(&a));\n              \
    \/\* No need to destruct a here. It is now obj’s problem. \*\/\n     \
    \/\/ However, it is still safe to call destruct_##T##_array():\n     \
    destruct_##T##_array(&a); \/\/ No effect since we transferred it.    \
    \endcode                                                             \
  */                                                                     \
 static mut_##T##_array                                                  \
-transfer_##T##_array(mut_##T##_array_p _)                               \
+move_##T##_array(mut_##T##_array_p _)                                   \
 {                                                                       \
   mut_##T##_array transferred_copy = *_;                                \
   _->len = 0;                                                           \
