@@ -1,15 +1,16 @@
 /* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
 /** \file Array template definition. */
 
-/** DESTRUCT_BLOCK is a block of code that releases the resources for a block
-    of objects of type T, between `mut_T_p cursor` and `T_p end`. \n
-    For instance: { while (cursor != end) destruct_T(cursor++); } \n
+/** `DESTRUCT_BLOCK` is a block of code that releases the resources for a
+    block of objects of type T, between `mut_T_p cursor` and `T_p end`. \n
+    For instance:                                                       \n
+    `{ while (cursor != end) destruct_T(cursor++); }`                   \n
     If the type does not need any clean-up, just use `{}`.
 */
 #define DEFINE_ARRAY_OF(T, PADDING, DESTRUCT_BLOCK)                     \
   /** The constant `PADDING_##T##_ARRAY` = `PADDING`                    \
       defines how many items are physically available                   \
-      after those valid elements.                                     \n\
+      after those valid elements.                                    \n \
       This can be used to avoid special cases near the end              \
       when searching for fixed-length sequences in the array,           \
       although you have to set them to `0` or other appropriate value.  \
@@ -201,7 +202,7 @@ free_##T##_array(mut_##T##_array_p _)                                   \
    Example:                                                             \
    \code{.c}                                                            \
    T##_array a; init_##T##_array(&a, 10);\n                             \
-   store_in_another_object(&obj, &transfer_##T##_array(&a));\n           \
+   store_in_another_object(&obj, &transfer_##T##_array(&a));\n          \
    \/\* No need to destruct a here. It is now obj’s problem. \*\/\n     \
    \/\/ However, it is still safe to call destruct_##T##_array():\n     \
    destruct_##T##_array(&a); \/\/ No effect since we transferred it.    \
@@ -258,7 +259,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
 {                                                                       \
   assert(delete <= _->len && position + delete <= _->len);              \
   destruct_##T##_block((mut_##T##_p) _->items + position,               \
-                   _->items + position + delete);                       \
+                       _->items + position + delete);                   \
                                                                         \
   size_t insert_len = 0;                                                \
   size_t new_len = _->len - delete;                                     \
