@@ -175,7 +175,6 @@ new_##T##_array(size_t initial_capacity)                                \
 static void                                                             \
 destruct_##T##_array(mut_##T##_array_p _)                               \
 {                                                                       \
-  _->len = 0;                                                           \
   if (_->capacity is_not 0) {                                           \
     /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
     destruct_##T##_block((mut_##T##_p) _->items, _->items + _->len);    \
@@ -183,6 +182,7 @@ destruct_##T##_array(mut_##T##_array_p _)                               \
     *((mut_##T##_mut_p *) &(_->items)) = NULL;                          \
     _->capacity = 0;                                                    \
   }                                                                     \
+  _->len = 0;                                                           \
 }                                                                       \
 /** Delete this heap-allocated struct,                                  \
     and release any resources allocated for it.                      \n \
