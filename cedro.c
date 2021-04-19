@@ -10,6 +10,8 @@
  *   - [Functions](cedro_8c.html#func-members)
  *   - [Variables](cedro_8c.html#var-members)
  *
+ * Array utilities: [array.h](array_8h.html)
+ *
  * \author Alberto González Palomo https://sentido-labs.com
  * \copyright ©2021 Alberto González Palomo https://sentido-labs.com
  *
