@@ -31,6 +31,7 @@ check: $(NAME)
 	cppcheck $(NAME).i --std=c99 --enable=performance,portability --xml 2>&1 | cppcheck-htmlreport --report-dir=doc/cppcheck --source-dir=.
 	sparse $(NAME).i
 	gcc -fanalyzer -o /dev/null -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable $(NAME).c
+	scan-build -o doc/clang ./$(NAME)
 	valgrind --leak-check=yes ./$(NAME) hello.c
 
 clean:
