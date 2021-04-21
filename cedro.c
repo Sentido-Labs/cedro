@@ -1231,12 +1231,8 @@ int main(int argc, char** argv)
 
     if (run_benchmark) {
       double t = benchmark(&src, &options);
-      if (t < 1.0) {
-        t *= 1000.0;
-        log("%.fms for %s", t, arg);
-      } else {
-        log("%.1fs for %s", t, arg);
-      }
+      if (t < 1.0) log("%.fms for %s", t * 1000.0, arg);
+      else         log("%.1fs for %s", t         , arg);
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
