@@ -11,32 +11,61 @@ DEFINE_ARRAY_OF(Typedef, 0, {
   });
 
 static void
+destruct_Typedef(mut_Typedef_p _)
+{
+  destruct_Marker_array(&_->value);
+}
+
+static Typedef
+move_Typedef(mut_Typedef_p _)
+{
+  Typedef copy = *_;
+  move_Marker_array(&_->value);
+  return copy;
+}
+
+
+static void
 collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
                  mut_Error_p err_p)
 {
+  defer_start();
+
   Marker_p     start  = Marker_array_start(markers);
   Marker_mut_p cursor = start;
   Marker_p     end    = Marker_array_end(markers);
 
   mut_Byte_array string_buffer;
   init_Byte_array(&string_buffer, 20);
+  defer(&string_buffer, &destruct_Byte_array);
 
   while (cursor is_not end) {
     if (cursor->token_type is T_TYPEDEF) {
+      defer_enter();
       mut_Typedef instance = {
         .token_index = cursor - start,
         .name  = { 0, 0, T_NONE },
         .value = { 0, 0, NULL }
       };
+      defer(&instance, &destruct_Typedef);
 
-      if (++cursor is end) break;
+      if (++cursor is end) {
+        defer_exit();
+        break;
+      }
       while (cursor->token_type is T_SPACE && cursor is_not end) ++cursor;
-      if (cursor is end) break;
+      if (cursor is end) {
+        defer_exit();
+        break;
+      }
       Marker_p type_value_start = cursor;
       Marker_mut_p type_value_end = NULL;
 
       Marker_p end_of_line = find_line_end(cursor, end, err_p);
-      if (err_p->message) return;
+      if (err_p->message) {
+        defer_end();
+        return;
+      }
 
       size_t nesting = 0;
 
@@ -60,6 +89,7 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
         }
         if (nesting) {
           err_p->message = "Unclosed group";
+          defer_end();
           return;
         }
         // Trim space after segment.
@@ -116,19 +146,23 @@ collect_typedefs(Marker_array_p markers, mut_Typedef_array_p typedefs,
           segment_end = segment_start;
         }
       }
+      defer_exit();
       cursor = end_of_line;
     } else {
       ++cursor;
     }
   }
 
-  destruct_Byte_array(&string_buffer);
+  defer_end();
 }
 
 static void macro_collect_typedefs(Marker_array_p markers, Byte_array_p src)
 {
+  defer_start();
+
   mut_Typedef_array typedefs;
   init_Typedef_array(&typedefs, 20);
+  defer(&typedefs, &destruct_Typedef_array);
   mut_Error err = { .position = 0, .message = NULL };
   collect_typedefs(markers, &typedefs, &err);
 
@@ -138,6 +172,7 @@ static void macro_collect_typedefs(Marker_array_p markers, Byte_array_p src)
 
   mut_Byte_array string_buffer;
   init_Byte_array(&string_buffer, 20);
+  defer(&string_buffer, &destruct_Byte_array);
   size_t typedef_pos, prev_typedef_pos = 0, prev_line_number = 1;
 
   if (err.message) {
@@ -184,6 +219,5 @@ static void macro_collect_typedefs(Marker_array_p markers, Byte_array_p src)
     }
   }
 
-  destruct_Typedef_array(&typedefs);
-  destruct_Byte_array(&string_buffer);
+  defer_end();
 }

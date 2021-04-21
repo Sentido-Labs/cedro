@@ -9,7 +9,7 @@ run: $(NAME)
 	./$(NAME) $(NAME).c
 .PHONY: run
 
-$(NAME): $(NAME).c array.h macros.h macros/*.h Makefile
+$(NAME): $(NAME).c defer.h array.h macros.h macros/*.h Makefile
 	$(CC_STRICT) -o $@ $<
 	$(CC_STRICT) -O -o $@-release $<
 

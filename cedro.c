@@ -12,6 +12,8 @@
  *
  * Array utilities: [array.h](array_8h.html)
  *
+ * Defer/autofree helper functions: [defer.h](defer_8h.html)
+ *
  * \author Alberto González Palomo https://sentido-labs.com
  * \copyright ©2021 Alberto González Palomo https://sentido-labs.com
  *
@@ -53,6 +55,8 @@
 #define TYPEDEF(T, TYPE)                                                 \
   typedef     TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p;      \
   typedef const TYPE     T, * const       T##_p, *       T##_mut_p
+
+#include "defer.h"
 
 /** Parameters set by command line options. */
 typedef struct Options {
@@ -549,9 +553,11 @@ print_markers(Marker_array_p markers, Byte_array_p src,
               size_t start, size_t end,
               Options options)
 {
+  defer_start();
   size_t indent = 0;
   mut_Byte_array token_text;
   init_Byte_array(&token_text, 80);
+  defer(&token_text, &destruct_Byte_array);
 
   const char * const spacing = "                                ";
   const size_t spacing_len = strlen(spacing);
@@ -598,7 +604,7 @@ print_markers(Marker_array_p markers, Byte_array_p src,
     }
   }
 
-  destruct_Byte_array(&token_text);
+  defer_end();
 }
 
 /* Format the markers back into source code form.
@@ -1099,12 +1105,16 @@ static Macro macros[] = {
 static double
 benchmark(mut_Byte_array_p src_p, Options_p options)
 {
+  defer_start();
+
   const size_t repetitions = 100;
   time_t start, end;
   time(&start);
 
   mut_Marker_array markers;
   init_Marker_array(&markers, 8192);
+  defer(&markers, &destruct_Marker_array);
+
   for (size_t i = repetitions + 1; i; --i) {
     delete_Marker_array(&markers, 0, markers.len);
 
@@ -1124,9 +1134,9 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
     }
     fputc('.', stderr);
   }
-  destruct_Marker_array(&markers);
 
   time(&end);
+  defer_end();
   return difftime(end, start) / (double) repetitions;
 }
 
@@ -1164,6 +1174,8 @@ usage_en =
 
 int main(int argc, char** argv)
 {
+  defer_start();
+
   Options options = { // Remember to keep the usage strings updated.
     .discard_comments = true,
     .discard_space    = true,
@@ -1223,9 +1235,11 @@ int main(int argc, char** argv)
 
     mut_Byte_array src;
     read_file(&src, arg);
+    defer(&src, &destruct_Byte_array);
 
     mut_Marker_array markers;
     init_Marker_array(&markers, 8192);
+    defer(&markers, &destruct_Marker_array);
 
     Byte_p cursor = parse(&src, &markers);
 
@@ -1250,14 +1264,14 @@ int main(int argc, char** argv)
       }
     }
 
-    destruct_Marker_array(&markers);
-
     fflush(stdout);
     log("\nRead %ld lines.",
         count_line_ends_between((Byte_array_p)&src, 0, cursor - src.items) - 1);
 
-    destruct_Byte_array(&src);
+    defer_exit();
   }
+
+  defer_end();
 
   return 0;
 }
