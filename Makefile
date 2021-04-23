@@ -1,5 +1,5 @@
 CC=gcc -g
-CC_STRICT=$(CC) -g -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable
+CC_STRICT=$(CC) -g -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable
 NAME=cedro
 
 all: $(NAME)
