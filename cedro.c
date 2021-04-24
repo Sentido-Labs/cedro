@@ -569,6 +569,7 @@ print_markers(Marker_array_p markers, Byte_array_p src,
       Marker_array_end(markers);
   const char * token = NULL;
   for (Marker_mut_p m = m_start; m is_not m_end; ++m) {
+    token_text.len = 0;
     extract_src(m, m+1, src, &token_text);
     token = as_c_string(&token_text);
 
