@@ -84,8 +84,13 @@ typedef enum TokenType {
   /** Type name.                                     */ T_TYPE,
   /** Type struct.                                   */ T_TYPE_STRUCT,
   /** Type qualifier.                                */ T_TYPE_QUALIFIER,
+  /** Type qualifier, auto keyword.                  */ T_TYPE_QUALIFIER_AUTO,
   /** Type definition.                               */ T_TYPEDEF,
   /** Control flow keyword.                          */ T_CONTROL_FLOW,
+  /** Control flow keyword break.                    */ T_CONTROL_FLOW_BREAK,
+  /** Control flow keyword continue.                 */ T_CONTROL_FLOW_CONTINUE,
+  /** Control flow keyword return.                   */ T_CONTROL_FLOW_RETURN,
+  /** Control flow keyword goto.                     */ T_CONTROL_FLOW_GOTO,
   /** Number, either integer or float.               */ T_NUMBER,
   /** String including the quotes: `"ABC"`           */ T_STRING,
   /** Character including the apostrophes: ```'A'``` */ T_CHARACTER,
@@ -127,8 +132,10 @@ static const unsigned char * const
 TokenType_STRING[] = {
   B("NONE"),
   B("Identifier"),
-  B("Type"), B("Type struct"), B("Type qualifier"), B("Type definition"),
-  B("Control flow"),
+  B("Type"), B("Type struct"), B("Type qualifier"), B("Type qualifier auto"),
+  B("Type definition"),
+  B("Control flow"), B("Control flow break"), B("Control flow continue"),
+  B("Control flow return"), B("Control flow goto"),
   B("Number"), B("String"), B("Character"),
   B("Space"), B("Comment"),
   B("Preprocessor"), B("Generic macro"),
@@ -401,19 +408,17 @@ indentation(Byte_array_p src, size_t index)
   // which should have no indentation anyway.
   // Handling the hypothetical case where the first line of the file is indented
   // is not worth the complication.
-  mut_Marker indentation = {
-    .start = start_of_line - start,
-    .len   = 0,
-    .token_type = T_SPACE
-  };
   Byte_mut_p end_of_indentation = start_of_line + 1;
   while (end_of_indentation is_not end) {
     if (*end_of_indentation is_not ' ' &&
         *end_of_indentation is_not '\t') break;
     ++end_of_indentation;
   }
-  indentation.start = start_of_line      - start;
-  indentation.len   = end_of_indentation - start_of_line;
+  mut_Marker indentation = {
+    .start = start_of_line - start,
+    .len   = end_of_indentation - start_of_line,
+    .token_type = T_SPACE
+  };
   return indentation;
 }
 
@@ -441,11 +446,9 @@ extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p str
 {
   Marker_mut_p cursor = start;
   while (cursor < end) {
-    Byte_p start_byte = src->items + cursor->start;
-    Byte_p   end_byte = src->items + cursor->start + cursor->len;
     Byte_array_slice insert = {
-      .start_p = start_byte,
-      .end_p   =   end_byte
+      .start_p = src->items + cursor->start,
+      .end_p   = src->items + cursor->start + cursor->len
     };
     splice_Byte_array(string, string->len, 0, NULL, &insert);
     ++cursor;
@@ -664,15 +667,30 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
    Keywords:
 
    - `T_CONTROL_FLOW`:
-   `break case continue default do else for goto if return switch while`
+   `case default do else for if switch while`
+
+   - `T_CONTROL_FLOW_BREAK`:
+   `break`
+
+   - `T_CONTROL_FLOW_CONTINUE`:
+   `continue`
+
+   - `T_CONTROL_FLOW_RETURN`:
+   `return`
+
+   - `T_CONTROL_FLOW_GOTO`:
+   `goto`
 
    - `T_TYPE`:
    `char double enum float int long short struct union void`
    (c99: `bool complex imaginary`)
 
    - `T_TYPE_QUALIFIER`:
-   `auto const extern inline register signed static unsigned volatile`
+   `const extern inline register signed static unsigned volatile`
    (c99: `restrict`)
+
+   - `T_TYPE_QUALIFIER_AUTO`:
+   `auto`
 
    - `T_OP_2`:
    `sizeof _Alignof`
@@ -695,9 +713,11 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       }
       break;
     case 4:
-      if (mem_eq(start, "case", 4) || mem_eq(start, "else", 4) ||
-          mem_eq(start, "goto", 4)) {
+      if (mem_eq(start, "case", 4) || mem_eq(start, "else", 4)) {
         return T_CONTROL_FLOW;
+      }
+      if (mem_eq(start, "goto", 4)) {
+        return T_CONTROL_FLOW_GOTO;
       }
       if (mem_eq(start, "char", 4) || mem_eq(start, "enum", 4) ||
           mem_eq(start, "long", 4) || mem_eq(start, "void", 4) ||
@@ -705,11 +725,14 @@ keyword_or_identifier(Byte_p start, Byte_p end)
         return T_TYPE;
       }
       if (mem_eq(start, "auto", 4)) {
-        return T_TYPE_QUALIFIER;
+        return T_TYPE_QUALIFIER_AUTO;
       }
       break;
     case 5:
-      if (mem_eq(start, "break", 5) || mem_eq(start, "while", 5)) {
+      if (mem_eq(start, "break", 5)) {
+        return T_CONTROL_FLOW_BREAK;
+      }
+      if (mem_eq(start, "while", 5)) {
         return T_CONTROL_FLOW;
       }
       if (mem_eq(start, "float", 5) || mem_eq(start, "short", 5) ||
@@ -721,7 +744,10 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       }
       break;
     case 6:
-      if (mem_eq(start, "return", 6) || mem_eq(start, "switch", 6)) {
+      if (mem_eq(start, "return", 6)) {
+        return T_CONTROL_FLOW_RETURN;
+      }
+      if (mem_eq(start, "switch", 6)) {
         return T_CONTROL_FLOW;
       }
       if (mem_eq(start, "double", 6) || mem_eq(start, "struct", 6)) {
@@ -748,7 +774,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       break;
     case 8:
       if (mem_eq(start, "continue", 8)) {
-        return T_CONTROL_FLOW;
+        return T_CONTROL_FLOW_CONTINUE;
       }
       if (mem_eq(start, "register", 8) || mem_eq(start, "restrict", 8) ||
           mem_eq(start, "unsigned", 8) || mem_eq(start, "volatile", 8)){
@@ -984,6 +1010,33 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
 /** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
 #define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
 
+static inline Marker_p
+find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
+{
+  // TODO: search backwards if we start at a closing fence.
+  Marker_mut_p matching_close = cursor;
+  size_t nesting = 0;
+  do {
+    switch (matching_close->token_type) {
+      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+        ++nesting;
+        break;
+      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+        --nesting;
+        break;
+      default: break;
+    }
+    ++matching_close;
+  } while (matching_close is_not end and nesting is_not 0);
+
+  if (nesting is_not 0 or matching_close is end) {
+    err->message = "Unclosed group.";
+    err->position = cursor->start;
+  }
+
+  return matching_close;
+}
+
 /**
    Find start of line that contains `cursor`,
    looking back no further than `start`.
@@ -993,15 +1046,15 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
   Marker_mut_p start_of_line = cursor;
   size_t nesting = 0;
-  while (start_of_line >= start) {
+  while (start_of_line is_not start) {
     switch (start_of_line->token_type) {
-      case T_SEMICOLON:
+      case T_SEMICOLON: case T_BLOCK_START: case T_BLOCK_END:
         if (nesting is 0) {
           ++start_of_line;
           goto found;
         }
         break;
-      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+      case T_TUPLE_START: case T_INDEX_START:
         if (nesting is 0) {
           ++start_of_line;
           goto found;
@@ -1009,7 +1062,7 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
           --nesting;
         }
         break;
-      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+      case T_TUPLE_END: case T_INDEX_END:
         ++nesting;
         break;
       default: break;
@@ -1026,6 +1079,10 @@ found:
   return start_of_line;
 }
 
+/**
+   Find end of line that contains `cursor`,
+   looking forward no further than right before `end`.
+ */
 static inline Marker_p
 find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
 {
@@ -1055,6 +1112,74 @@ found:
   }
 
   return end_of_line;
+}
+
+/**
+   Find start of block that contains `cursor`,
+   looking back no further than `start`.
+ */
+static inline Marker_p
+find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
+{
+  Marker_mut_p start_of_block = cursor;
+  size_t nesting = 0;
+  while (start_of_block >= start) {
+    switch (start_of_block->token_type) {
+      case T_BLOCK_START:
+        if (nesting is 0) {
+          ++start_of_block;
+          goto found;
+        } else {
+          --nesting;
+        }
+        break;
+      case T_BLOCK_END:
+        ++nesting;
+        break;
+      default: break;
+    }
+    --start_of_block;
+  }
+found:
+
+  if (nesting is_not 0 or start_of_block < start) {
+    err->message = "Excess block closings.";
+    err->position = cursor->start;
+  }
+
+  return start_of_block;
+}
+
+/**
+   Find end of block that contains `cursor`,
+   looking forward no further than right before `end`.
+ */
+static inline Marker_p
+find_block_end(Marker_p cursor, Marker_p end, mut_Error_p err)
+{
+  Marker_mut_p end_of_block = cursor;
+  size_t nesting = 0;
+  while (end_of_block is_not end) {
+    switch (end_of_block->token_type) {
+      case T_BLOCK_START:
+        ++nesting;
+        break;
+      case T_BLOCK_END:
+        if (nesting is 0) goto found;
+        else              --nesting;
+        break;
+      default: break;
+    }
+    ++end_of_block;
+  }
+found:
+
+  if (nesting is_not 0 or end_of_block is end) {
+    err->message = "Unclosed block.";
+    err->position = cursor->start;
+  }
+
+  return end_of_block;
 }
 
 typedef FILE* mut_File_p;
