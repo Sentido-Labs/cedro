@@ -251,15 +251,26 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     Starting at `position`, `delete` elements are deleted and           \
     the elements in the `insert` slice are inserted there               \
     as bit copies.                                                      \
+    If `deleted` is not `NULL`, the deleted elements are not destroyed  \
+    but copied to that array.                                           \
     The `insert` slice, if given, must belong to a different array. */  \
 static void                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
+                   mut_##T##_array_p deleted,                           \
                    T##_array_slice_p insert)                            \
 {                                                                       \
   assert(position + delete <= _->len);                                  \
-  destruct_##T##_block((mut_##T##_p) _->items + position,               \
-                       _->items + position + delete);                   \
+  if (deleted) {                                                        \
+    T##_array_slice slice = {                                           \
+      .start_p = (mut_##T##_p) _->items + position,                     \
+      .end_p   = (mut_##T##_p) _->items + position + delete             \
+    };                                                                  \
+    splice_##T##_array(deleted, deleted->len, 0, NULL, &slice);         \
+  } else {                                                              \
+    destruct_##T##_block((mut_##T##_p) _->items + position,             \
+                         _->items + position + delete);                 \
+  }                                                                     \
                                                                         \
   size_t insert_len = 0;                                                \
   size_t new_len = _->len - delete;                                     \

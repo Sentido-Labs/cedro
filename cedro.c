@@ -447,7 +447,7 @@ extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p str
       .start_p = start_byte,
       .end_p   =   end_byte
     };
-    splice_Byte_array(string, string->len, 0, &insert);
+    splice_Byte_array(string, string->len, 0, NULL, &insert);
     ++cursor;
   }
 }
@@ -460,7 +460,7 @@ push_str(mut_Byte_array_p _, const char * const str)
     .start_p = (Byte_p) str,
     .end_p   = (Byte_p) str + strlen(str)
   };
-  splice_Byte_array(_, _->len, 0, &insert);
+  splice_Byte_array(_, _->len, 0, NULL, &insert);
 }
 
 static void

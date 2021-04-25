@@ -133,13 +133,15 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
 
             if (insertion_point is segment_start) {
-              splice_Marker_array(&replacement, replacement.len, 0, &object);
+              splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                  &object);
               if ((segment_start+1)->token_type == T_SPACE) {
                 push_Marker_array(&replacement, space);
               }
             } else if (insertion_point is segment_end) {
               insertion_point = segment_start;
-              splice_Marker_array(&replacement, replacement.len, 0, &object);
+              splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                  &object);
               push_Marker_array(&replacement, space);
             } else {
               slice.start_p = segment_start;
@@ -149,7 +151,8 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   --slice.end_p;
                   if (slice.end_p->token_type is T_IDENTIFIER) break;
                 }
-                splice_Marker_array(&replacement, replacement.len, 0, &slice);
+                splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                    &slice);
                 if (prefix) {
                   push_Marker_array(&replacement, *prefix);
                 } else {
@@ -158,11 +161,14 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 }
                 slice.start_p = slice.end_p;
                 slice.end_p   = insertion_point;
-                splice_Marker_array(&replacement, replacement.len, 0, &slice);
+                splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                    &slice);
               } else {
-                splice_Marker_array(&replacement, replacement.len, 0, &slice);
+                splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                    &slice);
               }
-              splice_Marker_array(&replacement, replacement.len, 0, &object);
+              splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                  &object);
               if (insertion_point->token_type is_not T_TUPLE_END) {
                 push_Marker_array(&replacement, comma);
                 push_Marker_array(&replacement, space);
@@ -170,7 +176,8 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
             slice.start_p = insertion_point;
             slice.end_p   = segment_end;
-            splice_Marker_array(&replacement, replacement.len, 0, &slice);
+            splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                &slice);
 
             if (segment_end < end_of_line) {
               if (is_statement) {
@@ -191,6 +198,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           splice_Marker_array(markers,
                               start_of_line - Marker_array_start(markers),
                               end_of_line - start_of_line,
+                              NULL,
                               &slice);
           destruct_Marker_array(&replacement);
           end = (mut_Marker_p) Marker_array_end(markers);
