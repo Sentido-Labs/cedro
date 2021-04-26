@@ -102,6 +102,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             if (nesting) {
               log("Syntax error in line %lu: unclosed group.",
                   count_line_ends_between(src, 0, segment_start->start));
+              destruct_Marker_array(&replacement);
               return;
             }
             // Trim space after segment.
