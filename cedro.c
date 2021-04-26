@@ -47,8 +47,7 @@
     ```
     typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
     typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
-    ```
-*/
+    ``` */
 #define TYPEDEF_STRUCT(T, TYPE)                                          \
   typedef struct T TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p; \
   typedef const struct T      T, *             T##_mut_p, * const T##_p
@@ -396,9 +395,9 @@ count_line_ends_between(Byte_array_p src, size_t start, size_t position)
 static Marker
 indentation(Byte_array_p src, size_t index)
 {
-  Byte_mut_p start_of_line = get_Byte_array(src, index);
   Byte_p start = Byte_array_start(src);
   Byte_p end   = Byte_array_end(src);
+  Byte_mut_p start_of_line = get_Byte_array(src, index);
   while (*start_of_line is_not '\n') {
     if (start_of_line is start) break;
     --start_of_line;
