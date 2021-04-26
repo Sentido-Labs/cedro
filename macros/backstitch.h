@@ -49,31 +49,37 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
         }
       }
-      // Trim space after object, between it and backstitch operator.
-      skip_space_back(start, object.end_p);
       size_t nesting = 0;
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
-        log("At line %lu: %s",
+        log("Error: %lu: %s",
             1 + count_line_ends_between(src, 0, err.position),
             err.message);
         err.message = NULL;
       } else {
         // Trim space before object.
-        skip_space_forward(start_of_line, first_segment_start);
+        skip_space_forward(start_of_line, object.end_p);
         object.start_p = start_of_line;
         Marker object_indentation = indentation(src, object.start_p->start);
+        // Trim space after object, between it and backstitch operator.
+        skip_space_back(object.start_p, object.end_p);
+        if (object.start_p is object.end_p) {
+          log("Error: %lu: Empty backstitch object.",
+              1 + count_line_ends_between(src, 0, cursor->start));
+          return;
+        }
         cursor = first_segment_start;
-        mut_Marker_p end_of_line = (mut_Marker_p)
+        mut_Marker_mut_p end_of_line = (mut_Marker_mut_p)
             find_line_end(cursor, end, &err);
+        skip_space_back(cursor, end_of_line);
         cursor = end_of_line;
         if (err.message) {
-          log("At line %lu: %s",
+          log("Error: %lu: %s",
               1 + count_line_ends_between(src, 0, err.position),
               err.message);
           err.message = NULL;
         } else {
-          bool is_statement =
+          bool ends_with_semicolon =
               end_of_line < end &&
               end_of_line->token_type is T_SEMICOLON;
           // TODO: check that there is a group opening before the line if
@@ -100,7 +106,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               ++segment_end;
             }
             if (nesting) {
-              log("Syntax error in line %lu: unclosed group.",
+              log("Error: %lu: unclosed group, syntax error.",
                   count_line_ends_between(src, 0, segment_start->start));
               destruct_Marker_array(&replacement);
               return;
@@ -109,7 +115,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             skip_space_back(segment_start, segment_end);
 
             if (segment_end is segment_start) {
-              log("Syntax warning in line %ld: empty backstitch segment.",
+              log("Warning: %ld: empty backstitch segment.",
                   1 + count_line_ends_between(src, 0, segment_start->start));
               segment_end = ++segment_start;
               continue;
@@ -126,7 +132,8 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               for (bool inside_parenthesis = false;
                    not inside_parenthesis and insertion_point < segment_end;
                    ++insertion_point) {
-                inside_parenthesis = T_TUPLE_START is insertion_point->token_type;
+                inside_parenthesis =
+                    T_TUPLE_START is insertion_point->token_type;
               }
               // If insertion_point is segment_end, no parenthesis were found:
               // this is clearly not a function call.
@@ -181,7 +188,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                                 &slice);
 
             if (segment_end < end_of_line) {
-              if (is_statement) {
+              if (ends_with_semicolon) {
                 push_Marker_array(&replacement, semicolon);
                 push_Marker_array(&replacement, object_indentation);
               } else {
