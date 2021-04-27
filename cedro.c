@@ -75,38 +75,48 @@ typedef struct Options {
 /**
    These token types loosely correspond to those in the C grammar.
 
-   For the operator precedence levels, see:
+   Keywords:
+   https://en.cppreference.com/w/c/keyword
+
+   Operator precedence levels:
    https://en.cppreference.com/w/c/language/operator_precedence */
 typedef enum TokenType {
   /** No token, used as marker for uninitialized data. */ T_NONE,
-  /** Identifier.                                    */ T_IDENTIFIER,
-  /** Type name.                                     */ T_TYPE,
-  /** Type struct.                                   */ T_TYPE_STRUCT,
-  /** Type qualifier.                                */ T_TYPE_QUALIFIER,
-  /** Type qualifier, auto keyword.                  */ T_TYPE_QUALIFIER_AUTO,
-  /** Type definition.                               */ T_TYPEDEF,
-  /** Control flow keyword.                          */ T_CONTROL_FLOW,
-  /** Control flow keyword break.                    */ T_CONTROL_FLOW_BREAK,
-  /** Control flow keyword continue.                 */ T_CONTROL_FLOW_CONTINUE,
-  /** Control flow keyword return.                   */ T_CONTROL_FLOW_RETURN,
-  /** Control flow keyword goto.                     */ T_CONTROL_FLOW_GOTO,
-  /** Number, either integer or float.               */ T_NUMBER,
-  /** String including the quotes: `"ABC"`           */ T_STRING,
-  /** Character including the apostrophes: ```'A'``` */ T_CHARACTER,
+  /** Identifier. See `identifier()`.                 */ T_IDENTIFIER,
+  /** Type name: `char, double, enum, float, int,
+      long, short, union, void`.
+      (c99: `bool, complex, imaginary`)               */ T_TYPE,
+  /** Type name: `struct`.                            */ T_TYPE_STRUCT,
+  /** Type qualifier: `const, extern, inline,
+      register, signed, static, unsigned, volatile`.
+      (c99: `restrict`)                               */ T_TYPE_QUALIFIER,
+  /** Type qualifier: `auto`.                         */ T_TYPE_QUALIFIER_AUTO,
+  /** Type definition: `typedef`.                     */ T_TYPEDEF,
+  /** Control flow keyword:
+      `case, continue, default, else, if`.            */ T_CONTROL_FLOW,
+  /** Control flow keyword: `do, for, while`.         */ T_CONTROL_FLOW_LOOP,
+  /** Control flow keyword: `switch`.                 */ T_CONTROL_FLOW_SWITCH,
+  /** Control flow keyword: `break`.                  */ T_CONTROL_FLOW_BREAK,
+  /** Control flow keyword: `return`.                 */ T_CONTROL_FLOW_RETURN,
+  /** Control flow keyword: `goto`.                   */ T_CONTROL_FLOW_GOTO,
+  /** Number, either integer or float.
+      See `number()`.                                 */ T_NUMBER,
+  /** String including the quotes: `"ABC"`            */ T_STRING,
+  /** Character including the apostrophes: ```'A'```  */ T_CHARACTER,
   /** Whitespace, a block of `SP`, `HT`, `LF` or `CR`.
-      See [Wikipedia, Basic ASCII control codes](https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Basic_ASCII_control_codes)    */ T_SPACE,
-  /** Comment block or line.                         */ T_COMMENT,
-  /** Preprocessor directive.                        */ T_PREPROCESSOR,
-  /** Generic macro.                                 */ T_GENERIC_MACRO,
-  /** Start of a block: `{`                          */ T_BLOCK_START,
-  /** End   of a block: `}`                          */ T_BLOCK_END,
-  /** Start of a tuple: `(`                          */ T_TUPLE_START,
-  /** End   of a tuple: `)`                          */ T_TUPLE_END,
-  /** Start of an array index: `[`                   */ T_INDEX_START,
-  /** End   of an array index: `]`                   */ T_INDEX_END,
-  /** Invisible grouping of tokens, for instance for operator precedence.
-                                                     */ T_GROUP_START,
-  /** End invisible grouping of tokens.              */ T_GROUP_END,
+      See [Wikipedia, Basic ASCII control codes](https://en.wikipedia.org/wiki/C0_and_C1_control_codes#Basic_ASCII_control_codes)     */ T_SPACE,
+  /** Comment block or line.                          */ T_COMMENT,
+  /** Preprocessor directive.                         */ T_PREPROCESSOR,
+  /** Generic macro.                                  */ T_GENERIC_MACRO,
+  /** Start of a block: `{`                           */ T_BLOCK_START,
+  /** End   of a block: `}`                           */ T_BLOCK_END,
+  /** Start of a tuple: `(`                           */ T_TUPLE_START,
+  /** End   of a tuple: `)`                           */ T_TUPLE_END,
+  /** Start of an array index: `[`                    */ T_INDEX_START,
+  /** End   of an array index: `]`                    */ T_INDEX_END,
+  /** Invisible grouping of tokens,
+      for instance for operator precedence.           */ T_GROUP_START,
+  /** End invisible grouping of tokens.               */ T_GROUP_END,
   /** `++ -- () [] . -> (type){list}`            */ T_OP_1,
   /** `++ -- + - ! ~ (type) * & sizeof _Alignof` */ T_OP_2,
   /** `* / %`                                    */ T_OP_3,
@@ -133,7 +143,9 @@ TokenType_STRING[] = {
   B("Identifier"),
   B("Type"), B("Type struct"), B("Type qualifier"), B("Type qualifier auto"),
   B("Type definition"),
-  B("Control flow"), B("Control flow break"), B("Control flow continue"),
+  B("Control flow"),
+  B("Control flow loop"), B("Control flow switch"),
+  B("Control flow break"), B("Control flow continue"),
   B("Control flow return"), B("Control flow goto"),
   B("Number"), B("String"), B("Character"),
   B("Space"), B("Comment"),
@@ -663,49 +675,23 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
    @param[in] start of source code segment to search in.
    @param[in] end of source code segment.
 
-   Keywords:
-
-   - `T_CONTROL_FLOW`:
-   `case default do else for if switch while`
-
-   - `T_CONTROL_FLOW_BREAK`:
-   `break`
-
-   - `T_CONTROL_FLOW_CONTINUE`:
-   `continue`
-
-   - `T_CONTROL_FLOW_RETURN`:
-   `return`
-
-   - `T_CONTROL_FLOW_GOTO`:
-   `goto`
-
-   - `T_TYPE`:
-   `char double enum float int long short struct union void`
-   (c99: `bool complex imaginary`)
-
-   - `T_TYPE_QUALIFIER`:
-   `const extern inline register signed static unsigned volatile`
-   (c99: `restrict`)
-
-   - `T_TYPE_QUALIFIER_AUTO`:
-   `auto`
-
-   - `T_OP_2`:
-   `sizeof _Alignof`
+   See `enum TokenType` for a list of keywords.
  */
 static TokenType
 keyword_or_identifier(Byte_p start, Byte_p end)
 {
   switch (end - start) {
     case 2:
-      if (mem_eq(start, "do", 2) || mem_eq(start, "if", 2)) {
+      if (mem_eq(start, "do", 2)) {
+        return T_CONTROL_FLOW_LOOP;
+      }
+      if (mem_eq(start, "if", 2)) {
         return T_CONTROL_FLOW;
       }
       break;
     case 3:
       if (mem_eq(start, "for", 3)) {
-        return T_CONTROL_FLOW;
+        return T_CONTROL_FLOW_LOOP;
       }
       if (mem_eq(start, "int", 3)) {
         return T_TYPE;
@@ -732,7 +718,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
         return T_CONTROL_FLOW_BREAK;
       }
       if (mem_eq(start, "while", 5)) {
-        return T_CONTROL_FLOW;
+        return T_CONTROL_FLOW_LOOP;
       }
       if (mem_eq(start, "float", 5) || mem_eq(start, "short", 5) ||
           mem_eq(start, "union", 5)) {
@@ -747,7 +733,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
         return T_CONTROL_FLOW_RETURN;
       }
       if (mem_eq(start, "switch", 6)) {
-        return T_CONTROL_FLOW;
+        return T_CONTROL_FLOW_SWITCH;
       }
       if (mem_eq(start, "double", 6) || mem_eq(start, "struct", 6)) {
         return T_TYPE_STRUCT;
@@ -773,7 +759,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       break;
     case 8:
       if (mem_eq(start, "continue", 8)) {
-        return T_CONTROL_FLOW_CONTINUE;
+        return T_CONTROL_FLOW;
       }
       if (mem_eq(start, "register", 8) || mem_eq(start, "restrict", 8) ||
           mem_eq(start, "unsigned", 8) || mem_eq(start, "volatile", 8)){

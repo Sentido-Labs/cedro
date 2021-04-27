@@ -28,10 +28,10 @@ move_DeferredAction(mut_DeferredAction_p _)
 /** Insert actions backwards up to the next level.
     Remove them from the list of pending actions. */
 static size_t
-insert_deferred_actions(mut_Marker_array_p markers,
+insert_deferred_actions(DeferredAction_array_p pending,
                         size_t level,
                         Marker_p indentation, Marker_p indentation_between,
-                        size_t cursor, DeferredAction_array_p pending)
+                        size_t cursor, mut_Marker_array_p markers)
 {
   size_t inserted_length = 0;
   mut_Marker_array_slice indent = {
@@ -59,6 +59,20 @@ insert_deferred_actions(mut_Marker_array_p markers,
   return inserted_length;
 }
 
+static void
+exit_level(mut_DeferredAction_array_p pending, size_t level)
+{
+  DeferredAction_p     actions_start = DeferredAction_array_start(pending);
+  DeferredAction_mut_p actions_cursor  = DeferredAction_array_end(pending);
+  while (actions_cursor is_not actions_start) {
+    --actions_cursor;
+    if (actions_cursor->level <= level) break;
+    size_t cut_point = actions_cursor - actions_start;
+    splice_DeferredAction_array(pending, cut_point, pending->len - cut_point,
+                                NULL, NULL);
+  }
+}
+
 static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
   defer_start();
@@ -84,11 +98,34 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
   while (cursor is_not end) {
     // TODO: should we try to handle forward goto?
     // TODO: should we try to handle initializers in for loops?
-    // TODO: handle if...break.
     if (cursor->token_type is T_BLOCK_START) {
+      // Now find the start of the statement:
+      Marker_mut_p statement = cursor;
+      size_t nesting = 0;
+      while (statement is_not start) {
+        --statement;
+        if (T_TUPLE_END is statement->token_type) {
+          ++nesting;
+        } else if (T_TUPLE_START is statement->token_type) {
+          if (not nesting) {
+            log("At line %lu: %s",
+                1 + count_line_ends_between(src, 0, statement - start),
+                "Too many opening parenthesis.");
+            defer_end();
+            return;
+          }
+          --nesting;
+        } else if (not nesting and statement->token_type is_not T_SPACE) {
+          if (statement->token_type is_not T_CONTROL_FLOW       and
+              statement->token_type is_not T_CONTROL_FLOW_LOOP  and
+              statement->token_type is_not T_CONTROL_FLOW_SWITCH) {
+            statement = cursor;
+          }
+          break;
+        }
+      }
+      push_Marker_array(&block_stack, *statement);
       ++cursor;
-      skip_space_forward(cursor, end);
-      push_Marker_array(&block_stack, *cursor);
     } else if (cursor->token_type is T_BLOCK_END) {
       pop_Marker_array(&block_stack, NULL);
       Marker_mut_p previous_line = cursor;
@@ -120,22 +157,38 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         Marker before =
             (previous_line-1)->token_type is T_SPACE? *(previous_line-1): space;
         Marker between = indentation(src, previous_line->start);
-        cursor += insert_deferred_actions(markers, block_level,
+        cursor += insert_deferred_actions(&pending, block_level,
                                           &before, &between,
-                                          insertion_point - start, &pending);
+                                          insertion_point - start, markers);
         end = (mut_Marker_p)Marker_array_end(markers);
       }
+      exit_level(&pending, block_level);
       ++cursor;
     } else if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
       size_t block_level = block_stack.len;
+      if (block_level is 0) {
+        log("At line %lu: break outside of block.",
+            1 + count_line_ends_between(src, 0, cursor->start));
+        err.message = NULL;
+        break;
+      }
+      while (block_level) {
+        --block_level;
+        TokenType block_type =
+            get_Marker_array(&block_stack, block_level)->token_type;
+        if (block_type is T_CONTROL_FLOW_LOOP or
+            block_type is T_CONTROL_FLOW_SWITCH) {
+          break;
+        }
+      }
       if (cursor is_not start) {
         Marker_p insertion_point =
             (cursor-1)->token_type is T_SPACE? cursor-1: cursor;
         Marker before = insertion_point is_not cursor? *insertion_point: space;
         Marker between = indentation(src, cursor->start);
-        cursor += insert_deferred_actions(markers, block_level,
+        cursor += insert_deferred_actions(&pending, block_level,
                                           &before, &between,
-                                          insertion_point - start, &pending);
+                                          insertion_point - start, markers);
         end = (mut_Marker_p)Marker_array_end(markers);
       }
       ++cursor;
@@ -147,9 +200,9 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
             (cursor-1)->token_type is T_SPACE? cursor-1: cursor;
         Marker before = insertion_point is_not cursor? *insertion_point: space;
         Marker between = indentation(src, cursor->start);
-        cursor += insert_deferred_actions(markers, block_level,
+        cursor += insert_deferred_actions(&pending, block_level,
                                           &before, &between,
-                                          insertion_point - start, &pending);
+                                          insertion_point - start, markers);
         end = (mut_Marker_p)Marker_array_end(markers);
       }
       ++cursor;
@@ -161,7 +214,9 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       skip_space_forward(action_start, end);
       // Now find the end of the statement:
       Marker_mut_p action_end = action_start;
-      if (action_end->token_type is T_CONTROL_FLOW) {
+      if (action_end->token_type is T_CONTROL_FLOW       or
+          action_end->token_type is T_CONTROL_FLOW_LOOP  or
+          action_end->token_type is T_CONTROL_FLOW_SWITCH) {
         ++action_end;
         skip_space_forward(action_end, end);
         size_t nesting = 0;
@@ -185,8 +240,8 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           ++action_end;
         }
         skip_space_forward(action_end, end);
-        if (action_end is_not end &&
-            action_end->token_type == T_BLOCK_START) {
+        if (action_end is_not end and
+            T_BLOCK_START is action_end->token_type) {
           // Find the end of the block.
           action_end = find_matching_fence(action_end, end, &err);
         } else {
