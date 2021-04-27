@@ -1,9 +1,11 @@
 /// Reorganize `obj @ fn1(a), fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
 static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
-  mut_Marker_p     start  = (mut_Marker_p) Marker_array_start(markers);
+  mut_Marker_mut_p start  = (mut_Marker_p) Marker_array_start(markers);
   mut_Marker_mut_p cursor = start;
   mut_Marker_mut_p end    = (mut_Marker_p) Marker_array_end(markers);
+  size_t cursor_position;
+
   mut_Error err = { .position = 0, .message = NULL };
 
   Marker comma     = new_marker(src, ",", T_COMMA);
@@ -203,14 +205,19 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
           slice.start_p = Marker_array_start(&replacement);
           slice.end_p   = Marker_array_end  (&replacement);
+          // Invalidates: markers
+          cursor_position = start_of_line - start;
           splice_Marker_array(markers,
-                              start_of_line - Marker_array_start(markers),
+                              cursor_position,
                               end_of_line - start_of_line,
                               NULL,
                               &slice);
+          cursor_position += replacement.len;
+          start = (mut_Marker_p)Marker_array_start(markers);
+          end   = (mut_Marker_p)Marker_array_end  (markers);
+          cursor = start + cursor_position;
+          slice.start_p = slice.end_p = NULL;
           destruct_Marker_array(&replacement);
-          end = (mut_Marker_p) Marker_array_end(markers);
-          cursor = end_of_line + replacement.len - (end_of_line - start_of_line);
         }
       }
     }
