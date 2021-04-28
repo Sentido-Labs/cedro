@@ -18,8 +18,7 @@ void test_const()
   mut_Byte_array array;
   init_Byte_array(&array, 10);
   // Will fail:
-  // push_Byte_array(&array, '@');
-  push_Byte_array(&array, B("@"));
+  push_Byte_array(&array, '@');
   *get_mut_Byte_array(&array, 0) = 0;
   // Will fail:
   //*get_mut_Byte_array(&array, 0) = 0;
@@ -44,7 +43,7 @@ void test_array()
   init_Byte_array(&array, 10);
   size_t text_len = strlen((char*const) text);
   for (size_t i = 0; i < text_len; ++i) {
-    push_Byte_array(&array, text + i);
+    push_Byte_array(&array, text[i]);
   }
   assert(eq(array.len, text_len) ||
          (log("Wront text length %lu ≠ %lu", array.len, text_len), false));
@@ -64,19 +63,19 @@ void test_array()
   //slice.array_p = &array;
   //splice_Byte_array(&array, 0, 0, &slice);
 
-  splice_Byte_array(&array, 11, 0, &slice);
+  splice_Byte_array(&array, 11, 0, NULL, &slice);
   assert(eq(214, array.len) ||
          (text_rebuilt = to_string_Byte_array(&array),
           log("Insert:\n%s", text_rebuilt),
           free(text_rebuilt), false));
 
-  splice_Byte_array(&array, 25 + 35, 36, NULL);
+  splice_Byte_array(&array, 25 + 35, 36, NULL, NULL);
   assert(eq(178, array.len) ||
          (text_rebuilt = to_string_Byte_array(&array),
           log("Delete:\n%s", text_rebuilt),
           free(text_rebuilt), false));
 
-  splice_Byte_array(&array, 101, 76, &slice);
+  splice_Byte_array(&array, 101, 76, NULL, &slice);
   text_rebuilt = to_string_Byte_array(&array);
   assert(eq(137, array.len) ||
          (log("Splice:\n%s", text_rebuilt), false));
