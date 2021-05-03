@@ -1,7 +1,6 @@
 /* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
 /** \file */
-/**
- * \mainpage
+/** \mainpage
  * The Cedro C pre-processor.
  *   - [Data structures](cedro_8c.html#nested-classes)
  *   - [Macros](cedro_8c.html#define-members)
@@ -41,13 +40,14 @@
 #define log(...) fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)
 
 /** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
-    and constant types 〈T〉 and 〈T〉_p (pointer to constant).
-
-    You can define similar types for an existing type, for instance `uint8_t`:
-    ```
-    typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
-    typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
-    ``` */
+ * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
+ *
+ *  You can define similar types for an existing type, for instance `uint8_t`:
+ * ```
+ * typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
+ * typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
+ * ```
+ */
 #define TYPEDEF_STRUCT(T, TYPE)                                          \
   typedef struct T TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p; \
   typedef const struct T      T, *             T##_mut_p, * const T##_p
@@ -69,17 +69,17 @@ typedef struct Options {
   bool print_markers;
 } Options, *Options_p;
 
-/// Binary string, `const unsigned char const*`.
+/** Binary string, `const unsigned char const*`. */
 #define B(string) ((const unsigned char * const)string)
 
-/**
-   These token types loosely correspond to those in the C grammar.
-
-   Keywords:
-   https://en.cppreference.com/w/c/keyword
-
-   Operator precedence levels:
-   https://en.cppreference.com/w/c/language/operator_precedence */
+/** These token types loosely correspond to those in the C grammar.
+ *
+ *  Keywords:
+ *  https://en.cppreference.com/w/c/keyword
+ *
+ *  Operator precedence levels:
+ *  https://en.cppreference.com/w/c/language/operator_precedence
+ */
 typedef enum TokenType {
   /** No token, used as marker for uninitialized data. */ T_NONE,
   /** Identifier. See `identifier()`.                 */ T_IDENTIFIER,
@@ -194,7 +194,7 @@ DEFINE_ARRAY_OF(Marker, 0, {});
 
 TYPEDEF(Byte, uint8_t);
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
- *  for tokens. No literal token is longer. */
+ * for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
 
 /* Lexer definitions. */
@@ -221,8 +221,9 @@ identifier(Byte_p start, Byte_p end)
 }
 
 /** Match a number.
-    This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
-    Rejecting that is left to the compiler. */
+ *  This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+ *  Rejecting that is left to the compiler.
+ */
 static Byte_p
 number(Byte_p start, Byte_p end)
 {
@@ -297,7 +298,7 @@ character(Byte_p start, Byte_p end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
-/** Match whitespace: one or more space, TAB, CR, or NL characters. */
+/** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters. */
 static Byte_p
 space(Byte_p start, Byte_p end)
 {
@@ -383,9 +384,9 @@ preprocessor(Byte_p start, Byte_p end)
 
 
 /** Compute the number of LF characters between the given positions.
-
-    To get the line number at `pos`:
-    ```1 + count_line_ends_between(src, 0, position);```
+ *
+ *  To get the line number at `pos`:
+ * ```1 + count_line_ends_between(src, 0, position);```
  */
 static size_t
 count_line_ends_between(Byte_array_p src, size_t start, size_t position)
@@ -402,7 +403,7 @@ count_line_ends_between(Byte_array_p src, size_t start, size_t position)
 }
 
 /** Extract the indentation of the line for the character at `index`,
-    including the preceding `LF` character if it exists.
+ * including the preceding `LF` character if it exists.
  */
 static Marker
 indentation(Byte_array_p src, size_t index)
@@ -436,15 +437,15 @@ indentation(Byte_array_p src, size_t index)
 /** Copy the characters between `start` and `end` into the given Byte array.
  *
  *  To extract the text for `Marker_p m` from `Byte_p src`:
- *  ```
- *  mut_Byte_array string; init_Byte_array(&string, 20);
- *  extract_src(m, m + 1, src, &string);
- *  destruct_Byte_array(&string);
- *  ```
+ * ```
+ * mut_Byte_array string; init_Byte_array(&string, 20);
+ * extract_src(m, m + 1, src, &string);
+ * destruct_Byte_array(&string);
+ * ```
  *  If you want string.items to be a zero-terminated C string:
- *  ```
- *  push_Byte_array(&string, '\0');
- *  ```
+ * ```
+ * push_Byte_array(&string, '\0');
+ * ```
  *  or use `as_c_string(mut_Byte_array_p _)`.
  *
  *  @param[in] start marker pointer.
@@ -477,8 +478,11 @@ push_str(mut_Byte_array_p _, const char * const str)
   splice_Byte_array(_, _->len, 0, NULL, &insert);
 }
 
+/** Append a formatted C string to the end of the given buffer.
+ *  It’s the same as printf(...), only the result is stored instead
+ * of printed to stdout. */
 static void
-push_printf(mut_Byte_array_p _, const char * const fmt, ...)
+push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
@@ -498,6 +502,14 @@ push_printf(mut_Byte_array_p _, const char * const fmt, ...)
   va_end(args);
 }
 
+/** Make it be a valid C string, by adding a `'\0'` character after the last
+ * last valid element, without increasing the length.
+ *  It first makes sure there is at least one extra byte after the array
+ * contents in memory, by increasing the capacity if needed, and then
+ * sets it to `0`.
+ *  Returns the pointer `_->items` which now can be used as a C string
+ * as long as you don’t modify it.
+ */
 static const char *
 as_c_string(mut_Byte_array_p _)
 {
@@ -510,19 +522,21 @@ as_c_string(mut_Byte_array_p _)
   return (const char *) _->items;
 }
 
-/** Indent by the given number of double spaces, for the next `fprintf()`. */
+/** Indent by the given number of double spaces, for the next `log()`
+ * or `fprintf(stder, …)`. */
 static void
 indent_log(size_t indent)
 {
   if (indent > 40) indent = 40;
   while (indent-- is_not 0) fprintf(stderr, "  ");
 }
+/** Log to `stderr` with the given indentation. */
 #define log_indent(indent, ...) { indent_log(indent); log(__VA_ARGS__); }
 
 /** Build a new marker for the given string,
- *  pointing to its first appearance in `src`.
+ * pointing to its first appearance in `src`.
  *  If not found, append the text to `src`
- *  and return a marker poiting there.
+ * and return a marker poiting there.
  */
 static Marker
 new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
@@ -622,11 +636,11 @@ print_markers(Marker_array_p markers, Byte_array_p src,
   defer_end();
 }
 
-/* Format the markers back into source code form.
- * @param[in] markers tokens for the current form of the program.
- * @param[in] src original source code.
- * @param[in] options formatting options.
- * @param[in] out FILE pointer where the source code will be written.
+/** Format the markers back into source code form.
+ *  @param[in] markers tokens for the current form of the program.
+ *  @param[in] src original source code.
+ *  @param[in] options formatting options.
+ *  @param[in] out FILE pointer where the source code will be written.
  */
 static void
 unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
@@ -670,12 +684,11 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
   }
 }
 
-/**
-   Match a keyword or identifier.
-   @param[in] start of source code segment to search in.
-   @param[in] end of source code segment.
-
-   See `enum TokenType` for a list of keywords.
+/** Match a keyword or identifier.
+ *  @param[in] start of source code segment to search in.
+ *  @param[in] end of source code segment.
+ *
+ *  See `enum TokenType` for a list of keywords.
  */
 static TokenType
 keyword_or_identifier(Byte_p start, Byte_p end)
@@ -785,10 +798,11 @@ keyword_or_identifier(Byte_p start, Byte_p end)
 #define TOKEN2(token) ++token_end;    TOKEN1(token)
 #define TOKEN3(token) token_end += 2; TOKEN1(token)
 
-/* Parse the given source code into the `markers` array,
-   appending the new markers to whatever was already there.
-   Remember to empty the `markers` array before calling this function
-   if you are re-parsing from scratch. */
+/** Parse the given source code into the `markers` array,
+ * appending the new markers to whatever was already there.
+ *  Remember to empty the `markers` array before calling this function
+ * if you are re-parsing from scratch.
+ */
 static Byte_p
 parse(Byte_array_p src, mut_Marker_array_p markers)
 {
@@ -995,6 +1009,12 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
 /** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
 #define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
 
+/** starting at `cursor`, which should point to an
+ * opening fence `{`, `[` or `(`, advance until the corresponding
+ * closing fence `}`, `]` or `)` is found, then return that address.
+ *  If the fences are not closed, the return value is `ènd`
+ * and an error message is stored in `err`.
+ */
 static inline Marker_p
 find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
 {
@@ -1022,9 +1042,8 @@ find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
   return matching_close;
 }
 
-/**
-   Find start of line that contains `cursor`,
-   looking back no further than `start`.
+/** Find start of line that contains `cursor`,
+ * looking back no further than `start`.
  */
 static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
@@ -1064,9 +1083,8 @@ found:
   return start_of_line;
 }
 
-/**
-   Find end of line that contains `cursor`,
-   looking forward no further than right before `end`.
+/** Find end of line that contains `cursor`,
+ * looking forward no further than right before `end`.
  */
 static inline Marker_p
 find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
@@ -1099,9 +1117,8 @@ found:
   return end_of_line;
 }
 
-/**
-   Find start of block that contains `cursor`,
-   looking back no further than `start`.
+/** Find start of block that contains `cursor`,
+ * looking back no further than `start`.
  */
 static inline Marker_p
 find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
@@ -1135,9 +1152,8 @@ found:
   return start_of_block;
 }
 
-/**
-   Find end of block that contains `cursor`,
-   looking forward no further than right before `end`.
+/** Find end of block that contains `cursor`,
+ * looking forward no further than right before `end`.
  */
 static inline Marker_p
 find_block_end(Marker_p cursor, Marker_p end, mut_Error_p err)
@@ -1254,6 +1270,7 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
+    "  El resultado va a stdout.\n"
     "  --discard-space    Descarta los espacios en blanco. (implícito)\n"
     "  --discard-comments Descarta los comentarios. (implícito)\n"
     "  --print-markers    Imprime los marcadores.\n"
@@ -1270,6 +1287,7 @@ usage_es =
 static const char* const
 usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
+    "  The result goes to stdout.\n"
     "  --discard-space    Discards all whitespace. (default)\n"
     "  --discard-comments Discards the comments. (default)\n"
     "  --print-markers    Prints the markers.\n"

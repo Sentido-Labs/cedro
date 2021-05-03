@@ -1,17 +1,23 @@
-CC=gcc -g
-CC_STRICT=$(CC) -g -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable
 NAME=cedro
 
-all: $(NAME)
-.PHONY: all
+CC=gcc -g
+CC_STRICT=$(CC) -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable
+
+all: debug release
+	if which valgrind; then valgrind --leak-check=yes ./$(NAME) $(NAME).c; fi
+debug:   $(NAME)-debug
+release: $(NAME)
+.PHONY: all debug release
 
 run: $(NAME)
 	./$(NAME) $(NAME).c
 .PHONY: run
 
-$(NAME): $(NAME).c defer.h array.h macros.h macros/*.h Makefile
+$(NAME)-debug: $(NAME).c defer.h array.h macros.h macros/*.h Makefile
 	$(CC_STRICT) -o $@ $<
-	$(CC_STRICT) -O -o $@-release $<
+
+$(NAME):       $(NAME).c defer.h array.h macros.h macros/*.h Makefile
+	$(CC_STRICT) -o $@ $< -O
 
 doc:
 	$(MAKE) -C doc
@@ -35,5 +41,6 @@ check: $(NAME)
 	valgrind --leak-check=yes ./$(NAME) hello.c
 
 clean:
-	rm -f $(NAME)
+	rm -f $(NAME) $(NAME)-debug
 	$(MAKE) -C doc clean
+.PHONY: clean
