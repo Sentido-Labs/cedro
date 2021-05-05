@@ -1191,7 +1191,7 @@ read_file(mut_Byte_array_p _, FilePath path)
 {
   mut_File_p input = fopen(path, "r");
   if (!input) {
-    fprintf(stderr, "File not found: %s", path);
+    fprintf(stderr, "File not found: %s\n", path);
     init_Byte_array(_, 0);
     return;
   }
