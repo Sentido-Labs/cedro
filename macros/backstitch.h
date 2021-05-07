@@ -124,6 +124,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
 
             mut_Marker_mut_p insertion_point = segment_start;
+            bool inside_parenthesis = false;
             if (segment_start->token_type is T_INDEX_START ||
                 segment_start->token_type is T_OP_1        ||
                 segment_start->token_type is T_OP_14) {
@@ -131,11 +132,11 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               // then this is already the correct insertion point.
             } else {
               // Assume function call, look for parenthesis:
-              for (bool inside_parenthesis = false;
-                   not inside_parenthesis and insertion_point < segment_end;
-                   ++insertion_point) {
-                inside_parenthesis =
-                    T_TUPLE_START is insertion_point->token_type;
+              while (not inside_parenthesis and insertion_point < segment_end) {
+                TokenType t = insertion_point->token_type;
+                if       (T_TUPLE_START is t) inside_parenthesis = true;
+                else if  (T_BLOCK_START is t or T_OP_13 is t) break;
+                ++insertion_point;
               }
               // If insertion_point is segment_end, no parenthesis were found:
               // this is clearly not a function call.
@@ -179,8 +180,12 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               }
               splice_Marker_array(&replacement, replacement.len, 0, NULL,
                                   &object);
-              if (insertion_point->token_type is_not T_TUPLE_END) {
-                push_Marker_array(&replacement, comma);
+              if (inside_parenthesis) {
+                if (insertion_point->token_type is_not T_TUPLE_END) {
+                  push_Marker_array(&replacement, comma);
+                  push_Marker_array(&replacement, space);
+                }
+              } else {
                 push_Marker_array(&replacement, space);
               }
             }
