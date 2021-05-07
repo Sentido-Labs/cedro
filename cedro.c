@@ -266,7 +266,7 @@ number(Byte_p start, Byte_p end)
 static Byte_p
 string(Byte_p start, Byte_p end)
 {
-  if (*start is_not '"' or end <= start) return NULL;
+  if (end <= start or *start is_not '"') return NULL;
   Byte_mut_p cursor = start + 1;
   while (cursor is_not end and *cursor is_not '"') {
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
@@ -275,21 +275,11 @@ string(Byte_p start, Byte_p end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
-/** Match an `#include <...>` directive. */
-static Byte_p
-system_include(Byte_p start, Byte_p end)
-{
-  if (*start is_not '<' or end <= start) return NULL;
-  Byte_mut_p cursor = start + 1;
-  while (cursor is_not end and *cursor is_not '>') ++cursor;
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
-}
-
 /** Match a character literal. */
 static Byte_p
 character(Byte_p start, Byte_p end)
 {
-  if (*start is_not '\'' or end <= start) return NULL;
+  if (end <= start or *start is_not '\'') return NULL;
   Byte_mut_p cursor = start + 1;
   while (cursor is_not end and *cursor is_not '\'') {
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
@@ -327,58 +317,37 @@ exit:
 static Byte_p
 comment(Byte_p start, Byte_p end)
 {
-  if (*start is_not '/' or end <= start + 1) return NULL;
+  if (end <= start + 1 or *start is_not '/') return NULL;
   Byte_mut_p cursor = start + 1;
   if (*cursor is '/') {
-    ++cursor;
-    while (cursor < end and *cursor is_not '\n') ++cursor;
-    return cursor;// The newline is not part of the comment.
+    do {
+      cursor = memchr(cursor + 1, '\n', end - cursor);
+      if (!cursor) { cursor = end; break; }
+    } while ('\\' == *(cursor - 1));
+    return cursor; // The newline is not part of the token.
+  } else if (*cursor is_not '*') {
+    return NULL;
   }
-  if (*cursor is_not '*') return NULL;
-  while (cursor < end) {
-    if (*cursor is '*') {
-      ++cursor;
-      if (cursor < end and *cursor is '/') break;
-    }
-    ++cursor;
-  }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
-}
-
-/** Match a line comment. */
-static Byte_p
-comment_line(Byte_p start, Byte_p end)
-{
-  if (*start is_not '/' or end <= start + 1) return NULL;
-  Byte_mut_p cursor = start + 1;
-  if (*cursor is_not '/') return NULL;
-  while (cursor < end && *cursor is_not '\n') ++cursor;
-  return cursor;
+  ++cursor; // Skip next character, at minimum a '*' if the comment is empty.
+  if (cursor is end) return NULL;
+  do {
+    cursor = memchr(cursor + 1, '/', end - cursor);
+    if (!cursor) { cursor = end; break; }
+  } while ('*' != *(cursor - 1));
+  return (cursor is end)? end: cursor + 1;// Token includes the closing symbol.
 }
 
 /** Match a pre-processor directive. */
 static Byte_p
 preprocessor(Byte_p start, Byte_p end)
 {
-  if (*start is_not '#' or end <= start) return NULL;
-  Byte_mut_p cursor = start + 1;
-  if (cursor is end) return cursor;
-  mut_Byte c = *cursor;
-  if (in('a',c,'z') or in('A',c,'Z') or c is '_') {
-    ++cursor;
-    while (cursor < end) {
-      c = *cursor;
-      if (in('0',c,'9') or in('a',c,'z') or in('A',c,'Z') or c is '_') {
-        ++cursor;
-      } else break;
-    }
-    return cursor;
-  } else if (c is '#') {
-    // Token concatenation.
-    return cursor + 1;
-  } else {
-    return NULL;
-  }
+  if (end is start or *start is_not '#') return NULL;
+  Byte_mut_p cursor = start;
+  do {
+    cursor = memchr(cursor + 1, '\n', end - cursor);
+    if (!cursor) { cursor = end; break; }
+  } while ('\\' == *(cursor - 1));
+  return cursor; // The newline is not part of the token.
 }
 
 
@@ -393,7 +362,6 @@ count_line_ends_between(Byte_array_p src, size_t start, size_t position)
 {
   size_t count = 0;
   Byte_mut_p pointer = src->items + start;
-
   while ((pointer =
           memchr(pointer, '\n', src->items + position - pointer ))) {
     ++pointer;
@@ -811,8 +779,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   Byte_p end = src->items + src->len;
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
-  bool include_mode = false;
-  bool define_mode  = false;
   while (cursor is_not end) {
     if (cursor is prev_cursor) {
       log("ERROR: endless loop after %ld.\n", cursor - src->items);
@@ -840,24 +806,9 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = space(cursor, end))) {
       TOKEN1(T_SPACE);
       if (token_end is cursor) { log("error T_SPACE"); break; }
-      if ((include_mode||define_mode) && memchr(cursor, '\n', token_end - cursor)) {
-        include_mode = false;
-        if (define_mode) {
-          define_mode = false;
-          // TODO: mark somehow that the definition ends here.
-        }
-      }
     } else if ((token_end = preprocessor(cursor, end))) {
       TOKEN1(T_PREPROCESSOR);
       if (token_end is cursor) { log("error T_PREPROCESSOR"); break; }
-      if (mem_eq(cursor, "#include", token_end - cursor)) {
-        include_mode = true;
-      } else if (mem_eq(cursor, "#define", token_end - cursor)) {
-        define_mode = true;
-      }
-    } else if (include_mode && (token_end = system_include(cursor, end))) {
-      TOKEN1(T_STRING);
-      if (token_end is cursor) { log("error T_STRING"); break; }
     } else {
       uint8_t c = *cursor;
       token_end = cursor + 1;
@@ -1053,6 +1004,7 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
   while (start_of_line is_not start) {
     switch (start_of_line->token_type) {
       case T_SEMICOLON: case T_BLOCK_START: case T_BLOCK_END:
+      case T_PREPROCESSOR:
         if (nesting is 0) {
           ++start_of_line;
           goto found;
