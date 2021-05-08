@@ -64,11 +64,6 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         Marker object_indentation = indentation(src, object.start_p->start);
         // Trim space after object, between it and backstitch operator.
         skip_space_back(object.start_p, object.end_p);
-        if (object.start_p is object.end_p) {
-          log("Error: %lu: Empty backstitch object.",
-              1 + count_line_ends_between(src, 0, cursor->start));
-          return;
-        }
         cursor = first_segment_start;
         mut_Marker_mut_p end_of_line = (mut_Marker_mut_p)
             find_line_end(cursor, end, &err);
@@ -98,6 +93,11 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   break;
                 case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
                   --nesting;// Can not underflow because of find_line_end().
+                  break;
+                case T_ELLIPSIS:
+                  log("Syntax error in line %lu:"
+                      " invalid prefix, must be an identifier.",
+                      line_number(src, segment_end->start));
                   break;
                 default:
                   break;
@@ -141,16 +141,30 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
 
             if (insertion_point is segment_start) {
-              splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                  &object);
-              if ((segment_start+1)->token_type == T_SPACE) {
-                push_Marker_array(&replacement, space);
+              if (object.start_p is_not object.end_p) {
+                splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                    &object);
+                if ((segment_start+1)->token_type == T_SPACE) {
+                  push_Marker_array(&replacement, space);
+                }
+              }
+              if (prefix) push_Marker_array(&replacement, *prefix);
+              if (suffix) {
+                push_Marker_array(&replacement, *insertion_point++);
+                push_Marker_array(&replacement, *suffix);
               }
             } else if (insertion_point is segment_end) {
               insertion_point = segment_start;
-              splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                  &object);
-              push_Marker_array(&replacement, space);
+              if (object.start_p is_not object.end_p) {
+                splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                    &object);
+                push_Marker_array(&replacement, space);
+              }
+              if (prefix) push_Marker_array(&replacement, *prefix);
+              if (suffix) {
+                push_Marker_array(&replacement, *insertion_point++);
+                push_Marker_array(&replacement, *suffix);
+              }
             } else {
               slice.start_p = segment_start;
               slice.end_p   = insertion_point;
@@ -169,12 +183,9 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 }
                 slice.start_p = slice.end_p;
                 slice.end_p   = insertion_point;
-                splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    &slice);
-              } else {
-                splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    &slice);
               }
+              splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                  &slice);
               splice_Marker_array(&replacement, replacement.len, 0, NULL,
                                   &object);
               if (inside_parenthesis) {
