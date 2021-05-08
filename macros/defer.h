@@ -76,16 +76,12 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
 
 static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
-  defer_start();
-
   Marker space = new_marker(src, " ", T_SPACE);
 
   mut_Marker_array block_stack;
   init_Marker_array(&block_stack, 20);
-  defer(&block_stack, &destruct_Marker_array);
   mut_DeferredAction_array pending;
   init_DeferredAction_array(&pending, 20);
-  defer(&pending, &destruct_DeferredAction_array);
 
   mut_Marker_mut_p start  = (mut_Marker_p)Marker_array_start(markers);
   mut_Marker_mut_p cursor = start;
@@ -95,7 +91,6 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
   mut_Error err = { .position = 0, .message = NULL };
   mut_Marker_array marker_buffer;
   init_Marker_array(&marker_buffer, 8);
-  defer(&marker_buffer, &destruct_Marker_array);
 
   while (cursor is_not end) {
     // TODO: should we try to handle forward goto?
@@ -113,8 +108,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
             log("At line %lu: %s",
                 line_number(src, statement - start),
                 "Too many opening parenthesis.");
-            defer_end();
-            return;
+            goto free_all;
           }
           --nesting;
         } else if (not nesting and statement->token_type is_not T_SPACE) {
@@ -219,7 +213,6 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
       ++cursor;
     } else if (cursor->token_type is T_TYPE_QUALIFIER_AUTO) {
-      defer_enter();
       // Add a new action at the current level.
       // First skip the auto keyword and whitespace:
       mut_Marker_mut_p action_start = cursor + 1;
@@ -240,8 +233,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
               log("At line %lu: %s",
                   line_number(src, action_end - start),
                   "Too many closing parenthesis.");
-              defer_end();
-              return;
+              goto free_all;
             }
             --nesting;
             if (not nesting) {
@@ -307,7 +299,6 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       };
       push_DeferredAction_array(&pending, move_DeferredAction(&deferred));
 
-      defer_exit();
       // Do not increase cursor because we just removed the tokens here,
       // so the next one will be at the same location.
     } else {
@@ -315,5 +306,8 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
     }
   }
 
-  defer_end();
+free_all:
+  destruct_Marker_array(&marker_buffer);
+  destruct_DeferredAction_array(&pending);
+  destruct_Marker_array(&block_stack);
 }

@@ -1,5 +1,5 @@
 NAME=Cedro
-SRC=../cedro.c ../array.h ../defer.h
+SRC=../cedro.c ../array.h
 LOGO=cedro.png
 CSS=cedro.css
 
