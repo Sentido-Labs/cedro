@@ -623,7 +623,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
       continue;
     }
-    Byte_p text = src->items + m->start;
+    Byte_mut_p text = src->items + m->start;
     if (options.discard_space) {
       if (m->token_type is T_SPACE) {
         Byte_mut_p eol = text;
@@ -648,6 +648,62 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
       } else if (m->token_type is T_COMMENT) {
         // If not eol_pending, set it if this is a line comment.
         eol_pending = eol_pending || (m->len > 1 && '/' is text[1]);
+      }
+    }
+    if (m->token_type is T_PREPROCESSOR) {
+      size_t len = 9; // = strlen("#define {");
+      if (m->len >= len and
+          strn_eq("#define {", (char*)text, m->len < len? m->len: len)) {
+        text += len;
+        if (text is_not Byte_array_end(src) && *text == ' ') {
+          fputs("#define", out);
+        } else {
+          fputs("#define ", out);
+        }
+        fwrite(text, sizeof(*src->items), m->len - len, out);
+        for (++m; m is_not m_end; ++m) {
+          if (options.discard_comments && m->token_type is T_COMMENT) {
+            continue;
+          } else if (m->token_type is T_PREPROCESSOR) {
+            text = src->items + m->start;
+            if (strn_eq("#define }", (char*)text, m->len < 9? m->len: 9)) {
+              puts("// End #define");
+              break;
+            }
+            fwrite(text, sizeof(*src->items), m->len, out);
+          } else {
+            text = src->items + m->start;
+            len = m->len;
+            bool is_line_comment = false;
+            if (m->token_type is T_COMMENT and len > 2) {
+              // Valid comment tokens will always be at least 2 chars long,
+              // but we need to check in case this one is not.
+              if ('/' == text[1]) {
+                fputc('/', out); ++text; --len;
+                while ('/' == *text and len) {
+                  fputc('*', out); ++text; --len;
+                }
+                is_line_comment = true;
+              }
+            }
+            Byte_mut_p eol;
+            while ((eol = memchr(text, '\n', len))) {
+              fwrite(text, sizeof(*src->items), eol - text, out);
+              if (is_line_comment) {
+                fputs(" */", out);
+                is_line_comment = false;
+              }
+              fputs(" \\\n", out);
+              len -= eol - text + 1;
+              text = eol + 1;
+            }
+            fwrite(text, sizeof(*src->items), len, out);
+            if (is_line_comment) {
+              fputs(" */", out);
+            }
+          }
+        }
+        continue;
       }
     }
     fwrite(text, sizeof(*src->items), m->len, out);
