@@ -21,7 +21,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       skip_space_forward(first_segment_start, end);
       if (first_segment_start is end) {
         log("Syntax error in line %lu: unfinished backstitch operator.",
-            count_line_ends_between(src, 0, first_segment_start->start));
+            line_number(src, first_segment_start->start));
         return;
       }
       Marker_mut_p prefix = NULL, suffix = NULL;
@@ -30,12 +30,13 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_forward(first_segment_start, end);
         if (first_segment_start is end) {
           log("Syntax error in line %lu: unfinished affix declarator.",
-              count_line_ends_between(src, 0, first_segment_start->start));
+              line_number(src, first_segment_start->start));
           return;
         }
         if (first_segment_start->token_type is_not T_IDENTIFIER) {
-          log("Syntax error in line %lu: invalid affix, must be an identifier.",
-              count_line_ends_between(src, 0, first_segment_start->start));
+          log("Syntax error in line %lu:"
+              " invalid suffix, must be an identifier.",
+              line_number(src, first_segment_start->start));
           return;
         }
         suffix = first_segment_start++;
@@ -54,9 +55,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       size_t nesting = 0;
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
-        log("Error: %lu: %s",
-            1 + count_line_ends_between(src, 0, err.position),
-            err.message);
+        log("Error: %lu: %s", line_number(src, err.position), err.message);
         err.message = NULL;
       } else {
         // Trim space before object.
@@ -76,9 +75,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_back(cursor, end_of_line);
         cursor = end_of_line;
         if (err.message) {
-          log("Error: %lu: %s",
-              1 + count_line_ends_between(src, 0, err.position),
-              err.message);
+          log("Error: %lu: %s", line_number(src, err.position), err.message);
           err.message = NULL;
         } else {
           bool ends_with_semicolon =
@@ -109,7 +106,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
             if (nesting) {
               log("Error: %lu: unclosed group, syntax error.",
-                  count_line_ends_between(src, 0, segment_start->start));
+                  line_number(src, segment_start->start));
               destruct_Marker_array(&replacement);
               return;
             }
@@ -118,7 +115,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
             if (segment_end is segment_start) {
               log("Warning: %ld: empty backstitch segment.",
-                  1 + count_line_ends_between(src, 0, segment_start->start));
+                  line_number(src, segment_start->start));
               segment_end = ++segment_start;
               continue;
             }

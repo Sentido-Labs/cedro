@@ -354,8 +354,7 @@ preprocessor(Byte_p start, Byte_p end)
 
 /** Compute the number of LF characters between the given positions.
  *
- *  To get the line number at `pos`:
- * ```1 + count_line_ends_between(src, 0, position);```
+ *  To get the line number at `position`, use `line_number()`.
  */
 static size_t
 count_line_ends_between(Byte_array_p src, size_t start, size_t position)
@@ -368,6 +367,15 @@ count_line_ends_between(Byte_array_p src, size_t start, size_t position)
     ++count;
   }
   return count;
+}
+
+/** Compute the line number as
+ * ```1 + count_line_ends_between(src, 0, position)```.
+ */
+static size_t
+line_number(Byte_array_p src, size_t position)
+{
+  return 1 + count_line_ends_between(src, 0, position);
 }
 
 /** Extract the indentation of the line for the character at `index`,

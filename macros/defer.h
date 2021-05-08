@@ -111,7 +111,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         } else if (T_TUPLE_START is statement->token_type) {
           if (not nesting) {
             log("At line %lu: %s",
-                1 + count_line_ends_between(src, 0, statement - start),
+                line_number(src, statement - start),
                 "Too many opening parenthesis.");
             defer_end();
             return;
@@ -140,9 +140,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       if (previous_line is_not start) {
         previous_line = find_line_start(previous_line - 1, start, &err);
         if (err.message) {
-          log("At line %lu: %s",
-              1 + count_line_ends_between(src, 0, err.position),
-              err.message);
+          log("At line %lu: %s", line_number(src, err.position), err.message);
           err.message = NULL;
           break;
         }
@@ -174,7 +172,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       size_t block_level = block_stack.len;
       if (block_level is 0) {
         log("At line %lu: break outside of block.",
-            1 + count_line_ends_between(src, 0, cursor->start));
+            line_number(src, cursor->start));
         err.message = NULL;
         break;
       }
@@ -240,7 +238,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           } else if (T_TUPLE_END == action_end->token_type) {
             if (not nesting) {
               log("At line %lu: %s",
-                  1 + count_line_ends_between(src, 0, action_end - start),
+                  line_number(src, action_end - start),
                   "Too many closing parenthesis.");
               defer_end();
               return;
@@ -269,16 +267,14 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         if (action_end is_not end) ++action_end;
       }
       if (err.message) {
-        log("At line %lu: %s",
-            1 + count_line_ends_between(src, 0, err.position),
-            err.message);
+        log("At line %lu: %s", line_number(src, err.position), err.message);
         err.message = NULL;
         break;
       }
 
       if (action_end is action_start) {
         log("At line %lu: %s",
-            1 + count_line_ends_between(src, 0, err.position),
+            line_number(src, err.position),
             "Empty auto statement.");
         break;
       }
@@ -286,9 +282,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       mut_Marker_p line_start = (mut_Marker_p)
           find_line_start(cursor, start, &err);
       if (err.message) {
-        log("At line %lu: %s",
-            1 + count_line_ends_between(src, 0, err.position),
-            err.message);
+        log("At line %lu: %s", line_number(src, err.position), err.message);
         err.message = NULL;
         break;
       }
