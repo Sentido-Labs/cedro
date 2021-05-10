@@ -1278,12 +1278,12 @@ static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
     "  El resultado va a stdout.\n"
-    "  --discard-space    Descarta los espacios en blanco. (implícito)\n"
-    "  --discard-comments Descarta los comentarios. (implícito)\n"
+    "  --discard-space    Descarta los espacios en blanco.\n"
+    "  --discard-comments Descarta los comentarios.\n"
     "  --print-markers    Imprime los marcadores.\n"
-    "  --not-discard-space    No descarta los espacios.\n"
-    "  --not-discard-comments No descarta los comentarios.\n"
-    "  --not-print-markers    No imprime los marcadores. (implícito)\n"
+    "  --not-discard-space    No descarta los espacios.    (implícito)\n"
+    "  --not-discard-comments No descarta los comentarios. (implícito)\n"
+    "  --not-print-markers    No imprime los marcadores.   (implícito)\n"
     "\n"
     "  --enable-core-dump     Activa volcado de memoria al estrellarse.\n"
     "                         (implícito)\n"
@@ -1295,14 +1295,14 @@ static const char* const
 usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
     "  The result goes to stdout.\n"
-    "  --discard-space    Discards all whitespace. (default)\n"
-    "  --discard-comments Discards the comments. (default)\n"
+    "  --discard-space    Discards all whitespace.\n"
+    "  --discard-comments Discards the comments.\n"
     "  --print-markers    Prints the markers.\n"
-    "  --not-discard-space    Does not discard whitespace.\n"
-    "  --not-discard-comments Does not discard comments.\n"
-    "  --not-print-markers    Does not print the markers. (default)\n"
+    "  --not-discard-space    Does not discard whitespace. (default)\n"
+    "  --not-discard-comments Does not discard comments.   (default)\n"
+    "  --not-print-markers    Does not print the markers.  (default)\n"
     "\n"
-    "  --enable-core-dump     Enable core dump on crash. (default)\n"
+    "  --enable-core-dump     Enable core dump on crash.   (default)\n"
     "  --not-enable-core-dump Disable core dump on crash.\n"
     "  --benchmark        Run a performance benchmark.\n"
     "  --version          Show version: " CEDRO_VERSION
@@ -1311,8 +1311,8 @@ usage_en =
 int main(int argc, char** argv)
 {
   Options options = { // Remember to keep the usage strings updated.
-    .discard_comments = true,
-    .discard_space    = true,
+    .discard_comments = false,
+    .discard_space    = false,
     .apply_macros     = true,
     .print_markers    = false,
   };
@@ -1360,7 +1360,7 @@ int main(int argc, char** argv)
 
   if (run_benchmark) {
     options.print_markers = false;
-    options.apply_macros = false;
+    options.apply_macros  = false;
   }
 
   mut_Marker_array markers;
