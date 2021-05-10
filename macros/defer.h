@@ -78,8 +78,8 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
   Marker space = new_marker(src, " ", T_SPACE);
 
-  mut_Marker_array block_stack;
-  init_Marker_array(&block_stack, 20);
+  mut_TokenType_array block_stack;
+  init_TokenType_array(&block_stack, 20);
   mut_DeferredAction_array pending;
   init_DeferredAction_array(&pending, 20);
 
@@ -120,10 +120,10 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           break;
         }
       }
-      push_Marker_array(&block_stack, *statement);
+      push_TokenType_array(&block_stack, statement->token_type);
       ++cursor;
     } else if (cursor->token_type is T_BLOCK_END) {
-      pop_Marker_array(&block_stack, NULL);
+      pop_TokenType_array(&block_stack, NULL);
       Marker_mut_p previous_line = cursor;
       if (previous_line is_not start) {
         --previous_line;
@@ -172,8 +172,7 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
       while (block_level) {
         --block_level;
-        TokenType block_type =
-            get_Marker_array(&block_stack, block_level)->token_type;
+        TokenType block_type = *get_TokenType_array(&block_stack, block_level);
         if (block_type is T_CONTROL_FLOW_LOOP or
             block_type is T_CONTROL_FLOW_SWITCH) {
           break;
@@ -309,5 +308,5 @@ static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 free_all:
   destruct_Marker_array(&marker_buffer);
   destruct_DeferredAction_array(&pending);
-  destruct_Marker_array(&block_stack);
+  destruct_TokenType_array(&block_stack);
 }

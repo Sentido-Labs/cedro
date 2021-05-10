@@ -37,6 +37,12 @@
 
 #define log(...) fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)
 
+/** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
+ * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
+ */
+#define TYPEDEF_STRUCT(T, TYPE)                                          \
+  typedef struct T TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p; \
+  typedef const struct T      T, * const       T##_p, *       T##_mut_p
 /** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
  * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
  *
@@ -46,9 +52,6 @@
  * typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
  * ```
  */
-#define TYPEDEF_STRUCT(T, TYPE)                                          \
-  typedef struct T TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p; \
-  typedef const struct T      T, *             T##_mut_p, * const T##_p
 #define TYPEDEF(T, TYPE)                                                 \
   typedef     TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p;      \
   typedef const TYPE     T, * const       T##_p, *       T##_mut_p
@@ -132,7 +135,10 @@ typedef enum TokenType {
   /** Backstitch: `@`                                */ T_BACKSTITCH,
   /** Ellipsis: `...`                                */ T_ELLIPSIS,
   /** Other token that is not part of the C grammar. */ T_OTHER
-} TokenType;
+} mut_TokenType, * const mut_TokenType_p, *  mut_TokenType_mut_p;
+typedef const enum TokenType
+/*  */TokenType, * const     TokenType_p, *      TokenType_mut_p;
+
 static const unsigned char * const
 TokenType_STRING[] = {
   B("NONE"),
@@ -164,9 +170,9 @@ TokenType_STRING[] = {
 
 /** Marks a C token in the source code. */
 TYPEDEF_STRUCT(Marker, {
-    size_t start;         /**< Start position, in bytes/chars. */
-    size_t len;           /**< Length, in bytes/chars. */
-    TokenType token_type; /**< Token type. */
+    size_t start;             /**< Start position, in bytes/chars. */
+    size_t len;               /**< Length, in bytes/chars. */
+    mut_TokenType token_type; /**< Token type. */
   });
 
 /** Error while processing markers. */
@@ -187,6 +193,7 @@ init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
 #include "array.h"
 
 DEFINE_ARRAY_OF(Marker, 0, {});
+DEFINE_ARRAY_OF(TokenType, 0, {});
 
 TYPEDEF(Byte, uint8_t);
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
@@ -844,7 +851,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     }
     prev_cursor = cursor;
 
-    TokenType token_type = T_NONE;
+    mut_TokenType token_type = T_NONE;
     Byte_mut_p token_end = NULL;
     if        ((token_end = identifier(cursor, end))) {
       TOKEN1(keyword_or_identifier(cursor, token_end));
