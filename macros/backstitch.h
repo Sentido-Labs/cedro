@@ -21,7 +21,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       skip_space_forward(first_segment_start, end);
       if (first_segment_start is end) {
         log("Syntax error in line %lu: unfinished backstitch operator.",
-            line_number(src, first_segment_start->start));
+            line_number(src, markers, first_segment_start));
         return;
       }
       Marker_mut_p prefix = NULL, suffix = NULL;
@@ -30,13 +30,13 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_forward(first_segment_start, end);
         if (first_segment_start is end) {
           log("Syntax error in line %lu: unfinished affix declarator.",
-              line_number(src, first_segment_start->start));
+              line_number(src, markers, first_segment_start));
           return;
         }
         if (first_segment_start->token_type is_not T_IDENTIFIER) {
           log("Syntax error in line %lu:"
               " invalid suffix, must be an identifier.",
-              line_number(src, first_segment_start->start));
+              line_number(src, markers, first_segment_start));
           return;
         }
         suffix = first_segment_start++;
@@ -55,7 +55,8 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       size_t nesting = 0;
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
-        log("Error: %lu: %s", line_number(src, err.position), err.message);
+        log("Error: %lu: %s",
+            line_number(src, markers, err.position), err.message);
         err.message = NULL;
       } else {
         // Trim space before object.
@@ -70,7 +71,8 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_back(cursor, end_of_line);
         cursor = end_of_line;
         if (err.message) {
-          log("Error: %lu: %s", line_number(src, err.position), err.message);
+          log("Error: %lu: %s",
+              line_number(src, markers, err.position), err.message);
           err.message = NULL;
         } else {
           bool ends_with_semicolon =
@@ -80,7 +82,8 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           //       if it is not an statement.
           mut_Marker_array replacement;
           // The factor of 2 here is a heuristic to avoid relocations in general.
-          init_Marker_array(&replacement, 2 * (end_of_line - start_of_line));
+          init_Marker_array(&replacement,
+                            2 * (size_t)(end_of_line - start_of_line));
           mut_Marker_mut_p segment_start = first_segment_start;
           mut_Marker_mut_p segment_end   = segment_start;
           while (segment_end < end_of_line) {
@@ -97,7 +100,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 case T_ELLIPSIS:
                   log("Syntax error in line %lu:"
                       " invalid prefix, must be an identifier.",
-                      line_number(src, segment_end->start));
+                      line_number(src, markers, segment_end));
                   break;
                 default:
                   break;
@@ -106,7 +109,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
             if (nesting) {
               log("Error: %lu: unclosed group, syntax error.",
-                  line_number(src, segment_start->start));
+                  line_number(src, markers, segment_start));
               destruct_Marker_array(&replacement);
               return;
             }
@@ -115,7 +118,7 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
             if (segment_end is segment_start) {
               log("Warning: %ld: empty backstitch segment.",
-                  line_number(src, segment_start->start));
+                  line_number(src, markers, segment_start));
               segment_end = ++segment_start;
               continue;
             }
@@ -219,10 +222,10 @@ static void macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           slice.start_p = Marker_array_start(&replacement);
           slice.end_p   = Marker_array_end  (&replacement);
           // Invalidates: markers
-          cursor_position = start_of_line - start;
+          cursor_position = (size_t)(start_of_line - start);
           splice_Marker_array(markers,
                               cursor_position,
-                              end_of_line - start_of_line,
+                              (size_t)(end_of_line - start_of_line),
                               NULL,
                               &slice);
           cursor_position += replacement.len;

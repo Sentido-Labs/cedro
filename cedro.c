@@ -1,7 +1,13 @@
 /* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
 /** \file */
 /** \mainpage
- * The Cedro C pre-processor.
+ * The Cedro C pre-processor has three features:
+ * the *backstitch* operator,
+ * a simple resource release *defer* functionality,
+ * and *block* (or multi-line) macros.
+ *
+ * For usage instructions, see [README.html](../../README.html).
+ *
  *   - [Data structures](cedro_8c.html#nested-classes)
  *   - [Macros](cedro_8c.html#define-members)
  *   - [Typedefs](cedro_8c.html#typedef-members)
@@ -177,8 +183,8 @@ TYPEDEF_STRUCT(Marker, {
 
 /** Error while processing markers. */
 TYPEDEF_STRUCT(Error, {
-    size_t position;      /**< Position at which the problem was noticed. */
-    const char * message; /**< Message for user. */
+    Marker_mut_p position; /**< Position at which the problem was noticed. */
+    const char * message;  /**< Message for user. */
   });
 
 /** Initialize a marker with the given values. */
@@ -324,7 +330,7 @@ comment(Byte_p start, Byte_p end)
   Byte_mut_p cursor = start + 1;
   if (*cursor is '/') {
     do {
-      cursor = memchr(cursor + 1, '\n', end - cursor);
+      cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
       if (!cursor) { cursor = end; break; }
     } while ('\\' == *(cursor - 1));
     return cursor; // The newline is not part of the token.
@@ -334,7 +340,7 @@ comment(Byte_p start, Byte_p end)
   ++cursor; // Skip next character, at minimum a '*' if the comment is empty.
   if (cursor is end) return NULL;
   do {
-    cursor = memchr(cursor + 1, '/', end - cursor);
+    cursor = memchr(cursor + 1, '/', (size_t)(end - cursor));
     if (!cursor) { cursor = end; break; }
   } while ('*' != *(cursor - 1));
   return (cursor is end)? end: cursor + 1;// Token includes the closing symbol.
@@ -347,7 +353,7 @@ preprocessor(Byte_p start, Byte_p end)
   if (end is start or *start is_not '#') return NULL;
   Byte_mut_p cursor = start;
   do {
-    cursor = memchr(cursor + 1, '\n', end - cursor);
+    cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
     if (!cursor) { cursor = end; break; }
   } while ('\\' == *(cursor - 1));
   return cursor; // The newline is not part of the token.
@@ -355,38 +361,14 @@ preprocessor(Byte_p start, Byte_p end)
 
 
 
-/** Compute the number of LF characters between the given positions.
- *
- *  To get the line number at `position`, use `line_number()`.
- */
-static size_t
-count_line_ends_between(Byte_array_p src, size_t start, size_t position)
-{
-  size_t count = 0;
-  Byte_mut_p pointer = src->items + start;
-  while ((pointer =
-          memchr(pointer, '\n', src->items + position - pointer ))) {
-    ++pointer;
-    ++count;
-  }
-  return count;
-}
-
-/** Compute the line number as
- * ```1 + count_line_ends_between(src, 0, position)```.
- */
-static size_t
-line_number(Byte_array_p src, size_t position)
-{
-  return 1 + count_line_ends_between(src, 0, position);
-}
-
 /** Extract the indentation of the line for the character at `index`,
  * including the preceding `LF` character if it exists.
  */
 static Marker
 indentation(Byte_array_p src, size_t index)
 {
+  // TODO: change signature to (Byte_array_p src, Marker_array_p markers, size_t index)
+  // Then index will be a marker index, not a byte index.
   Byte_p start = Byte_array_start(src);
   Byte_p end   = Byte_array_end(src);
   Byte_mut_p start_of_line = get_Byte_array(src, index);
@@ -406,14 +388,29 @@ indentation(Byte_array_p src, size_t index)
     ++end_of_indentation;
   }
   mut_Marker indentation = {
-    .start = start_of_line - start,
-    .len   = end_of_indentation - start_of_line,
+    .start = (size_t)(start_of_line - start),
+    .len   = (size_t)(end_of_indentation - start_of_line),
     .token_type = T_SPACE
   };
   return indentation;
 }
 
-/** Copy the characters between `start` and `end` into the given Byte array.
+/** Get new slice for the given marker.
+ */
+static Byte_array_slice
+slice_for_marker(Byte_array_p src, Marker_p cursor)
+{
+  Byte_array_slice slice = {
+    .start_p = get_Byte_array(src, cursor->start),
+    .end_p   = get_Byte_array(src, cursor->start + cursor->len)
+  };
+  return slice;
+}
+
+/** Copy the characters between `start` and `end` into the given Byte array,
+ * appending them to the end of that Byte array.
+ * If you want to replace any previous content,
+ * do `string.len = 0;` before calling this function.
  *
  *  To extract the text for `Marker_p m` from `Byte_p src`:
  * ```
@@ -437,13 +434,44 @@ extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p str
 {
   Marker_mut_p cursor = start;
   while (cursor < end) {
-    Byte_array_slice insert = {
-      .start_p = src->items + cursor->start,
-      .end_p   = src->items + cursor->start + cursor->len
-    };
+    Byte_array_slice insert = slice_for_marker(src, cursor);
     splice_Byte_array(string, string->len, 0, NULL, &insert);
     ++cursor;
   }
+}
+
+/** Compute the number of LF characters in the given marker segment.
+ *
+ *  To get the line number at `position`, use `line_number()`.
+ */
+static size_t
+count_line_ends_between(Byte_array_p src, Marker_p start, Marker_p marker_p)
+{
+  size_t count = 0;
+  Marker_mut_p cursor = marker_p;
+  while (cursor is_not start) {
+    Byte_array_slice src_segment = slice_for_marker(src, cursor);
+    Byte_mut_p pointer = src_segment.start_p;
+    while ((pointer =
+            memchr(pointer, '\n', (size_t)(src_segment.end_p - pointer) ))) {
+      ++pointer;
+      ++count;
+    }
+    --cursor;
+  }
+  return count;
+}
+
+/** Compute the line number as
+ * ```1 + count_line_ends_between(src, 0, position)```.
+ */
+static size_t
+line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
+{
+  return 1 + count_line_ends_between(src,
+                                     Marker_array_start(markers),
+                                     position
+                                     );
 }
 
 /** Append the C string bytes to the end of the given buffer. */
@@ -468,8 +496,8 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 
   ensure_capacity_Byte_array(_, _->len + 80);
   size_t available = _->capacity - _->len;
-  size_t needed = vsnprintf((char*) Byte_array_end(_), available - 1,
-                            fmt, args);
+  size_t needed = (size_t) vsnprintf((char*) Byte_array_end(_), available - 1,
+                                     fmt, args);
   if (needed > available) {
     ensure_capacity_Byte_array(_, _->len + needed + 1);
     available = _->capacity - _->len;
@@ -538,7 +566,7 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
   }
   mut_Marker marker = { .start = 0, .len = text_len, .token_type = token_type };
   if (match) {
-    marker.start = match - Byte_array_start(src);
+    marker.start = (size_t)(match - Byte_array_start(src));
   } else {
     marker.start = src->len;
     Byte_mut_p p2 = (Byte_p) text;
@@ -643,7 +671,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
               break;
             }
             ++eol; // Skip the LF character we just found.
-            len = m->len - (eol - text);
+            len = m->len - (size_t)(eol - text);
           }
           if (not eol_pending) continue;
         }
@@ -695,13 +723,13 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
             }
             Byte_mut_p eol;
             while ((eol = memchr(text, '\n', len))) {
-              fwrite(text, sizeof(*src->items), eol - text, out);
+              fwrite(text, sizeof(*src->items), (size_t)(eol - text), out);
               if (is_line_comment) {
                 fputs(" */", out);
                 is_line_comment = false;
               }
               fputs(" \\\n", out);
-              len -= eol - text + 1;
+              len -= (size_t)(eol - text) + 1;
               text = eol + 1;
             }
             fwrite(text, sizeof(*src->items), len, out);
@@ -994,7 +1022,9 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     }
     mut_Marker marker;
     init_Marker(&marker,
-                cursor - src->items, token_end - src->items, token_type);
+                (size_t)(cursor - src->items),
+                (size_t)(token_end - src->items),
+                token_type);
     push_Marker_array(markers, marker);
     cursor = token_end;
 
@@ -1052,7 +1082,7 @@ find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
 
   if (nesting is_not 0 or matching_close is end) {
     err->message = "Unclosed group.";
-    err->position = cursor->start;
+    err->position = cursor;
   }
 
   return matching_close;
@@ -1086,7 +1116,8 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
       case T_TUPLE_END: case T_INDEX_END:
         ++nesting;
         break;
-      default: break;
+      default:
+        break;
     }
     --start_of_line;
   }
@@ -1094,7 +1125,7 @@ found:
 
   if (nesting is_not 0 or start_of_line < start) {
     err->message = "Excess group closings.";
-    err->position = cursor->start;
+    err->position = cursor;
   }
 
   return start_of_line;
@@ -1128,7 +1159,7 @@ found:
 
   if (nesting is_not 0 or end_of_line is end) {
     err->message = "Unclosed group.";
-    err->position = cursor->start;
+    err->position = cursor;
   }
 
   return end_of_line;
@@ -1163,7 +1194,7 @@ found:
 
   if (nesting is_not 0 or start_of_block < start) {
     err->message = "Excess block closings.";
-    err->position = cursor->start;
+    err->position = cursor;
   }
 
   return start_of_block;
@@ -1194,7 +1225,7 @@ found:
 
   if (nesting is_not 0 or end_of_block is end) {
     err->message = "Unclosed block.";
-    err->position = cursor->start;
+    err->position = cursor;
   }
 
   return end_of_block;
@@ -1213,7 +1244,7 @@ read_file(mut_Byte_array_p _, FilePath path)
     return;
   }
   fseek(input, 0, SEEK_END);
-  size_t size = ftell(input);
+  size_t size = (size_t)ftell(input);
   init_Byte_array(_, size);
   rewind(input);
   _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
@@ -1408,8 +1439,15 @@ int main(int argc, char** argv)
     destruct_Marker_array(&markers);
 
     fflush(stdout);
-    log("\nRead %ld lines.",
-        count_line_ends_between((Byte_array_p)&src, 0, cursor - src.items) - 1);
+
+    size_t line_count = 0;
+    Byte_mut_p pointer = src.items;
+    while ((pointer =
+            memchr(pointer, '\n', (size_t)(cursor - pointer) ))) {
+      ++pointer;
+      ++line_count;
+    }
+    log("\nRead %ld lines.", line_count);
 
     destruct_Byte_array(&src);
   }
