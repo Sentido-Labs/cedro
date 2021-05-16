@@ -246,7 +246,7 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
   *((mut_##T##_p) _->items + _->len++) = item;                          \
 }                                                                       \
                                                                         \
-/** Splice the given slice in place of the removed elements,            \
+/** Splice the given `insert` slice in place of the removed elements,   \
     resizing the array if needed.                                       \
     Starting at `position`, `delete` elements are deleted and           \
     the elements in the `insert` slice are inserted there               \
@@ -278,7 +278,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
     assert(_->items          > insert->end_p ||                         \
            _->items + _->len < insert->start_p);                        \
     assert(insert->end_p >= insert->start_p);                           \
-    insert_len = insert->end_p - insert->start_p;                       \
+    insert_len = (size_t)(insert->end_p - insert->start_p);             \
     new_len += insert_len;                                              \
     ensure_capacity_##T##_array(_, new_len);                            \
   }                                                                     \
