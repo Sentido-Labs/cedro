@@ -4,9 +4,9 @@ CC=gcc -g
 CC_STRICT=$(CC) -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
 
 all: debug release
-	if which valgrind; then valgrind --leak-check=yes ./$(NAME) $(NAME).c; fi
 debug:   $(NAME)-debug
 release: $(NAME)
+	if which valgrind; then valgrind --leak-check=yes ./$(NAME) $(NAME).c >/dev/null; fi
 .PHONY: all debug release
 
 run: $(NAME)
