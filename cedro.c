@@ -1252,7 +1252,6 @@ read_file(mut_Byte_array_p _, FilePath path)
   } else if (ferror(input)) {
     fprintf(stderr, "Error reading “%s”.\n", path);
   } else {
-    fprintf(stderr, "Read %ld bytes from “%s”.\n", _->len, path);
     memset((mut_Byte_p) _->items + _->len, 0,
            (_->capacity - _->len) * sizeof(*_->items));
   }
@@ -1412,7 +1411,7 @@ int main(int argc, char** argv)
 
     markers.len = 0;
 
-    Byte_p cursor = parse(&src, &markers);
+    parse(&src, &markers);
 
     if (run_benchmark) {
       double t = benchmark(&src, &options);
@@ -1435,19 +1434,8 @@ int main(int argc, char** argv)
       }
     }
 
-    destruct_Marker_array(&markers);
-
     fflush(stdout);
-
-    size_t line_count = 0;
-    Byte_mut_p pointer = src.items;
-    while ((pointer =
-            memchr(pointer, '\n', (size_t)(cursor - pointer) ))) {
-      ++pointer;
-      ++line_count;
-    }
-    log("\nRead %ld lines.", line_count);
-
+    destruct_Marker_array(&markers);
     destruct_Byte_array(&src);
   }
 
