@@ -4,19 +4,19 @@ CC=gcc -g
 CC_STRICT=$(CC) -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
 
 all: debug release
-debug:   $(NAME)-debug
-release: $(NAME)
 	if which valgrind; then valgrind --leak-check=yes ./$(NAME) $(NAME).c >/dev/null; fi
+debug:   $(NAME)-debug $(NAME)cc-debug
+release: $(NAME) $(NAME)cc
 .PHONY: all debug release
 
 run: $(NAME)
 	./$(NAME) $(NAME).c
 .PHONY: run
 
-$(NAME)-debug: $(NAME).c array.h macros.h macros/*.h Makefile
+%-debug: %.c array.h macros.h macros/*.h Makefile
 	$(CC_STRICT) -o $@ $<
 
-$(NAME):       $(NAME).c array.h macros.h macros/*.h Makefile
+%:       %.c array.h macros.h macros/*.h Makefile
 	$(CC_STRICT) -o $@ $< -O
 
 doc:
