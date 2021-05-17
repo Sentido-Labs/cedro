@@ -1321,13 +1321,13 @@ usage_es =
     "  --discard-space    Descarta los espacios en blanco.\n"
     "  --discard-comments Descarta los comentarios.\n"
     "  --print-markers    Imprime los marcadores.\n"
-    "  --not-discard-space    No descarta los espacios.    (implícito)\n"
-    "  --not-discard-comments No descarta los comentarios. (implícito)\n"
-    "  --not-print-markers    No imprime los marcadores.   (implícito)\n"
+    "  --no-discard-space    No descarta los espacios.    (implícito)\n"
+    "  --no-discard-comments No descarta los comentarios. (implícito)\n"
+    "  --no-print-markers    No imprime los marcadores.   (implícito)\n"
     "\n"
-    "  --enable-core-dump     Activa volcado de memoria al estrellarse.\n"
-    "                         (implícito)\n"
-    "  --not-enable-core-dump Desactiva volcado de memoria al estrellarse.\n"
+    "  --enable-core-dump    Activa el volcado de memoria al estrellarse."
+    " (implícito)\n"
+    "  --no-enable-core-dump No activa el volcado de memoria al estrellarse.\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
     "  --version          Muestra la versión: " CEDRO_VERSION
     ;
@@ -1342,12 +1342,12 @@ usage_en =
     "  --discard-space    Discards all whitespace.\n"
     "  --discard-comments Discards the comments.\n"
     "  --print-markers    Prints the markers.\n"
-    "  --not-discard-space    Does not discard whitespace. (default)\n"
-    "  --not-discard-comments Does not discard comments.   (default)\n"
-    "  --not-print-markers    Does not print the markers.  (default)\n"
+    "  --no-discard-space    Does not discard whitespace. (default)\n"
+    "  --no-discard-comments Does not discard comments.   (default)\n"
+    "  --no-print-markers    Does not print the markers.  (default)\n"
     "\n"
-    "  --enable-core-dump     Enable core dump on crash.   (default)\n"
-    "  --not-enable-core-dump Disable core dump on crash.\n"
+    "  --enable-core-dump    Enable core dump on crash.   (default)\n"
+    "  --no-enable-core-dump Do not enable core dump on crash.\n"
     "  --benchmark        Run a performance benchmark.\n"
     "  --version          Show version: " CEDRO_VERSION
     ;
@@ -1368,7 +1368,7 @@ int main(int argc, char** argv)
     char* arg = argv[i];
     if (arg[0] is '-') {
       bool flag_value = true;
-      if (strn_eq("--not-", arg, 6)) flag_value = false;
+      if (strn_eq("--no-", arg, 6)) flag_value = false;
       if (str_eq("--discard-comments", arg) ||
           str_eq("--not-discard-comments", arg)) {
         options.discard_comments = flag_value;
