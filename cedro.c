@@ -6,7 +6,7 @@
  * a simple resource release *defer* functionality,
  * and *block* (or multi-line) macros.
  *
- * For usage instructions, see [README.html](../../README.html).
+ * For usage instructions, see [README.en.html](../../README.en.html).
  *
  *   - [Data structures](cedro_8c.html#nested-classes)
  *   - [Macros](cedro_8c.html#define-members)

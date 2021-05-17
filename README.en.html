@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>C programming language extension: Cedro pre-processor</title>
+    <style type="text/css">html { background:#111; } body { font-family:sans-serif; line-height:1.5; max-width:60em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } p code { display:inline; vertical-align:baseline; padding:0; } code { display:inline-block; vertical-align:top; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } table { border-collapse:collapse; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } body { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  </head>
+  <body>
+    <main>
+      <h1><img alt="" src="doc/cedro.png"/> Cedro</h1>
+      <span class="language-selector"><a href="README.es.html">Español</a>, english</span>
+      <p><em>Cedro</em> is a C language extension that works as a pre-processor with three features:
+        the <a href="#backstitch-operator"><em>backstitch</em> operator</a>,
+        <a href="#deferred-resource-release"><em>deferred</em> resource release</a>,
+      and <a href="#block-macros"><em>block macros</em></a>.</p>
+      <code>Usage: cedro [options] file.c [file2.c … ]
+  The result goes to stdout, can be used without an intermediate file like this:
+ cedro file.c | gcc -x c - -o file
+  It is what the cedrocc program does:
+ cedrocc -o fichero fichero.c
+
+  --discard-space    Discards all whitespace.
+  --discard-comments Discards the comments.
+  --print-markers    Prints the markers.
+  --no-discard-space    Does not discard whitespace. (default)
+  --no-discard-comments Does not discard comments.   (default)
+  --no-print-markers    Does not print the markers.  (default)
+
+  --enable-core-dump    Enable core dump on crash.   (default)
+  --no-enable-core-dump Do not enable core dump on crash.
+  --benchmark        Run a performance benchmark.
+  --version          Show version: 1.0</code>
+      <p>For API documentation, see <a href="doc/api/index.html">doc/api/index.html</a>
+        after running <code>make doc</code>.</p>
+
+      <a name="backstitch-operator"></a>
+      <h2><a href="https://en.wikipedia.org/wiki/Backstitch">Backstitch</a> operator: @</h2>
+      <p>Threads a value through a sequence of function calls,
+        as first parameter for each of them.</p>
+      <p>It is an explicit version of what other programming languages
+        do to implement member functions, and the result is a usual pattern
+        in C libraries.</p>
+      <table>
+        <tr>
+          <td><code>object @ f(a), g(b);</code></td>
+          <td><code>f(object, a);
+g(object, b);</code></td>
+        </tr><tr>
+          <td><code>&amp;object @ f(a), g(b);</code></td>
+          <td><code>f(&amp;object, a);
+g(&amp;object, b);</code></td>
+        </tr><tr>
+          <td><code>object.field @ f(a), g(b);</code></td>
+          <td><code>f(object.field, a);
+g(object.field, b);</code></td>
+        </tr><tr>
+          <td><code>int x = (object @ f(a), g(b));</code></td>
+          <td><code>int x = (f(object, a), g(object, b));</code>
+            <p>This is the C <a href="https://en.wikipedia.org/wiki/Comma_operator">comma operator</a>, it’s the same as</p>
+            <code>f(object, a); int x = g(object, b);</code></td>
+        </tr><tr>
+          <td><code>object @prefix_... f(a), g(b);</code></td>
+          <td><code>prefix_f(object, a);
+prefix_g(object, b);</code></td>
+        </tr><tr>
+          <td><code>object @..._suffix f(a), g(b);</code></td>
+          <td><code>f_suffix(object, a);
+g_suffix(object, b);</code></td>
+        </tr><tr>
+          <td>
+<code>graphics_context @<a href="https://github.com/memononen/nanovg">nvg</a>...
+    BeginPath(),
+    Rect(100,100, 120,30),
+    Circle(120,120, 5),
+    PathWinding(NVG_HOLE),
+    FillColor(nvgRGBA(255,192,0,255)),
+    Fill();</code>
+          </td><td>
+<code>nvgBeginPath(graphics_context);
+nvgRect(graphics_context, 100,100, 120,30);
+nvgCircle(graphics_context, 120,120, 5);
+nvgPathWinding(graphics_context, NVG_HOLE);
+nvgFillColor(graphics_context, nvgRGBA(255,192,0,255));
+nvgFill(graphics_context);</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>For each comma-separated segment,
+      if it starts with any of the tokens
+      “<code>[</code>”,
+      “<code>++</code>”, “<code>--</code>”, “<code>.</code>”, “<code>-></code>”,
+      “<code>=</code>”, “<code>+=</code>”, “<code>-=</code>”, “<code>*=</code>”, “<code>/=</code>”, “<code>%=</code>”, “<code>&lt;&lt;=</code>”, “<code>&gt;&gt;=</code>”, “<code>&amp;=</code>”, “<code>^=</code>”, “<code>|=</code>”,
+      or there is nothing that looks like a function call,
+      the insertion point is the beginning of the segment:</p>
+
+      <table>
+        <tr>
+          <td><code>number_array @ [3]=44, [2]=11;</code></td>
+          <td><code>number_array[3]=44; number_array[2]=11;</code></td>
+        </tr>
+        <tr>
+          <td><code>*number_array++ = @ 1, 2;</code></td>
+          <td><code>*number_array++ = 1; *number_array++ = 2;</code></td>
+        </tr>
+        <tr>
+          <td><code>figure_center_point @ .x=44, .y=11;</code></td>
+          <td><code>figure_center_point.x=44; figure_center_point.y=11;</code></td>
+        </tr>
+      </table>
+
+      <p>The object part can be left empty, which is useful for things like
+        adding prefixes or suffixes to enumerations:</p>
+
+      <table>
+        <tr>
+          <td>
+<code>typedef enum {
+    @TOKEN_... SPACE, WORD, NUMBER
+} TokenType;</code>
+          </td>
+          <td>
+<code>typedef enum {
+     TOKEN_SPACE, TOKEN_WORD, TOKEN_NUMBER
+} TokenType;</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>I haven’t found prior implementations of this macro.
+        <a href="https://clojure.org/guides/threading_macros">Clojure</a>’s
+        <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-></code> (threading) macro</a>
+        is similar but it threads the <em>result</em> of the first function
+        as first parameter of the next one etc.
+        instead of the same value for all functions.</p>
+      
+      <a name="deferred-resource-release"></a>
+      <h2>Deferred resource release:</h2>
+      <p>Moves the clean-up code for a variable to the end of its scope.</p>
+      <p>In C, resources must be released back to the system explicitly
+        once they are no longer needed, which usualy happens quite far
+        from the place where they were allocated.
+        As time passes and changes accumulate in the program,
+        it’s easy to forget releasing them in all cases
+        or to attempt releasing a resource twice.</p>
+      <p>Programming languages like C++ use functions called
+        <em>destructors</em> that get run <strong>implicitly</strong>
+        when exiting the scope of the corresponding variable.</p>
+      <p>The programming language Go introduced an <strong>explicit</strong> notation called
+        «<a href="https://blog.golang.org/defer-panic-and-recover"><em>defer</em></a>»
+        that fits better the style of C.
+        The first difference is that in Go,
+        all releases happen when exiting the function,
+        while in Cedro the releases happen when exiting each block,
+        like the destructors in C++ do.
+        There are more differences, such as for instance that in Go it
+        can be used to modify the return value of the function,
+        and that Cedro does not even try to handle <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code> because it could only call the deferred actions in the current function, not in any function that called this one. See “<i><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">published academic paper as PDF</a> in the <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a> conference) for a compiler-level implementation that does handle <code>longjmp()</code> and stack unwinding.</p>
+      <p>In Cedro, the release function is marked with the
+      <a href="https://en.cppreference.com/w/c/language/storage_duration">C keyword <b><code>auto</code></b></a>
+      which is not needed in standard C code because it is the default.
+      If you want to use Cedro with standard C code that already uses <code>auto</code>,
+      you can first replace it with <code>signed</code> as
+      <a href="https://stackoverflow.com/a/60890064/291462">it has the same effect</a>.</p>
+      <p>In this example, there is a <code>text</code> store and a <code>file</code> that must be released back to the system:</p>
+      <table>
+        <tr>
+          <td>
+<code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;errno.h&gt;
+
+int repeat_text(char c, size_t count,
+                char* file_name)
+{
+    char* text = malloc(count + 1);
+    <b>auto free(text);</b>
+    for (size_t i = 0; i &lt; count; ++i) {
+        text[i] = c;
+    }
+    text[count] = 0;
+    if (file_name) {
+        FILE* file = fopen(file_name, "w");
+        if (!file) return errno;
+        <b>auto fclose(file);</b>
+        fwrite(text, sizeof(char), count, file);
+    }
+    printf("Repeated %lu times: %s\n",
+           count, text);
+    return 0;
+}
+
+int main(void)
+{
+  return repeat_text('A', 6, "aaaaaa.txt");
+}</code></td><td>
+<code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;errno.h&gt;
+
+int repeat_text(char c, size_t count,
+                char* file_name)
+{
+    char* text = malloc(count + 1);
+    for (size_t i = 0; i &lt; count; ++i) {
+        text[i] = c;
+    }
+    text[count] = 0;
+    if (file_name) {
+        FILE* file = fopen(file_name, "w");
+        if (!file) {
+            <b>free(text);</b>
+            return errno;
+        }
+        fwrite(text, sizeof(char), count, file);
+        <b>fclose(file);</b>
+    }
+    printf("Repeated %lu times: %s\n",
+           count, text);
+    <b>free(text);</b>
+    return 0;
+}
+
+int main(void)
+{
+  return repeat_text('A', 6, "aaaaaa.txt");
+}</code></td>
+        </tr>
+      </table>
+
+      <p>Compiling it with GCC:</p>
+<code>$ cedro repeat.c | gcc -o repeat -x c -
+Running macro backstitch:
+Running macro defer:
+$ ./repeat 
+Repeated 6 times: AAAAAA
+$ cat aaaaaa.txt
+AAAAAA</code>
+<code>$ cedrocc -o repeat repeat.c
+Running macro backstitch:
+Running macro defer:
+$ ./repeat
+Repeated 6 times: AAAAAA
+$ cat aaaaaa.txt
+AAAAAA</code>
+
+      <a name="block-macros"></a>
+      <h2>Block macros:</h2>
+      <p>Formats a multi-line macro into a single line.</p>
+      <p>C macros must be written all in one line,
+        but some times you need to split them in several pseudo-lines
+        and it gets tedious and error-prone
+        to maintain all the newline escapes (“<code>\</code>”).
+        By adding braces (“<code>{</code>” or “<code>}</code>”)
+        right after <code>#define</code>
+        we can have <em>Cedro</em> do that for us:</p>
+<code>#define { macro(A, B, C)
+f_##A(B, C); /// Specialized version of f() for type A.
+#define }</code>
+<code>#define macro(A, B, C) \
+f_##A(B, C); /** Specialized version of f() for type A. */ \
+// End #define</code>
+      <p>Preprocessor directives are still not allowed
+        inside macros, so you can not use
+        <code>#if</code>, <code>#include</code>, etc.</p>
+    </main>
+  </body>
+</html>

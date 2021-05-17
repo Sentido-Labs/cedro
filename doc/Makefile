@@ -2,13 +2,12 @@ NAME=Cedro
 SRC=../cedro.c ../array.h
 LOGO=cedro.png
 CSS=cedro.css
+DIR=api
 
 doc: ../*.c ../*.h Makefile Doxyfile
 	doxygen
 	sustituye --old='([^ ])\\n[ ]{4,}' --new='\1</div>\n<div class="line">' html/
-	sustituye --old='\\/\\/' --new='//' html/
-	sustituye --old='\\/\\\*' --new='/*' html/
-	sustituye --old='\\\*\\/' --new='*/' html/
+	for f in $$(find $(DIR) -name "*.html"); do sed --in-place -e 's:\\/\\/://:g' -e 's:\\\\:\\:g' -e 's:\\/\\\*:/*:g' -e 's:\\\*\\/:*/:g' "$${f}"; done
 
 Doxyfile:
 	doxygen -g
@@ -20,6 +19,7 @@ Doxyfile:
 	sed --in-place 's:^\(EXTRACT_STATIC\s\+\)=\s*NO:\1= YES:g' Doxyfile
 	sed --in-place 's:^\(INPUT\s\+\)=\s*:\1= $(SRC):g' Doxyfile
 	sed --in-place 's:^\(GENERATE_HTML\s\+\)=\s*NO:\1= YES:g' Doxyfile
+	sed --in-place 's:^\(HTML_OUTPUT\s\+\)=.*:\1= $(DIR):g' Doxyfile
 	sed --in-place 's:^\(HTML_EXTRA_STYLESHEET\s\+\)=.*:\1= "$(CSS)":g' Doxyfile
 	sed --in-place 's:^\(GENERATE_LATEX\s\+\)=\s*YES:\1= NO:g' Doxyfile
 	sed --in-place 's:^\(MACRO_EXPANSION\s\+\)=\s*NO:\1= YES:g' Doxyfile
