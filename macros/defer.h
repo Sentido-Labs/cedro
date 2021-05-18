@@ -92,7 +92,8 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
   }
 }
 
-static void macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
+static void
+macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
   Marker space = new_marker(src, " ", T_SPACE);
   Marker block_start = new_marker(src, "{", T_BLOCK_START);
