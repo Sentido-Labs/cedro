@@ -3,17 +3,20 @@
   <head>
     <meta charset="utf-8"/>
     <title>Extensión del lenguaje de programación C: pre-procesador Cedro</title>
-    <style type="text/css">html { background:#111; } body { font-family:sans-serif; line-height:1.5; max-width:60em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } p code { display:inline; vertical-align:baseline; padding:0; } code { display:inline-block; vertical-align:top; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } table { border-collapse:collapse; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } body { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
+    <style type="text/css">html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } table { border-collapse:collapse; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
-    <main>
+    <section>
       <h1><img alt="" src="doc/cedro.png"/> Cedro</h1>
-      <span class="language-selector">Español, <a href="README.en.html">english</a></span>
-      <p><em>Cedro</em> es una extensión del lenguaje de programación C que funciona como pre-procesador con tres prestaciones:
-        el <a href="backstitch-operator">operador <em>pespunte</em></a> [«<em>backstitch</em>» en inglés],
-        <a href="#deferred-resource-release">devolución <em>diferida</em> de recursos</a> [«<em>defer</em>»],
-        y <a href="block-macros"><em>macros de bloque</em></a>.</p>
+      <span class="language-selector">Español, <a href="README.en.html">English</a></span>
+      <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con cuatro prestaciones:</p>
+      <ol>
+        <li>El <a href="#backstitch-operator">operador <em>pespunte</em></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>].</li>
+        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos</a> [«<em>defer</em>»]</li>
+        <li><a href="#block-macros"><em>Macros de bloque</em></a>.</li>
+        <li><a href="#binary-include"><em>Inclusión binaria</em></a>.</li>
+      </ol>
       <code>Uso: cedro [opciones] fichero.c [fichero2.c … ]
   El resultado va a stdout, puede usarse sin fichero intermedio así:
  cedro fichero.c | gcc -x c - -o fichero
@@ -31,10 +34,14 @@
   --no-enable-core-dump No activa el volcado de memoria al estrellarse.
   --benchmark        Realiza una medición de rendimiento.
   --version          Muestra la versión: 1.0</code>
+      <p>Nota: todos los mensajes usan UTF-8, algunas cosas parecerán extrañas
+        si su terminal no lo maneja.</p>
       <p>Para la documentación (en inglés) de la API, véase <a href="doc/api/index.html">doc/api/index.html</a>
-        tras ejecutar <code>make doc</code>.</p>
+        tras ejecutar <code>make doc</code> que necesita tener
+        <a href="https://www.doxygen.nl/index.html">Doxygen</a> instalado.</p>
+    </section>
 
-      <a name="backstitch-operator"></a>
+    <section id="backstitch-operator">
       <h2>Operador <a href="https://es.wikipedia.org/wiki/Pespunte">pespunte</a>: @</h2>
       <p>Hilvana un valor a través de una secuencia de llamadas de función,
         como primer parámetro para cada una.</p>
@@ -128,17 +135,26 @@ nvgFill(contexto_grafico);</code>
         </tr>
       </table>
 
-      <p>No he encontrado realizaciones anteriores de esta macro.
-        La
-        <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">macro <code>-></code> (hilvanado)</a>
+      <h3>Obras relacionadas</h3>
+      <p>Buscando realizaciones anteriores de esta idea he encontrado
+        <a href="https://github.com/eudoxia0/magma">magma</a>,
+        done se llama
+        <a href="https://github.com/eudoxia0/magma#doto"><code>doto</code></a>.
+        Es una macro para el pre-procesador
+        <a href="https://github.com/eudoxia0/cmacro">cmacro</a>
+        que tiene el inconveniente de necesitar el compilador Common Lisp
+        <a href="http://www.sbcl.org/">SBCL</a>.</p>
+      <p>Otra que he encontrado es la
+        <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">macro <code>-></code></a> (hilvanado)
         de <a href="https://clojure.org/guides/threading_macros">Clojure</a>
-        se parece pero hilvana el <em>resultado</em> de la primera función
+        que se parece pero hilvana el <em>resultado</em> de la primera función
         como primer parámetro de la siguiente etc.
         en vez del mismo valor para todas las funciones.</p>
+    </section>
 
-      <a name="deferred-resource-release"></a>
+    <section id="deferred-resource-release">
       <h2>Devolución diferida de recursos:</h2>
-      <p>Mueve el código de recogida de una variable al final de su alcance.</p>
+      <p>Mueve el código de devolución de una variable al final de su alcance.</p>
       <p>En C, los recursos deben devolverse al sistema explícitamente
         una vez no son necesarios, lo que generalmente ocurre bastante lejos
         de la parte donde se reservaron.
@@ -157,7 +173,7 @@ nvgFill(contexto_grafico);</code>
         como hacen los destructores en C++.
         Hay más diferencias, como por ejemplo que en Go se puede usar para
         modificar el valor de retorno de la función,
-        y que Cedro ni siquiera intenta tratar con <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code> porque sólo podría llamar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase “<i><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
+        y que Cedro ni siquiera intenta tratar con <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code> porque sólo podría llamar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase “<i id="a-defer-mechanism-for-c"><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
       <p>En Cedro, la función de devolución se marca con la
       <a href="https://en.cppreference.com/w/c/language/storage_duration">palabra clave C <b><code>auto</code></b></a>
       que no se necesita en código estándar C porque es implícita.
@@ -172,13 +188,14 @@ nvgFill(contexto_grafico);</code>
 #include &lt;stdlib.h&gt;
 #include &lt;errno.h&gt;
 
-int repite_texto(char c, size_t cuenta,
+int repite_letra(char letra, size_t cuenta,
                  char* nombre_de_fichero)
 {
     char* texto = malloc(cuenta + 1);
+    if (!texto) return ENOMEM;
     <b>auto free(texto);</b>
     for (size_t i = 0; i &lt; cuenta; ++i) {
-        texto[i] = c;
+        texto[i] = letra;
     }
     texto[cuenta] = 0;
     if (nombre_de_fichero) {
@@ -194,18 +211,19 @@ int repite_texto(char c, size_t cuenta,
 
 int main(void)
 {
-  return repite_texto('A', 6, "aaaaaa.txt");
+  return repite_letra('A', 6, "aaaaaa.txt");
 }</code></td><td>
 <code>#include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
 #include &lt;errno.h&gt;
 
-int repite_texto(char c, size_t cuenta,
+int repite_letra(char letra, size_t cuenta,
                  char* nombre_de_fichero)
 {
     char* texto = malloc(cuenta + 1);
+    if (!texto) return ENOMEM;
     for (size_t i = 0; i &lt; cuenta; ++i) {
-        texto[i] = c;
+        texto[i] = letra;
     }
     text[cuenta] = 0;
     if (nombre_de_fichero) {
@@ -225,35 +243,55 @@ int repite_texto(char c, size_t cuenta,
 
 int main(void)
 {
-  return repite_texto('A', 6, "aaaaaa.txt");
+  return repite_letra('A', 6, "aaaaaa.txt");
 }</code></td>
         </tr>
       </table>
 
       <p>Compilación con GCC:</p>
 <code>$ cedro repite.c | gcc -o repite -x c -
-Running macro backstitch:
-Running macro defer:
 $ ./repite
 Repeated 6 times: AAAAAA
 $ cat aaaaaa.txt
 AAAAAA</code>
 <code>$ cedrocc -o repite repite.c
-Running macro backstitch:
-Running macro defer:
 $ ./repite
 Repeated 6 times: AAAAAA
 $ cat aaaaaa.txt
 AAAAAA</code>
-          
-      <a name="block-macros"></a>
+
+      <h3>Obras relacionadas</h3>
+      <p>Aparte de la ya mencionada
+        «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
+        hay macros que usan un bucle <code>for</code> como
+        <code>for (<em>reserva e inicialización</em>; <em>condición</em>; <em>devolución</em>) { <em>acciones</em> }</code>
+        [<a href="#note-defer-1" name="node-defer-1-ref">1</a>]
+        u otras técnicas
+        [<a href="#note-defer-2" name="node-defer-2-ref">2</a>]
+        para mantener la devolución de recursos cerca de su reserva,
+        pero no cuentan con la salida anticipada de un bloque usando
+        <code>break</code> o <code>return</code>.</p>
+      <div id="note-defer-1">
+        [<a href="#note-defer-1-ref">1</a>]
+        <a href="https://gustedt.gitlabpages.inria.fr/p99/p99-html/utilities.html#blocks">P99 Scope-bound resource management with for-statements</a> del mismo autor (2010), “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), ”<em><a href="https://news.ycombinator.com/item?id=25419916">C compatible scoped locks</a></em>“ (2021)
+        <!-- C++: , o “<em><a href="https://stackoverflow.com/questions/48117908/is-the-a-practical-way-to-emulate-go-language-defer-in-c-or-c-destructors">Is there a practical way to emulate GO language defer in C?</a></em>” -->
+      </div>
+      <div id="note-defer-2">
+        [<a href="#note-defer-1-ref">2</a>]
+        “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), “<em><a href="https://github.com/trws/libdefer#limitations">libdefer: Go-style defer for C</a></em>” (2016), “<em><a href="https://github.com/moon-chilled/Defer">A Defer statement for C</a></em>” (2020), “<em><a href="https://gist.github.com/jart/aed0fd7a7fa68385d19e76a63db687ff">Go-like defer for C that works with most optimization flag combinations under GCC/Clang</a></em>” (2021)
+      </div>
+      <p>Compiladores como GCC y clang tienen características no estandarizadas para hacerlo,
+        como el <a href="https://echorand.me/site/notes/articles/c_cleanup/cleanup_attribute_c.html">atributo de variables <code>__cleanup__</code> (en inglés)</a>.</p>
+    </section>
+
+    <section ="block-macros">
       <h2>Macros de bloque:</h2>
       <p>Formatea una macro multi-línea en una sóla línea.</p>
       <p>Las macros en C deben escribirse todo en una línea,
         pero a veces hay que partirlas en varias pseudo-líneas
         y se hace tedioso y propenso a errores
-        el mantener todos los escapes de nueva línea  (“<code>\</code>”).
-        Añadiendo llaves (“<code>{</code>” o “<code>}</code>”)
+        el mantener todos los escapes de nueva línea  (“<code>\</code>”).</p>
+      <p>Añadiendo llaves (“<code>{</code>” o “<code>}</code>”)
         justo tras <code>#define</code>
         podemos hacer que <em>Cedro</em> se encargue de eso por nosotros:</p>
 <code>#define { macro(A, B, C)
@@ -265,6 +303,38 @@ f_##A(B, C); /** Versión especializada de f() para el tipo A. */ \
       <p>Aún así, las directrices de preprocesador no se permiten
         dentro de macros, de manera que no se pueden usar
         <code>#if</code>, <code>#include</code>, etc.</p>
-    </main>
+      <p>Nota: la directiva debe empezar exactamente con
+        «<code>#define {</code>» / «<code>#define }</code>»,
+        sin mas o menos espacio entre
+        «<code>#define</code>» y la llave
+        «<code>{</code>» / «<code>}</code>».</p>
+    </section>
+
+    <section id="binary-include">
+      <h2>Inclusión binaria:</h2>
+      <p>Inserta un fichero en forma de ristra de octetos en C.</p>
+      <code>#include &lt;stdint.h&gt;
+const uint8_t imagen
+#include {images/cedro-32x32.png}
+;</code>
+      <code>#include &lt;stdint.h&gt;
+const uint8_t imagen
+[1480] = {
+0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
+0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
+⋮
+};</code>
+      <p>El nombre de fichero es relativo al directorio actual,
+        no al fichero C, porque generalmente los ficheros binarios
+        no van junto al código fuente.</p>
+      <p>Nota: la directiva debe empezar exactamente con «<code>#include {</code>»,
+        sin mas o menos espacio entre
+        «<code>#include</code>» y la llave «<code>{</code>».</p>
+      <h3>Obras relacionadas</h3>
+      <p>Esta característica es una vieja idea
+        y hay varias implementaciones anteriores, por ejemplo
+        <a href="https://sourceforge.net/projects/bin2c/">bin2c</a>
+        (<em><a href="http://manpages.ubuntu.com/manpages/bionic/man1/bin2c.1.html">man page</a></en> en inglés).</p>
+    </section>
   </body>
 </html>
