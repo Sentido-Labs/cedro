@@ -101,7 +101,7 @@ typedef enum TokenType {
       `case, continue, default, else, if`.            */ T_CONTROL_FLOW,
   /** Control flow keyword: `do, for, while`.         */ T_CONTROL_FLOW_LOOP,
   /** Control flow keyword: `switch`.                 */ T_CONTROL_FLOW_SWITCH,
-  /** Control flow keyword: `break`.                  */ T_CONTROL_FLOW_BREAK,
+  /** Control flow keyword: `break`/`continue`.       */ T_CONTROL_FLOW_BRKCNT,
   /** Control flow keyword: `return`.                 */ T_CONTROL_FLOW_RETURN,
   /** Control flow keyword: `goto`.                   */ T_CONTROL_FLOW_GOTO,
   /** Number, either integer or float.
@@ -788,7 +788,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       break;
     case 5:
       if (mem_eq(start, "break", 5)) {
-        return T_CONTROL_FLOW_BREAK;
+        return T_CONTROL_FLOW_BRKCNT;
       }
       if (mem_eq(start, "while", 5)) {
         return T_CONTROL_FLOW_LOOP;
@@ -832,7 +832,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       break;
     case 8:
       if (mem_eq(start, "continue", 8)) {
-        return T_CONTROL_FLOW;
+        return T_CONTROL_FLOW_BRKCNT;
       }
       if (mem_eq(start, "register", 8) || mem_eq(start, "restrict", 8) ||
           mem_eq(start, "unsigned", 8) || mem_eq(start, "volatile", 8)){

@@ -177,11 +177,11 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         }
         skip_space_forward(previous_line, end);
         if (previous_line->token_type is T_CONTROL_FLOW_RETURN ||
-            previous_line->token_type is T_CONTROL_FLOW_BREAK) {
           pop_TokenType_array(&block_stack, NULL);
           exit_level(&pending, block_stack.len);
           ++cursor;
           continue;
+            previous_line->token_type is T_CONTROL_FLOW_BRKCNT) {
         }
       }
       if (previous_line is_not start) {
@@ -202,11 +202,11 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       pop_TokenType_array(&block_stack, NULL);
       exit_level(&pending, block_stack.len);
       ++cursor;
-    } else if (cursor->token_type is T_CONTROL_FLOW_BREAK or
+    } else if (cursor->token_type is T_CONTROL_FLOW_BRKCNT or
                cursor->token_type is T_CONTROL_FLOW_RETURN) {
       size_t block_level = 0; // This is the correct value for ..._RETURN.
-      if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
         size_t block_level = block_stack.len;
+      if (cursor->token_type is T_CONTROL_FLOW_BRKCNT) {
         if (block_level is 0) {
           log("At line %lu: break outside of block.",
               line_number(src, markers, cursor));
