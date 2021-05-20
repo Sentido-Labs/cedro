@@ -42,6 +42,7 @@
 #include <sys/resource.h>
 
 #define log(...) fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)
+#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
 /** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
  * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
@@ -529,6 +530,41 @@ as_c_string(mut_Byte_array_p _)
   return (const char *) _->items;
 }
 
+typedef FILE* mut_File_p;
+typedef char*const FilePath;
+/** Read a file into the given buffer. Errors are printed to `stderr`. */
+static void
+read_file(mut_Byte_array_p _, FilePath path)
+{
+  mut_File_p input = fopen(path, "r");
+  if (!input) {
+    fprintf(stderr,
+            LANG("Fichero no econtrado: %s\n", "File not found: %s\n"),
+            path);
+    init_Byte_array(_, 0);
+    return;
+  }
+  fseek(input, 0, SEEK_END);
+  size_t size = (size_t)ftell(input);
+  init_Byte_array(_, size);
+  rewind(input);
+  _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
+  if (feof(input)) {
+    fprintf(stderr,
+            LANG("Fin de fichero inesperado en %ld leyendo «%s».\n",
+                 "Unexpected EOF at %ld reading “%s”.\n"),
+            _->len, path);
+  } else if (ferror(input)) {
+    fprintf(stderr,
+            LANG("Error leyendo «%s».\n", "Error reading “%s”.\n"),
+            path);
+  } else {
+    memset((mut_Byte_p) _->items + _->len, 0,
+           (_->capacity - _->len) * sizeof(*_->items));
+  }
+  fclose(input); input = NULL;
+}
+
 /** Indent by the given number of double spaces, for the next `log()`
  * or `fprintf(stder, …)`. */
 static void
@@ -739,6 +775,28 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         }
         continue;
       }
+      len = 10; // = strlen("#include {");
+      if (m->len >= len and
+          strn_eq("#include {", (char*)text, m->len < len? m->len: len)) {
+        size_t end;
+        for (end = len; end < m->len; ++end) if (text[end] is '}') break;
+        char* file_name = malloc(end - len + 1);
+        memcpy(file_name, text + len, end - len);
+        file_name[end - len] = '\0';
+        mut_Byte_array bin;
+        read_file(&bin, file_name);
+        if (bin.len) fprintf(out, "[%lu] = {\n0x%2X", bin.len, bin.items[0]);
+        else         fprintf(out, "[0] = { // %s", file_name);
+        for (size_t i = 1; i is_not bin.len; ++i) {
+          fprintf(out,
+                  (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.items[i]);
+        }
+        fputs("\n}", out);
+        destruct_Byte_array(&bin);
+
+        if (m+1 is_not end and (m+1)->token_type is T_SPACE) ++m;
+        continue;
+      }
     }
     fwrite(text, sizeof(*src->items), m->len, out);
   }
@@ -872,10 +930,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
   while (cursor is_not end) {
-    if (cursor is prev_cursor) {
-      log("ERROR: endless loop after %ld.\n", cursor - src->items);
-      break;
-    }
+    assert(cursor is_not prev_cursor);
     prev_cursor = cursor;
 
     mut_TokenType token_type = T_NONE;
@@ -1080,7 +1135,7 @@ find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
   } while (matching_close is_not end and nesting is_not 0);
 
   if (nesting is_not 0 or matching_close is end) {
-    err->message = "Unclosed group.";
+    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
     err->position = cursor;
   }
 
@@ -1123,7 +1178,8 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 found:
 
   if (nesting is_not 0 or start_of_line < start) {
-    err->message = "Excess group closings.";
+    err->message = LANG("Demasiados cierres de grupo.",
+                        "Excess group closings.");
     err->position = cursor;
   }
 
@@ -1157,7 +1213,7 @@ find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
 found:
 
   if (nesting is_not 0 or end_of_line is end) {
-    err->message = "Unclosed group.";
+    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
     err->position = cursor;
   }
 
@@ -1192,7 +1248,8 @@ find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 found:
 
   if (nesting is_not 0 or start_of_block < start) {
-    err->message = "Excess block closings.";
+    err->message = LANG("Demasiados cierres de bloque.",
+                        "Excess block closings.");
     err->position = cursor;
   }
 
@@ -1223,39 +1280,11 @@ find_block_end(Marker_p cursor, Marker_p end, mut_Error_p err)
 found:
 
   if (nesting is_not 0 or end_of_block is end) {
-    err->message = "Unclosed block.";
+    err->message = LANG("Bloque sin cerrar.", "Unclosed block.");
     err->position = cursor;
   }
 
   return end_of_block;
-}
-
-typedef FILE* mut_File_p;
-typedef char*const FilePath;
-/** Read a file into the given buffer. Errors are printed to `stderr`. */
-static void
-read_file(mut_Byte_array_p _, FilePath path)
-{
-  mut_File_p input = fopen(path, "r");
-  if (!input) {
-    fprintf(stderr, "File not found: %s\n", path);
-    init_Byte_array(_, 0);
-    return;
-  }
-  fseek(input, 0, SEEK_END);
-  size_t size = (size_t)ftell(input);
-  init_Byte_array(_, size);
-  rewind(input);
-  _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
-  if (feof(input)) {
-    fprintf(stderr, "Unexpected EOF at %ld reading “%s”.\n", _->len, path);
-  } else if (ferror(input)) {
-    fprintf(stderr, "Error reading “%s”.\n", path);
-  } else {
-    memset((mut_Byte_p) _->items + _->len, 0,
-           (_->capacity - _->len) * sizeof(*_->items));
-  }
-  fclose(input); input = NULL;
 }
 
 /***************** macros *****************/
@@ -1291,16 +1320,8 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
     parse(src_p, &markers);
 
     if (options->apply_macros) {
-      /*log("Running macro count_markers:");
-      macro_count_markers(&markers, src_p);
-      log("Running macro collect_typedefs:");
-      macro_collect_typedefs(&markers, src_p);
-      log("Running macro fn:");
-      macro_fn(&markers, src_p);
-      log("Running macro let:");
-      macro_let(&markers, src_p);*/
-      //log("Running macro backstitch:");
       macro_backstitch(&markers, src_p);
+      macro_defer(&markers, src_p);
     }
     fputc('.', stderr);
   }
@@ -1309,6 +1330,9 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
   destruct_Marker_array(&markers);
   return difftime(end, start) / (double) repetitions;
 }
+
+
+#ifndef USE_CEDRO_AS_LIBRARY
 
 static const char* const
 usage_es =
@@ -1335,9 +1359,9 @@ static const char* const
 usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
     "  The result goes to stdout, can be used without an intermediate file like this:\n"
-    " cedro file.c | gcc -x c - -o file\n"
+    " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"
-    " cedrocc -o fichero fichero.c\n"
+    " cedrocc -o file file.c\n"
     "\n"
     "  --discard-space    Discards all whitespace.\n"
     "  --discard-comments Discards the comments.\n"
@@ -1389,9 +1413,7 @@ int main(int argc, char** argv)
       } else if (str_eq("--version", arg)) {
         fprintf(stderr, CEDRO_VERSION "\n");
       } else {
-        log(strn_eq(getenv("LANG"), "es", 2)?
-            usage_es:
-            usage_en);
+        log(LANG(usage_es, usage_en));
         return str_eq("-h", arg) || str_eq("--help", arg)? 0: 1;
       }
     }
@@ -1429,7 +1451,7 @@ int main(int argc, char** argv)
       if (options.apply_macros) {
         Macro_p macro = macros;
         while (macro->name && macro->function) {
-          log("Running macro %s:", macro->name);
+          log(LANG("Ejecutando macro %s:", "Running macro %s:"), macro->name);
           macro->function(&markers, &src);
           ++macro;
         }
@@ -1449,3 +1471,5 @@ int main(int argc, char** argv)
 
   return 0;
 }
+
+#endif // USE_CEDRO_AS_LIBRARY

@@ -1,7 +1,7 @@
 /* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
 /** \file */
 /** \mainpage
- * Cedro C pre-processor piped through GCC.
+ * Cedro C pre-processor piped through the system’s C compiler, cc.
  *
  * \author Alberto González Palomo https://sentido-labs.com
  * \copyright ©2021 Alberto González Palomo https://sentido-labs.com
@@ -12,13 +12,34 @@
 /* _POSIX_C_SOURCE is needed for popen()/pclose(). */
 #define _POSIX_C_SOURCE 200112L
 
-#define main cedro_main
+#define USE_CEDRO_AS_LIBRARY
 #include "./cedro.c"
-#undef main
+
+static const char* const
+usage_es =
+    "Uso: cedrocc [opciones] <fichero.c> [ fichero2.o … ]\n"
+    "Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
+    "y compila el resultado con «%s» mas los otros argumentos.\n"
+    "Para usar otro compilador, p.ej. gcc: CEDRO_CC='gcc -x c -' cedrocc …\n"
+    ;
+static const char* const
+usage_en =
+    "Usage: cedrocc [options] <file.c> [ file2.o … ]\n"
+    "Runs Cedro on the first file name that ends with “.c”,\n"
+    "and compiles the result with “%s” plus the other arguments.\n"
+    "To use another compiler, e.g. gcc: CEDRO_CC='gcc -x c -' cedrocc …\n"
+    ;
 
 int main(int argc, char* argv[])
 {
   int return_code = 0;
+
+  char* cc = getenv("CEDRO_CC");
+  if (cc) {
+    log(LANG("Usando CEDRO_CC='%s'\n", "Using CEDRO_CC='%s'\n"), cc);
+  } else {
+    cc = "cc -x c -";
+  }
 
   Options options = {
     .discard_comments = false,
@@ -29,27 +50,22 @@ int main(int argc, char* argv[])
 
   char* file_name = NULL;
 
+  // The number of arguments is either the same if no .c file name given,
+  // or one less when extracting the .c file name.
   char** args = malloc(sizeof(char*) * (size_t)argc);
   size_t i = 0;
-  args[i++] = "clang -x c -";
+  args[i++] = cc;
   for (size_t j = 1; j < argc; ++j) {
     char* arg = argv[j];
-    if (!file_name && arg[0] != '-') {
+    if (not file_name and arg[0] is_not '-') {
       char* extension = strrchr(arg, '.');
-      if (extension && 0 == strcmp(extension, ".c")) {
+      if (extension and str_eq(extension, ".c")) {
         file_name = arg;
         continue;
       }
     }
-    if (0 == strcmp(arg, "-h") || 0 == strcmp(arg, "--help")) {
-      fputs(strn_eq(getenv("LANG"), "es", 2)?
-            "Uso: cedrocc [opciones] <fichero.c>\n"
-            "Ejecuta cedro en el primer nombre de fichero que acabe en «.c»,\n"
-            "y compila el resultado con GCC usando las opciones dadas.\n":
-            "Usage: cedrocc [options] <file.c>\n"
-            "Runs cedro on the first file name that ends with “.c”,\n"
-            "and compiles the result with GCC using the given options.\n",
-            stderr);
+    if (str_eq(arg, "-h") or str_eq(arg, "--help")) {
+      log(LANG(usage_es, usage_en), args[0]);
       free(args);
       return 0;
     }
@@ -57,15 +73,15 @@ int main(int argc, char* argv[])
   }
   assert(i <= argc);
 
-  if (! file_name) {
-    fprintf(stderr, "Missing file name.");
+  if (not file_name) {
+    log("Missing file name.");
     free(args);
     return 1;
   }
 
   size_t length = 0;
   for (size_t j = 0; j < i; ++j) {
-    length += (j == 0? 0: 1) + strlen(args[j]);
+    length += (j is 0? 0: 1) + strlen(args[j]);
   }
 
   ++length; // Make space for the zero terminator.
@@ -74,7 +90,7 @@ int main(int argc, char* argv[])
   // Quadratic performance, but the string is small anyway.
   // Can be optimized by keeping track of the offset for the next write.
   for (size_t j = 0; j < i; ++j) {
-    if (j != 0) strncat(cmd, " ", length);
+    if (j is_not 0) strncat(cmd, " ", length);
     strncat(cmd, args[j], length);
   }
 
@@ -91,7 +107,7 @@ int main(int argc, char* argv[])
   parse(&src, &markers);
 
   Macro_p macro = macros;
-  while (macro->name && macro->function) {
+  while (macro->name and macro->function) {
     macro->function(&markers, &src);
     ++macro;
   }
@@ -99,9 +115,9 @@ int main(int argc, char* argv[])
   fflush(stderr);
   fflush(stdout);
 
-  FILE* gcc_stdin = popen(cmd, "w");
-  unparse(&markers, &src, options, gcc_stdin);
-  return_code = pclose(gcc_stdin);
+  FILE* cc_stdin = popen(cmd, "w");
+  unparse(&markers, &src, options, cc_stdin);
+  return_code = pclose(cc_stdin);
 
   fflush(stdout);
 
