@@ -135,8 +135,15 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               // Assume function call, look for parenthesis:
               while (not inside_parenthesis and insertion_point < segment_end) {
                 TokenType t = insertion_point->token_type;
-                if       (T_TUPLE_START is t) inside_parenthesis = true;
-                else if  (T_BLOCK_START is t or T_OP_13 is t) break;
+                if (T_TUPLE_START is t) {
+                  if (insertion_point is_not start and
+                      (insertion_point-1)->token_type is T_IDENTIFIER) {
+                    // Ignore control flow statements like if(...) etc.
+                    inside_parenthesis = true;
+                  }
+                } else if (T_BLOCK_START is t or T_OP_13 is t) {
+                  break;
+                }
                 ++insertion_point;
               }
               // If insertion_point is segment_end, no parenthesis were found:

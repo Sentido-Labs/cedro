@@ -33,7 +33,7 @@ are_there_pending_deferred_actions(DeferredAction_array_p pending, size_t level)
   return (last->level >= level);
 }
 
-/** Insert actions backwards up to the given level.
+/** Insert actions backwards up to and including the given level.
     Returns the number of tokens inserted. */
 static size_t
 insert_deferred_actions(DeferredAction_array_p pending, size_t level,
@@ -77,6 +77,9 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
   return inserted_length;
 }
 
+/** Eliminate pending deferred actions whose level is greater or equal
+    than the given level.
+ */
 static void
 exit_level(mut_DeferredAction_array_p pending, size_t level)
 {
@@ -84,12 +87,15 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
   DeferredAction_mut_p actions_cursor  = DeferredAction_array_end(pending);
   while (actions_cursor is_not actions_start) {
     --actions_cursor;
-    if (actions_cursor->level <= level) break;
-    size_t cut_point = (size_t)(actions_cursor - actions_start);
-    // Deleting items does not invalidate pointers in splice_...().
-    splice_DeferredAction_array(pending, cut_point, pending->len - cut_point,
-                                NULL, NULL);
+    if (actions_cursor->level < level) {
+      ++actions_cursor;
+      break;
+    }
   }
+  size_t cut_point = (size_t)(actions_cursor - actions_start);
+  // Deleting items does not invalidate pointers in splice_...().
+  splice_DeferredAction_array(pending, cut_point, pending->len - cut_point,
+                              NULL, NULL);
 }
 
 static void
@@ -177,36 +183,35 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         }
         skip_space_forward(previous_line, end);
         if (previous_line->token_type is T_CONTROL_FLOW_RETURN ||
-          pop_TokenType_array(&block_stack, NULL);
-          exit_level(&pending, block_stack.len);
-          ++cursor;
-          continue;
             previous_line->token_type is T_CONTROL_FLOW_BRKCNT) {
+          goto exit_level_and_continue;
         }
       }
-      if (previous_line is_not start) {
-        Marker_p insertion_point =
-            (cursor-1)->token_type is T_SPACE? cursor-1: cursor;
-        Marker between = indentation(src, previous_line->start);
-        // Invalidates: markers
-        cursor_position = (size_t)(cursor - start)
-            + insert_deferred_actions(&pending, block_level,
-                                      NULL,
-                                      &between, NULL,
-                                      (size_t)(insertion_point - start),
-                                      markers);
-        start = (mut_Marker_p)Marker_array_start(markers);
-        end   = (mut_Marker_p)Marker_array_end  (markers);
-        cursor = start + cursor_position;
-      }
-      pop_TokenType_array(&block_stack, NULL);
+
+      Marker_p insertion_point =
+          cursor is_not start and (cursor-1)->token_type is T_SPACE?
+          cursor-1: cursor;
+      Marker between = indentation(src, previous_line->start);
+      // Invalidates: markers
+      cursor_position = (size_t)(cursor - start)
+          + insert_deferred_actions(&pending, block_level,
+                                    NULL,
+                                    &between, NULL,
+                                    (size_t)(insertion_point - start),
+                                    markers);
+      start = (mut_Marker_p)Marker_array_start(markers);
+      end   = (mut_Marker_p)Marker_array_end  (markers);
+      cursor = start + cursor_position;
+
+   exit_level_and_continue:
       exit_level(&pending, block_stack.len);
+      pop_TokenType_array(&block_stack, NULL);
       ++cursor;
     } else if (cursor->token_type is T_CONTROL_FLOW_BRKCNT or
                cursor->token_type is T_CONTROL_FLOW_RETURN) {
       size_t block_level = 0; // This is the correct value for ..._RETURN.
-        size_t block_level = block_stack.len;
       if (cursor->token_type is T_CONTROL_FLOW_BRKCNT) {
+        block_level = block_stack.len;
         if (block_level is 0) {
           log("At line %lu: break outside of block.",
               line_number(src, markers, cursor));
@@ -218,6 +223,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           TokenType block_type = *get_TokenType_array(&block_stack, block_level);
           if (block_type is T_CONTROL_FLOW_LOOP or
               block_type is T_CONTROL_FLOW_SWITCH) {
+            ++block_level;
             break;
           }
         }
@@ -249,12 +255,11 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         break;
       }
 
-      TokenType block_type = block_stack.len?
-          *get_TokenType_array(&block_stack, block_stack.len - 1):
-          T_NONE;
-      if (T_BLOCK_START is_not block_type and
-          line.start_p is_not start and
-          (line.start_p - 1)->token_type is_not T_BLOCK_START) {
+      if (line.start_p is_not start and
+          ((line.start_p+1)->token_type is T_CONTROL_FLOW ||
+           (line.start_p+1)->token_type is T_CONTROL_FLOW_SWITCH ||
+           (line.start_p+1)->token_type is T_CONTROL_FLOW_LOOP)
+          ) {
         // We need to wrap this in a block.
         line.start_p = insertion_point;
         if (err.message) {
