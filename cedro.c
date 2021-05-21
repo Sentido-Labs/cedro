@@ -41,7 +41,76 @@
 #include <assert.h>
 #include <sys/resource.h>
 
-#define log(...) fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)
+/** Same as `fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)`
+ * but converting UTF-8 characters to Latin-1 if the `LANG` environment
+ * variable does not contain `UTF-8`. */
+static void
+log(const char * const fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+
+  if (strstr(getenv("LANG"), "UTF-8")) {
+    vfprintf(stderr, fmt, args);
+  } else {
+    char* buffer;
+    char small[512];
+    size_t needed = (size_t) vsnprintf(small, sizeof(small), fmt, args);
+    if (needed <= sizeof(small)) {
+      buffer = &small[0];
+    } else {
+      buffer = malloc(needed);
+      if (!buffer) {
+        fprintf(stderr, "OUT OF MEMORY ERROR. %lu BYTES NEEDED.\n", needed);
+        return;
+      }
+      vsnprintf(buffer, needed, fmt, args);
+    }
+    char* p = buffer;
+    char* s = p;
+    char c;
+    while ((c = *p)) {
+      if (c & 0x80) {
+        if (p is_not s) fwrite(s, sizeof(char), (unsigned long)(p - s), stderr);
+        uint32_t u = 0;
+        uint32_t len =   /* Incorrect length, used in switch below: */ 1;
+        if      (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
+        else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
+        else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+        switch (len) {
+          case 4: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+          case 3: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+          case 2: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F); break;
+          case 1: c = 0;
+        }
+        if (c is 0 or u is 0) {
+          fprintf(stderr, "UTF-8 DECODE ERROR.\n");
+          return;
+        }
+        ++p;
+        if ((u & 0xFFFFFF00) is 0) {
+          fputc((unsigned char) u, stderr); // ISO-8859-1/ISO-8859-15
+        } else {
+          switch (u) {
+            case 0x0000201C:
+            case 0x0000201D: fputc('"',   stderr); break;
+            case 0x00002019: fputc('\'',  stderr); break;
+            case 0x00002026: fputs("...", stderr); break;
+            default:         fputc('_',   stderr);
+          }
+        }
+        s = p;
+      } else {
+        ++p;
+      }
+    }
+    if (p is_not s) fwrite(s, sizeof(char), (unsigned long)(p - s), stderr);
+    if (buffer != &small[0]) free(buffer);
+  }
+  fputc('\n', stderr);
+
+  va_end(args);
+}
 #define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
 /** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
