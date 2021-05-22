@@ -140,8 +140,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
           --nesting;
         } else if (not nesting and statement->token_type is_not T_SPACE) {
-          if (statement->token_type is_not T_CONTROL_FLOW       and
-              statement->token_type is_not T_CONTROL_FLOW_LOOP  and
+          if (statement->token_type is_not T_CONTROL_FLOW_IF   and
+              statement->token_type is_not T_CONTROL_FLOW_LOOP and
               statement->token_type is_not T_CONTROL_FLOW_SWITCH) {
             statement = cursor;
           }
@@ -182,8 +182,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           goto free_all_and_return;
         }
         skip_space_forward(previous_line, end);
-        if (previous_line->token_type is T_CONTROL_FLOW_RETURN ||
-            previous_line->token_type is T_CONTROL_FLOW_BRKCNT) {
+        if (previous_line->token_type is T_CONTROL_FLOW_RETURN or
+            previous_line->token_type is T_CONTROL_FLOW_BREAK  or
+            previous_line->token_type is T_CONTROL_FLOW_CONTINUE) {
           goto exit_level_and_continue;
         }
       }
@@ -207,10 +208,11 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       exit_level(&pending, block_stack.len);
       pop_TokenType_array(&block_stack, NULL);
       ++cursor;
-    } else if (cursor->token_type is T_CONTROL_FLOW_BRKCNT or
+    } else if (cursor->token_type is T_CONTROL_FLOW_BREAK    or
+               cursor->token_type is T_CONTROL_FLOW_CONTINUE or
                cursor->token_type is T_CONTROL_FLOW_RETURN) {
       size_t block_level = 0; // This is the correct value for ..._RETURN.
-      if (cursor->token_type is T_CONTROL_FLOW_BRKCNT) {
+      if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
         block_level = block_stack.len;
         if (block_level is 0) {
           log("At line %lu: break outside of block.",
@@ -223,6 +225,22 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           TokenType block_type = *get_TokenType_array(&block_stack, block_level);
           if (block_type is T_CONTROL_FLOW_LOOP or
               block_type is T_CONTROL_FLOW_SWITCH) {
+            ++block_level;
+            break;
+          }
+        }
+      } else if (cursor->token_type is T_CONTROL_FLOW_CONTINUE) {
+        block_level = block_stack.len;
+        if (block_level is 0) {
+          log("At line %lu: break outside of block.",
+              line_number(src, markers, cursor));
+          err.message = NULL;
+          break;
+        }
+        while (block_level) {
+          --block_level;
+          TokenType block_type = *get_TokenType_array(&block_stack, block_level);
+          if (block_type is T_CONTROL_FLOW_LOOP) {
             ++block_level;
             break;
           }
@@ -256,8 +274,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
 
       if (line.start_p is_not start and
-          ((line.start_p+1)->token_type is T_CONTROL_FLOW ||
-           (line.start_p+1)->token_type is T_CONTROL_FLOW_SWITCH ||
+          ((line.start_p+1)->token_type is T_CONTROL_FLOW_IF ||
            (line.start_p+1)->token_type is T_CONTROL_FLOW_LOOP)
           ) {
         // We need to wrap this in a block.
@@ -294,7 +311,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
                             &insert);
         cursor_position += marker_buffer.len; // Move to end of inserted block.
       } else {
-        // This is already a block.
+        // This is already a block, or we do not need it e.g. `case: …`.
         if (line.start_p->token_type is T_SPACE) {
           Byte_array_slice spaces = slice_for_marker(src, line.start_p);
           Byte_mut_p c = spaces.start_p;
@@ -326,9 +343,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       skip_space_forward(action_start, end);
       // Now find the end of the statement:
       Marker_mut_p action_end = action_start;
-      if (action_end->token_type is T_CONTROL_FLOW       or
-          action_end->token_type is T_CONTROL_FLOW_LOOP  or
-          action_end->token_type is T_CONTROL_FLOW_SWITCH) {
+      if (action_end->token_type is T_CONTROL_FLOW_IF or
+          action_end->token_type is T_CONTROL_FLOW_LOOP) {
         ++action_end;
         skip_space_forward(action_end, end);
         size_t nesting = 0;

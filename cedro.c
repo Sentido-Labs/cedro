@@ -167,11 +167,12 @@ typedef enum TokenType {
       (c99: `restrict`)                               */ T_TYPE_QUALIFIER,
   /** Type qualifier: `auto`.                         */ T_TYPE_QUALIFIER_AUTO,
   /** Type definition: `typedef`.                     */ T_TYPEDEF,
-  /** Control flow keyword:
-      `case, continue, default, else, if`.            */ T_CONTROL_FLOW,
+  /** Control flow keyword: `else, if`.               */ T_CONTROL_FLOW_IF,
   /** Control flow keyword: `do, for, while`.         */ T_CONTROL_FLOW_LOOP,
   /** Control flow keyword: `switch`.                 */ T_CONTROL_FLOW_SWITCH,
-  /** Control flow keyword: `break`/`continue`.       */ T_CONTROL_FLOW_BRKCNT,
+  /** Control flow keyword: `case`, `default`.        */ T_CONTROL_FLOW_CASE,
+  /** Control flow keyword: `break`.                  */ T_CONTROL_FLOW_BREAK,
+  /** Control flow keyword: `continue`.               */ T_CONTROL_FLOW_CONTINUE,
   /** Control flow keyword: `return`.                 */ T_CONTROL_FLOW_RETURN,
   /** Control flow keyword: `goto`.                   */ T_CONTROL_FLOW_GOTO,
   /** Number, either integer or float.
@@ -216,14 +217,15 @@ typedef const enum TokenType
 /*  */TokenType, * const     TokenType_p, *      TokenType_mut_p;
 
 static const unsigned char * const
-TokenType_STRING[] = {
+TokenType_STRING[1+T_OTHER] = {
   B("NONE"),
   B("Identifier"),
   B("Type"), B("Type struct"), B("Type qualifier"), B("Type qualifier auto"),
   B("Type definition"),
-  B("Control flow"),
-  B("Control flow loop"), B("Control flow switch"),
-  B("Control flow break"), B("Control flow return"),
+  B("Control flow conditional"),
+  B("Control flow loop"),
+  B("Control flow switch"), B("Control flow case"),
+  B("Control flow break"), B("Control flow continue"), B("Control flow return"),
   B("Control flow goto"),
   B("Number"), B("String"), B("Character"),
   B("Space"), B("Comment"),
@@ -886,7 +888,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
         return T_CONTROL_FLOW_LOOP;
       }
       if (mem_eq(start, "if", 2)) {
-        return T_CONTROL_FLOW;
+        return T_CONTROL_FLOW_IF;
       }
       break;
     case 3:
@@ -898,8 +900,11 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       }
       break;
     case 4:
-      if (mem_eq(start, "case", 4) || mem_eq(start, "else", 4)) {
-        return T_CONTROL_FLOW;
+      if (mem_eq(start, "case", 4)) {
+        return T_CONTROL_FLOW_CASE;
+      }
+      if (mem_eq(start, "else", 4)) {
+        return T_CONTROL_FLOW_IF;
       }
       if (mem_eq(start, "goto", 4)) {
         return T_CONTROL_FLOW_GOTO;
@@ -915,7 +920,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       break;
     case 5:
       if (mem_eq(start, "break", 5)) {
-        return T_CONTROL_FLOW_BRKCNT;
+        return T_CONTROL_FLOW_BREAK;
       }
       if (mem_eq(start, "while", 5)) {
         return T_CONTROL_FLOW_LOOP;
@@ -948,7 +953,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       break;
     case 7:
       if (mem_eq(start, "default", 7)) {
-        return T_CONTROL_FLOW;
+        return T_CONTROL_FLOW_CASE;
       }
       if (mem_eq(start, "typedef", 7)) {
         return T_TYPEDEF;
@@ -959,7 +964,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       break;
     case 8:
       if (mem_eq(start, "continue", 8)) {
-        return T_CONTROL_FLOW_BRKCNT;
+        return T_CONTROL_FLOW_CONTINUE;
       }
       if (mem_eq(start, "register", 8) || mem_eq(start, "restrict", 8) ||
           mem_eq(start, "unsigned", 8) || mem_eq(start, "volatile", 8)){
