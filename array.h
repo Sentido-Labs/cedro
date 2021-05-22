@@ -355,4 +355,26 @@ T##_array_end(T##_array_p _)                                            \
 {                                                                       \
   return _->items + _->len;                                             \
 }                                                                       \
+                                                                        \
+/** Return a pointer to the start of the array (same as `_->items`) */  \
+static mut_##T##_p                                                      \
+mut_##T##_array_start(mut_##T##_array_p _)                              \
+{                                                                       \
+  return (mut_##T##_p) _->items;                                        \
+}                                                                       \
+                                                                        \
+/** Return a pointer to the next byte after                             \
+    the element at the end of the array. */                             \
+static mut_##T##_p                                                      \
+mut_##T##_array_end(mut_##T##_array_p _)                                \
+{                                                                       \
+  return (mut_##T##_p) _->items + _->len;                               \
+}                                                                       \
+                                                                        \
+/** Return the index for the given pointer. */                          \
+static size_t                                                           \
+index_##T##_array(T##_array_p _, T##_p pointer)                         \
+{                                                                       \
+  return (size_t)(pointer - _->items);                                  \
+}                                                                       \
 static const size_t PADDING_##T##_ARRAY = PADDING//; commented out to avoid ;;.

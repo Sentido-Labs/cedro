@@ -619,7 +619,7 @@ read_file(mut_Byte_array_p _, FilePath path)
   size_t size = (size_t)ftell(input);
   init_Byte_array(_, size);
   rewind(input);
-  _->len = fread((mut_Byte_p) _->items, sizeof(*_->items), size, input);
+  _->len = fread((mut_Byte_p) _->items, sizeof(_->items[0]), size, input);
   if (feof(input)) {
     fprintf(stderr,
             LANG("Fin de fichero inesperado en %ld leyendo «%s».\n",
@@ -631,7 +631,7 @@ read_file(mut_Byte_array_p _, FilePath path)
             path);
   } else {
     memset((mut_Byte_p) _->items + _->len, 0,
-           (_->capacity - _->len) * sizeof(*_->items));
+           (_->capacity - _->len) * sizeof(_->items[0]));
   }
   fclose(input); input = NULL;
 }
@@ -765,7 +765,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
       continue;
     }
-    Byte_mut_p text = src->items + m->start;
+    Byte_mut_p text = get_Byte_array(src, m->start);
     if (options.discard_space) {
       if (m->token_type is T_SPACE) {
         Byte_mut_p eol = text;
@@ -801,19 +801,19 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         } else {
           fputs("#define ", out);
         }
-        fwrite(text, sizeof(*src->items), m->len - len, out);
+        fwrite(text, sizeof(src->items[0]), m->len - len, out);
         for (++m; m is_not m_end; ++m) {
           if (options.discard_comments && m->token_type is T_COMMENT) {
             continue;
           } else if (m->token_type is T_PREPROCESSOR) {
-            text = src->items + m->start;
+            text = get_Byte_array(src, m->start);
             if (strn_eq("#define }", (char*)text, m->len < 9? m->len: 9)) {
               puts("// End #define");
               break;
             }
-            fwrite(text, sizeof(*src->items), m->len, out);
+            fwrite(text, sizeof(src->items[0]), m->len, out);
           } else {
-            text = src->items + m->start;
+            text = get_Byte_array(src, m->start);
             len = m->len;
             bool is_line_comment = false;
             if (m->token_type is T_COMMENT and len > 2) {
@@ -829,7 +829,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
             }
             Byte_mut_p eol;
             while ((eol = memchr(text, '\n', len))) {
-              fwrite(text, sizeof(*src->items), (size_t)(eol - text), out);
+              fwrite(text, sizeof(src->items[0]), (size_t)(eol - text), out);
               if (is_line_comment) {
                 fputs(" */", out);
                 is_line_comment = false;
@@ -838,7 +838,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
               len -= (size_t)(eol - text) + 1;
               text = eol + 1;
             }
-            fwrite(text, sizeof(*src->items), len, out);
+            fwrite(text, sizeof(src->items[0]), len, out);
             if (is_line_comment) {
               fputs(" */", out);
             }
@@ -869,7 +869,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         continue;
       }
     }
-    fwrite(text, sizeof(*src->items), m->len, out);
+    fwrite(text, sizeof(src->items[0]), m->len, out);
   }
 }
 
@@ -999,8 +999,8 @@ static Byte_p
 parse(Byte_array_p src, mut_Marker_array_p markers)
 {
   assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
-  Byte_mut_p cursor = src->items;
-  Byte_p end = src->items + src->len;
+  Byte_mut_p cursor = Byte_array_start(src);
+  Byte_p     end    = Byte_array_end(src);
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
   while (cursor is_not end) {
@@ -1150,8 +1150,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     }
     mut_Marker marker;
     init_Marker(&marker,
-                (size_t)(cursor - src->items),
-                (size_t)(token_end - src->items),
+                index_Byte_array(src, cursor),
+                index_Byte_array(src, token_end),
                 token_type);
     push_Marker_array(markers, marker);
     cursor = token_end;

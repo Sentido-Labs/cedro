@@ -92,7 +92,7 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
       break;
     }
   }
-  size_t cut_point = (size_t)(actions_cursor - actions_start);
+  size_t cut_point = index_DeferredAction_array(pending, actions_cursor);
   // Deleting items does not invalidate pointers in splice_...().
   splice_DeferredAction_array(pending, cut_point, pending->len - cut_point,
                               NULL, NULL);
@@ -101,7 +101,7 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
 static void
 macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
-  Marker space = new_marker(src, " ", T_SPACE);
+  Marker space       = new_marker(src, " ", T_SPACE);
   Marker block_start = new_marker(src, "{", T_BLOCK_START);
   Marker block_end   = new_marker(src, "}", T_BLOCK_END);
   mut_Marker indent_one_level = { .start = 0, .len = 0, .token_type = T_NONE };
@@ -111,9 +111,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
   mut_DeferredAction_array pending;
   init_DeferredAction_array(&pending, 20);
 
-  mut_Marker_mut_p start  = (mut_Marker_p)Marker_array_start(markers);
+  mut_Marker_mut_p start  = mut_Marker_array_start(markers);
   mut_Marker_mut_p cursor = start;
-  mut_Marker_mut_p end    = (mut_Marker_p)Marker_array_end(markers);
+  mut_Marker_mut_p end    = mut_Marker_array_end(markers);
   size_t cursor_position;
 
   mut_Error err = { .position = 0, .message = NULL };
@@ -200,9 +200,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
                                     &between, NULL,
                                     (size_t)(insertion_point - start),
                                     markers);
-      start = (mut_Marker_p)Marker_array_start(markers);
-      end   = (mut_Marker_p)Marker_array_end  (markers);
-      cursor = start + cursor_position;
+      start  = mut_Marker_array_start(markers);
+      end    = mut_Marker_array_end  (markers);
+      cursor = get_mut_Marker_array(markers, cursor_position);
 
    exit_level_and_continue:
       exit_level(&pending, block_stack.len);
@@ -323,7 +323,6 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
         }
         // Invalidates: markers
-        // TODO: this invalidates also space, use indexes instead of pointers.
         cursor_position = (size_t)(insertion_point - start)
             + insert_deferred_actions(&pending, block_level,
                                       NULL,
@@ -333,8 +332,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
             + (size_t)(line.end_p - line.start_p);
       }
 
-      start = (mut_Marker_p)Marker_array_start(markers);
-      end   = (mut_Marker_p)Marker_array_end  (markers);
+      start = mut_Marker_array_start(markers);
+      end   = mut_Marker_array_end  (markers);
       cursor = start + cursor_position;
     } else if (cursor->token_type is T_TYPE_QUALIFIER_AUTO) {
       // Add a new action at the current level.
@@ -405,14 +404,14 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
       marker_buffer.len = 0;
       // Invalidates: markers
-      cursor_position = (size_t)(cursor - start);
+      cursor_position = index_Marker_array(markers, cursor);
       splice_Marker_array(markers,
                           (size_t)(line_start - start),
                           (size_t)(action_end - line_start),
                           &marker_buffer, NULL);
-      start = (mut_Marker_p)Marker_array_start(markers);
-      end   = (mut_Marker_p)Marker_array_end  (markers);
-      cursor = start + cursor_position;
+      start  = mut_Marker_array_start(markers);
+      end    = mut_Marker_array_end  (markers);
+      cursor = get_mut_Marker_array(markers, cursor_position);
       // Delete indentation and auto keyword:
       splice_Marker_array(&marker_buffer,
                           0, (size_t)(action_start - line_start),
