@@ -1412,7 +1412,7 @@ static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
     "  El resultado va a stdout, puede usarse sin fichero intermedio así:\n"
-    " cedro fichero.c | gcc -x c - -o fichero\n"
+    " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
     "\n"

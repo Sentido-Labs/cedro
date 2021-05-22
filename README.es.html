@@ -135,7 +135,7 @@ nvgFill(contexto_grafico);</code>
 
       <h3>Obras relacionadas</h3>
       <p>Buscando realizaciones anteriores de esta idea he encontrado
-        <a href="https://github.com/eudoxia0/magma">magma</a>,
+        <a href="https://github.com/eudoxia0/magma">magma</a> (2014),
         done se llama
         <a href="https://github.com/eudoxia0/magma#doto"><code>doto</code></a>.
         Es una macro para el pre-procesador
@@ -145,14 +145,17 @@ nvgFill(contexto_grafico);</code>
       <p>Otra que he encontrado es la
         <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">macro <code>-></code></a> (hilvanado)
         de <a href="https://clojure.org/guides/threading_macros">Clojure</a>
-        que se parece pero hilvana el <em>resultado</em> de la primera función
+        que se parece pero
+        hilvana el <em>resultado</em> de la primera función
         como primer parámetro de la siguiente etc.
         en vez del mismo valor para todas las funciones.</p>
     </section>
 
     <section id="deferred-resource-release">
       <h2>Devolución diferida de recursos:</h2>
-      <p>Mueve el código de devolución de una variable al final de su alcance.</p>
+      <p>Mueve el código de devolución de una variable al final de su alcance,
+        incluídos los puntos de salida
+        <code>break</code>, <code>continue</code>, <code>return</code>.</p>
       <p>En C, los recursos deben devolverse al sistema explícitamente
         una vez no son necesarios, lo que generalmente ocurre bastante lejos
         de la parte donde se reservaron.
@@ -247,16 +250,38 @@ int main(void)
       </table>
 
       <p>Compilación con GCC:</p>
-<code>$ cedro repite.c | gcc -o repite -x c -
+      <table>
+        <tr>
+<td><code>$ cedro repite.c | gcc -o repite -x c -
 $ ./repite
 Repeated 6 times: AAAAAA
 $ cat aaaaaa.txt
-AAAAAA</code>
+AAAAAA
+$ valgrind --leak-check=yes ./repeat
+…
+==8795== HEAP SUMMARY:
+==8795==     in use at exit: 0 bytes in 0 blocks
+==8795==   total heap usage: 4 allocs, 4 frees,
+                             5,599 bytes allocated
+==8795==
+==8795== All heap blocks were freed -- no leaks are possible</code>
+</td><td>
 <code>$ cedrocc -o repite repite.c
 $ ./repite
 Repeated 6 times: AAAAAA
 $ cat aaaaaa.txt
-AAAAAA</code>
+AAAAAA
+$ valgrind --leak-check=yes ./repeat
+…
+==8795== HEAP SUMMARY:
+==8795==     in use at exit: 0 bytes in 0 blocks
+==8795==   total heap usage: 4 allocs, 4 frees,
+                             5,599 bytes allocated
+==8795==
+==8795== All heap blocks were freed -- no leaks are possible</code>
+</td>
+        </tr>
+      </table>
 
       <h3>Obras relacionadas</h3>
       <p>Aparte de la ya mencionada
