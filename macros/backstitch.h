@@ -63,7 +63,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         // Trim space before object.
         skip_space_forward(start_of_line, object.end_p);
         object.start_p = start_of_line;
-        Marker object_indentation = indentation(src, object.start_p->start);
+        Marker object_indentation = indentation(src, object.start_p);
         // Trim space after object, between it and backstitch operator.
         skip_space_back(object.start_p, object.end_p);
         cursor = first_segment_start;

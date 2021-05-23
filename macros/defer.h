@@ -153,13 +153,12 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 
       if (cursor is_not end and cursor->token_type is T_SPACE and
           indent_one_level.token_type is T_NONE) {
-        Byte_p start = get_Byte_array(src, cursor->start);
-        Byte_p end   = get_Byte_array(src, cursor->start + cursor->len);
-        for (Byte_mut_p cursor = end; cursor is_not start; --cursor) {
+        Byte_array_slice slice = slice_for_marker(src, cursor);
+        for (Byte_mut_p cursor = slice.end_p;
+             cursor is_not slice.start_p;
+             --cursor) {
           if (*(cursor - 1) is '\n') {
-            indent_one_level.start = (size_t)(cursor - Byte_array_start(src));
-            indent_one_level.len   = (size_t)(end - cursor);
-            indent_one_level.token_type = T_SPACE;
+            init_Marker(&indent_one_level, cursor, slice.end_p, src, T_SPACE);
             break;
           }
         }
@@ -192,7 +191,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       Marker_p insertion_point =
           cursor is_not start and (cursor-1)->token_type is T_SPACE?
           cursor-1: cursor;
-      Marker between = indentation(src, previous_line->start);
+      Marker between = indentation(src, previous_line);
       // Invalidates: markers
       cursor_position = (size_t)(cursor - start)
           + insert_deferred_actions(&pending, block_level,
@@ -255,7 +254,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       Marker_p insertion_point =
           cursor is_not start and (cursor-1)->token_type is T_SPACE?
           cursor-1: cursor;
-      mut_Marker between = indentation(src, cursor->start);
+      mut_Marker between = indentation(src, cursor);
 
       mut_Marker_array_slice line = { .start_p = NULL, .end_p = NULL };
       line.start_p = find_line_start(cursor, start, &err);

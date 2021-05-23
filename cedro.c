@@ -259,15 +259,6 @@ TYPEDEF_STRUCT(Error, {
     const char * message;  /**< Message for user. */
   });
 
-/** Initialize a marker with the given values. */
-static void
-init_Marker(mut_Marker_p _, size_t start, size_t end, TokenType token_type)
-{
-  _->start      = start;
-  _->len        = end - start;
-  _->token_type = token_type;
-}
-
 #include "array.h"
 
 DEFINE_ARRAY_OF(Marker, 0, {});
@@ -277,6 +268,16 @@ TYPEDEF(Byte, uint8_t);
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
  * for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
+
+/** Initialize a marker with the given values. */
+static void
+init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
+            TokenType token_type)
+{
+  _->start      = index_Byte_array(src, start);
+  _->len        = (size_t)(end - start);
+  _->token_type = token_type;
+}
 
 /* Lexer definitions. */
 
@@ -433,17 +434,28 @@ preprocessor(Byte_p start, Byte_p end)
 
 
 
+/** Get new slice for the given marker.
+ */
+static Byte_array_slice
+slice_for_marker(Byte_array_p src, Marker_p cursor)
+{
+  Byte_array_slice slice = {
+    // get_mut_Byte_array() is not valid at the end.
+    .start_p = get_mut_Byte_array(src, cursor->start),
+    .end_p   = get_mut_Byte_array(src, cursor->start) + cursor->len
+  };
+  return slice;
+}
+
 /** Extract the indentation of the line for the character at `index`,
  * including the preceding `LF` character if it exists.
  */
 static Marker
-indentation(Byte_array_p src, size_t index)
+indentation(Byte_array_p src, Marker_p marker)
 {
-  // TODO: change signature to (Byte_array_p src, Marker_array_p markers, size_t index)
-  // Then index will be a marker index, not a byte index.
   Byte_p start = Byte_array_start(src);
   Byte_p end   = Byte_array_end(src);
-  Byte_mut_p start_of_line = get_Byte_array(src, index);
+  Byte_mut_p start_of_line = slice_for_marker(src, marker).start_p;
   while (*start_of_line is_not '\n') {
     if (start_of_line is start) break;
     --start_of_line;
@@ -454,29 +466,15 @@ indentation(Byte_array_p src, size_t index)
   // Handling the hypothetical case where the first line of the file is indented
   // is not worth the complication.
   Byte_mut_p end_of_indentation = start_of_line + 1;
+  // TODO: this no longer makes sense: this is a single token of type T_SPACE.
   while (end_of_indentation is_not end) {
     if (*end_of_indentation is_not ' ' &&
         *end_of_indentation is_not '\t') break;
     ++end_of_indentation;
   }
-  mut_Marker indentation = {
-    .start = (size_t)(start_of_line - start),
-    .len   = (size_t)(end_of_indentation - start_of_line),
-    .token_type = T_SPACE
-  };
+  mut_Marker indentation;
+  init_Marker(&indentation, start_of_line, end_of_indentation, src, T_SPACE);
   return indentation;
-}
-
-/** Get new slice for the given marker.
- */
-static Byte_array_slice
-slice_for_marker(Byte_array_p src, Marker_p cursor)
-{
-  Byte_array_slice slice = {
-    .start_p = get_Byte_array(src, cursor->start),
-    .end_p   = get_Byte_array(src, cursor->start + cursor->len)
-  };
-  return slice;
 }
 
 /** Copy the characters between `start` and `end` into the given Byte array,
@@ -512,20 +510,18 @@ extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p str
   }
 }
 
-/** Compute the number of LF characters in the given marker segment.
- *
- *  To get the line number at `position`, use `line_number()`.
- */
+/** Count appearances of the given byte in a marker. */
 static size_t
-count_line_ends_between(Byte_array_p src, Marker_p start, Marker_p marker_p)
+count_appearances(Byte byte, Marker_p start, Marker_p end, Byte_array_p src)
 {
+  if (end == start) return 0;
   size_t count = 0;
-  Marker_mut_p cursor = marker_p;
+  Marker_mut_p cursor = end - 1;
   while (cursor is_not start) {
     Byte_array_slice src_segment = slice_for_marker(src, cursor);
     Byte_mut_p pointer = src_segment.start_p;
     while ((pointer =
-            memchr(pointer, '\n', (size_t)(src_segment.end_p - pointer) ))) {
+            memchr(pointer, byte, (size_t)(src_segment.end_p - pointer) ))) {
       ++pointer;
       ++count;
     }
@@ -540,10 +536,10 @@ count_line_ends_between(Byte_array_p src, Marker_p start, Marker_p marker_p)
 static size_t
 line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
 {
-  return 1 + count_line_ends_between(src,
-                                     Marker_array_start(markers),
-                                     position
-                                     );
+  return 1 + count_appearances('\n',
+                               Marker_array_start(markers),
+                               position,
+                               src);
 }
 
 /** Append the C string bytes to the end of the given buffer. */
@@ -661,7 +657,7 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
   size_t text_len = strlen(text);
   if (end - cursor >= text_len) {
     const char first_character = text[0];
-    for (; (cursor = memchr(cursor, first_character, src->len)); ++cursor) {
+    while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
       Byte_mut_p p1 = cursor;
       Byte_mut_p p2 = (Byte_p) text;
       while (*p2 && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
@@ -669,16 +665,19 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
         match = cursor;
         break;
       }
+      ++cursor;
     }
   }
-  mut_Marker marker = { .start = 0, .len = text_len, .token_type = token_type };
-  if (match) {
-    marker.start = (size_t)(match - Byte_array_start(src));
-  } else {
-    marker.start = src->len;
-    Byte_mut_p p2 = (Byte_p) text;
-    while (*p2) push_Byte_array(src, *(p2++));
+  mut_Marker marker;
+  if (not match) {
+    match = Byte_array_end(src);
+    Byte_array_slice insert = {
+      .start_p = (Byte_p)text,
+      .end_p   = (Byte_p)text + text_len
+    };
+    splice_Byte_array(src, src->len, 0, NULL, &insert);
   }
+  init_Marker(&marker, match, match + text_len, src, token_type);
 
   return marker;
 }
@@ -767,7 +766,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
       continue;
     }
-    Byte_mut_p text = get_Byte_array(src, m->start);
+    Byte_mut_p text = slice_for_marker(src, m).start_p;
     if (options.discard_space) {
       if (m->token_type is T_SPACE) {
         Byte_mut_p eol = text;
@@ -808,14 +807,14 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
           if (options.discard_comments && m->token_type is T_COMMENT) {
             continue;
           } else if (m->token_type is T_PREPROCESSOR) {
-            text = get_Byte_array(src, m->start);
+            text = slice_for_marker(src, m).start_p;
             if (strn_eq("#define }", (char*)text, m->len < 9? m->len: 9)) {
               puts("// End #define");
               break;
             }
             fwrite(text, sizeof(src->items[0]), m->len, out);
           } else {
-            text = get_Byte_array(src, m->start);
+            text = slice_for_marker(src, m).start_p;
             len = m->len;
             bool is_line_comment = false;
             if (m->token_type is T_COMMENT and len > 2) {
@@ -1151,10 +1150,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
       }
     }
     mut_Marker marker;
-    init_Marker(&marker,
-                index_Byte_array(src, cursor),
-                index_Byte_array(src, token_end),
-                token_type);
+    init_Marker(&marker, cursor, token_end, src, token_type);
     push_Marker_array(markers, marker);
     cursor = token_end;
 
