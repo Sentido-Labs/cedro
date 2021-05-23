@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 
   char* cc = getenv("CEDRO_CC");
   if (cc) {
-    log(LANG("Usando CEDRO_CC='%s'\n", "Using CEDRO_CC='%s'\n"), cc);
+    eprintln(LANG("Usando CEDRO_CC='%s'\n", "Using CEDRO_CC='%s'\n"), cc);
   } else {
     cc = "cc -x c -";
   }
@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
       }
     }
     if (str_eq(arg, "-h") or str_eq(arg, "--help")) {
-      log(LANG(usage_es, usage_en), args[0]);
+      eprintln(LANG(usage_es, usage_en), args[0]);
       free(args);
       return 0;
     }
@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
   assert(i <= argc);
 
   if (not file_name) {
-    log("Missing file name.");
+    eprintln("Missing file name.");
     free(args);
     return 1;
   }

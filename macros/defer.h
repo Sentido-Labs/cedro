@@ -133,9 +133,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           ++nesting;
         } else if (T_TUPLE_START is statement->token_type) {
           if (not nesting) {
-            log("At line %lu: %s",
-                line_number(src, markers, statement),
-                "Too many opening parenthesis.");
+            eprintln("At line %lu: %s",
+                     line_number(src, markers, statement),
+                     "Too many opening parenthesis.");
             goto free_all_and_return;
           }
           --nesting;
@@ -176,8 +176,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       if (previous_line is_not start) {
         previous_line = find_line_start(previous_line - 1, start, &err);
         if (err.message) {
-          log("At line %lu: %s",
-              line_number(src, markers, err.position), err.message);
+          eprintln("At line %lu: %s",
+                   line_number(src, markers, err.position), err.message);
           err.message = NULL;
           goto free_all_and_return;
         }
@@ -215,8 +215,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
         block_level = block_stack.len;
         if (block_level is 0) {
-          log("At line %lu: break outside of block.",
-              line_number(src, markers, cursor));
+          eprintln("At line %lu: break outside of block.",
+                   line_number(src, markers, cursor));
           err.message = NULL;
           break;
         }
@@ -232,8 +232,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       } else if (cursor->token_type is T_CONTROL_FLOW_CONTINUE) {
         block_level = block_stack.len;
         if (block_level is 0) {
-          log("At line %lu: break outside of block.",
-              line_number(src, markers, cursor));
+          eprintln("At line %lu: break outside of block.",
+                   line_number(src, markers, cursor));
           err.message = NULL;
           break;
         }
@@ -260,15 +260,15 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       mut_Marker_array_slice line = { .start_p = NULL, .end_p = NULL };
       line.start_p = find_line_start(cursor, start, &err);
       if (err.message) {
-        log("At line %lu: %s",
-            line_number(src, markers, err.position), err.message);
+        eprintln("At line %lu: %s",
+                 line_number(src, markers, err.position), err.message);
         err.message = NULL;
         break;
       }
       line.end_p = find_line_end(cursor, end, &err);
       if (err.message) {
-        log("At line %lu: %s",
-            line_number(src, markers, err.position), err.message);
+        eprintln("At line %lu: %s",
+                 line_number(src, markers, err.position), err.message);
         err.message = NULL;
         break;
       }
@@ -280,8 +280,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         // We need to wrap this in a block.
         line.start_p = insertion_point;
         if (err.message) {
-          log("At line %lu: %s",
-              line_number(src, markers, err.position), err.message);
+          eprintln("At line %lu: %s",
+                   line_number(src, markers, err.position), err.message);
           err.message = NULL;
           break;
         }
@@ -352,9 +352,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
             ++nesting;
           } else if (T_TUPLE_END == action_end->token_type) {
             if (not nesting) {
-              log("At line %lu: %s",
-                  line_number(src, markers, action_end),
-                  "Too many closing parenthesis.");
+              eprintln("At line %lu: %s",
+                       line_number(src, markers, action_end),
+                       "Too many closing parenthesis.");
               goto free_all_and_return;
             }
             --nesting;
@@ -381,24 +381,24 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         if (action_end is_not end) ++action_end;
       }
       if (err.message) {
-        log("At line %lu: %s",
-            line_number(src, markers, err.position), err.message);
+        eprintln("At line %lu: %s",
+                 line_number(src, markers, err.position), err.message);
         err.message = NULL;
         break;
       }
 
       if (action_end is action_start) {
-        log("At line %lu: %s",
-            line_number(src, markers, err.position),
-            "Empty auto statement.");
+        eprintln("At line %lu: %s",
+                 line_number(src, markers, err.position),
+                 "Empty auto statement.");
         break;
       }
 
       mut_Marker_p line_start = (mut_Marker_p)
           find_line_start(cursor, start, &err);
       if (err.message) {
-        log("At line %lu: %s",
-            line_number(src, markers, err.position), err.message);
+        eprintln("At line %lu: %s",
+                 line_number(src, markers, err.position), err.message);
         err.message = NULL;
         break;
       }

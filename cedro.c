@@ -45,7 +45,7 @@
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
 static void
-log(const char * const fmt, ...)
+eprintln(const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
@@ -636,16 +636,16 @@ read_file(mut_Byte_array_p _, FilePath path)
   fclose(input); input = NULL;
 }
 
-/** Indent by the given number of double spaces, for the next `log()`
+/** Indent by the given number of double spaces, for the next `eprintln()`
  * or `fprintf(stder, …)`. */
 static void
-indent_log(size_t indent)
+indent_eprintln(size_t indent)
 {
   if (indent > 40) indent = 40;
   while (indent-- is_not 0) fprintf(stderr, "  ");
 }
 /** Log to `stderr` with the given indentation. */
-#define log_indent(indent, ...) { indent_log(indent); log(__VA_ARGS__); }
+#define eprintln_indent(indent, ...) { indent_eprintln(indent); eprintln(__VA_ARGS__); }
 
 /** Build a new marker for the given string,
  * pointing to its first appearance in `src`.
@@ -719,29 +719,31 @@ print_markers(Marker_array_p markers, Byte_array_p src,
 
     switch (m->token_type) {
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
-        log_indent(indent++,
-                   "%s %s← %s", token, spc, TokenType_STRING[m->token_type]);
+        eprintln_indent(indent++, "%s %s← %s",
+                        token, spc, TokenType_STRING[m->token_type]);
         break;
       case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
-        log_indent(--indent,
-                   "%s %s← %s", token, spc, TokenType_STRING[m->token_type]);
+        eprintln_indent(--indent, "%s %s← %s",
+                        token, spc, TokenType_STRING[m->token_type]);
         break;
       case T_GROUP_START: case T_GROUP_END:
         /* Invisible grouping of tokens. */
         break;
       case T_SPACE:
         if (not options.discard_space) {
-          log_indent(indent, "%s %s← Space", token, spc);
+          eprintln_indent(indent, "%s %s← Space",
+                          token, spc);
         }
         break;
       case T_COMMENT:
         if (not options.discard_comments) {
-          log_indent(indent, "%s %s← Comment", token, spc);
+          eprintln_indent(indent, "%s %s← Comment",
+                          token, spc);
         }
         break;
       default:
-        log_indent(indent,
-                   "%s %s← %s", token, spc, TokenType_STRING[m->token_type]);
+        eprintln_indent(indent, "%s %s← %s",
+                        token, spc, TokenType_STRING[m->token_type]);
     }
   }
 
@@ -1011,25 +1013,25 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     Byte_mut_p token_end = NULL;
     if        ((token_end = identifier(cursor, end))) {
       TOKEN1(keyword_or_identifier(cursor, token_end));
-      if (token_end is cursor) log("error T_IDENTIFIER");
+      if (token_end is cursor) eprintln("error T_IDENTIFIER");
     } else if ((token_end = string(cursor, end))) {
       TOKEN1(T_STRING);
-      if (token_end is cursor) { log("error T_STRING"); break; }
+      if (token_end is cursor) { eprintln("error T_STRING"); break; }
     } else if ((token_end = number(cursor, end))) {
       TOKEN1(T_NUMBER);
-      if (token_end is cursor) { log("error T_NUMBER"); break; }
+      if (token_end is cursor) { eprintln("error T_NUMBER"); break; }
     } else if ((token_end = character(cursor, end))) {
       TOKEN1(T_CHARACTER);
-      if (token_end is cursor) { log("error T_CHARACTER"); break; }
+      if (token_end is cursor) { eprintln("error T_CHARACTER"); break; }
     } else if ((token_end = comment(cursor, end))) {
       TOKEN1(T_COMMENT);
-      if (token_end is cursor) { log("error T_COMMENT"); break; }
+      if (token_end is cursor) { eprintln("error T_COMMENT"); break; }
     } else if ((token_end = space(cursor, end))) {
       TOKEN1(T_SPACE);
-      if (token_end is cursor) { log("error T_SPACE"); break; }
+      if (token_end is cursor) { eprintln("error T_SPACE"); break; }
     } else if ((token_end = preprocessor(cursor, end))) {
       TOKEN1(T_PREPROCESSOR);
-      if (token_end is cursor) { log("error T_PREPROCESSOR"); break; }
+      if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
     } else {
       uint8_t c = *cursor;
       token_end = cursor + 1;
@@ -1487,7 +1489,7 @@ int main(int argc, char** argv)
       } else if (str_eq("--version", arg)) {
         fprintf(stderr, CEDRO_VERSION "\n");
       } else {
-        log(LANG(usage_es, usage_en));
+        eprintln(LANG(usage_es, usage_en));
         return str_eq("-h", arg) || str_eq("--help", arg)? 0: 1;
       }
     }
@@ -1519,13 +1521,14 @@ int main(int argc, char** argv)
 
     if (run_benchmark) {
       double t = benchmark(&src, &options);
-      if (t < 1.0) log("%.fms for %s", t * 1000.0, arg);
-      else         log("%.1fs for %s", t         , arg);
+      if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, arg);
+      else         eprintln("%.1fs for %s", t         , arg);
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
         while (macro->name && macro->function) {
-          log(LANG("Ejecutando macro %s:", "Running macro %s:"), macro->name);
+          eprintln(LANG("Ejecutando macro %s:", "Running macro %s:"),
+                   macro->name);
           macro->function(&markers, &src);
           ++macro;
         }

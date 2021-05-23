@@ -21,8 +21,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       // Trim space before first segment, or affix declarator.
       skip_space_forward(first_segment_start, end);
       if (first_segment_start is end) {
-        log("Syntax error in line %lu: unfinished backstitch operator.",
-            line_number(src, markers, first_segment_start));
+        eprintln("Syntax error in line %lu: unfinished backstitch operator.",
+                 line_number(src, markers, first_segment_start));
         return;
       }
       Marker_mut_p prefix = NULL, suffix = NULL;
@@ -30,14 +30,14 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         ++first_segment_start;
         skip_space_forward(first_segment_start, end);
         if (first_segment_start is end) {
-          log("Syntax error in line %lu: unfinished affix declarator.",
-              line_number(src, markers, first_segment_start));
+          eprintln("Syntax error in line %lu: unfinished affix declarator.",
+                   line_number(src, markers, first_segment_start));
           return;
         }
         if (first_segment_start->token_type is_not T_IDENTIFIER) {
-          log("Syntax error in line %lu:"
-              " invalid suffix, must be an identifier.",
-              line_number(src, markers, first_segment_start));
+          eprintln("Syntax error in line %lu:"
+                   " invalid suffix, must be an identifier.",
+                   line_number(src, markers, first_segment_start));
           return;
         }
         suffix = first_segment_start++;
@@ -56,8 +56,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       size_t nesting = 0;
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
-        log("Error: %lu: %s",
-            line_number(src, markers, err.position), err.message);
+        eprintln("Error: %lu: %s",
+                 line_number(src, markers, err.position), err.message);
         err.message = NULL;
       } else {
         // Trim space before object.
@@ -72,8 +72,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_back(cursor, end_of_line);
         cursor = end_of_line;
         if (err.message) {
-          log("Error: %lu: %s",
-              line_number(src, markers, err.position), err.message);
+          eprintln("Error: %lu: %s",
+                   line_number(src, markers, err.position), err.message);
           err.message = NULL;
         } else {
           bool ends_with_semicolon =
@@ -99,9 +99,9 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   --nesting;// Can not underflow because of find_line_end().
                   break;
                 case T_ELLIPSIS:
-                  log("Syntax error in line %lu:"
-                      " invalid prefix, must be an identifier.",
-                      line_number(src, markers, segment_end));
+                  eprintln("Syntax error in line %lu:"
+                           " invalid prefix, must be an identifier.",
+                           line_number(src, markers, segment_end));
                   break;
                 default:
                   break;
@@ -109,8 +109,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               ++segment_end;
             }
             if (nesting) {
-              log("Error: %lu: unclosed group, syntax error.",
-                  line_number(src, markers, segment_start));
+              eprintln("Error: %lu: unclosed group, syntax error.",
+                       line_number(src, markers, segment_start));
               destruct_Marker_array(&replacement);
               return;
             }
@@ -118,8 +118,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             skip_space_back(segment_start, segment_end);
 
             if (segment_end is segment_start) {
-              log("Warning: %ld: empty backstitch segment.",
-                  line_number(src, markers, segment_start));
+              eprintln("Warning: %ld: empty backstitch segment.",
+                       line_number(src, markers, segment_start));
               segment_end = ++segment_start;
               continue;
             }
