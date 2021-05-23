@@ -867,7 +867,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         fputs("\n}", out);
         destruct_Byte_array(&bin);
 
-        if (m+1 is_not end and (m+1)->token_type is T_SPACE) ++m;
+        if (m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
         continue;
       }
     }

@@ -7,7 +7,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   mut_Marker_mut_p end    = (mut_Marker_p) Marker_array_end(markers);
   size_t cursor_position;
 
-  mut_Error err = { .position = 0, .message = NULL };
+  mut_Error err = { .position = NULL, .message = NULL };
 
   Marker comma     = new_marker(src, ",", T_COMMA);
   Marker semicolon = new_marker(src, ";", T_SEMICOLON);
