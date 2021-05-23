@@ -80,7 +80,7 @@ typedef struct T##_array_mut_slice {                                    \
    assert(&s->end_p   == &a->items + 10);                               \
    \endcode                                                             \
 */                                                                      \
-typedef const struct T##_array_mut_slice                                \
+typedef struct T##_array_mut_slice                                      \
 /* Slice of a mutable array whose items are read-only.                  \
  */             T##_array_mut_slice,                                    \
   /* Pointer to mutable slice of a mutable array of read-only items. */ \
