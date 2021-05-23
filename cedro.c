@@ -41,7 +41,7 @@
 #include <assert.h>
 #include <sys/resource.h>
 
-/** Same as `fprintf(stderr, __VA_ARGS__), fputc('\n', stderr)`
+/** Same as `fprintf(stderr, fmt, ...), fputc('\n', stderr)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
 static void
