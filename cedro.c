@@ -249,7 +249,7 @@ TokenType_STRING[1+T_OTHER] = {
 /** Marks a C token in the source code. */
 TYPEDEF_STRUCT(Marker, {
     size_t start;             /**< Start position, in bytes/chars. */
-    size_t len;               /**< Length, in bytes/chars. */
+    uint32_t len;             /**< Length, in bytes/chars. */
     mut_TokenType token_type; /**< Token type. */
   });
 

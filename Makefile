@@ -1,6 +1,6 @@
 NAME=cedro
 
-CC=gcc -g
+CC=gcc -g -fshort-enums
 CC_STRICT=$(CC) -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
 
 all: debug release
