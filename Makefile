@@ -41,10 +41,10 @@ check: $(NAME)
 	mkdir -p doc/cppcheck
 	cpp $(NAME).c | sed 's/^\(\s*\)# /\1\/\/ # /' >$(NAME).i
 	cppcheck $(NAME).i --std=c99 --enable=performance,portability --xml 2>&1 | cppcheck-htmlreport --report-dir=doc/cppcheck --source-dir=.
-	sparse $(NAME).i
+	sparse -Wall $(NAME).i
 	gcc -fanalyzer -o /dev/null -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable $(NAME).c
 	scan-build -o doc/clang ./$(NAME)
-	valgrind --leak-check=yes ./$(NAME) hello.c
+	valgrind --leak-check=yes ./$(NAME) examples/hello.c >/dev/null
 
 clean:
 	rm -f $(NAME) $(NAME)-debug
