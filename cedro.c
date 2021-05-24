@@ -282,7 +282,7 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
 /* Lexer definitions. */
 
 /** Match an identifier. */
-static Byte_p
+static inline Byte_p
 identifier(Byte_p start, Byte_p end)
 {
   if (end <= start) return NULL;
@@ -306,7 +306,7 @@ identifier(Byte_p start, Byte_p end)
  *  This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
  *  Rejecting that is left to the compiler.
  */
-static Byte_p
+static inline Byte_p
 number(Byte_p start, Byte_p end)
 {
   if (end <= start) return NULL;
@@ -345,7 +345,7 @@ number(Byte_p start, Byte_p end)
 }
 
 /** Match a string literal. */
-static Byte_p
+static inline Byte_p
 string(Byte_p start, Byte_p end)
 {
   if (end <= start or *start is_not '"') return NULL;
@@ -358,7 +358,7 @@ string(Byte_p start, Byte_p end)
 }
 
 /** Match a character literal. */
-static Byte_p
+static inline Byte_p
 character(Byte_p start, Byte_p end)
 {
   if (end <= start or *start is_not '\'') return NULL;
@@ -371,7 +371,7 @@ character(Byte_p start, Byte_p end)
 }
 
 /** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters. */
-static Byte_p
+static inline Byte_p
 space(Byte_p start, Byte_p end)
 {
   if (end <= start) return NULL;
@@ -396,7 +396,7 @@ exit:
 }
 
 /** Match a comment block. */
-static Byte_p
+static inline Byte_p
 comment(Byte_p start, Byte_p end)
 {
   if (end <= start + 1 or *start is_not '/') return NULL;
@@ -420,7 +420,7 @@ comment(Byte_p start, Byte_p end)
 }
 
 /** Match a pre-processor directive. */
-static Byte_p
+static inline Byte_p
 preprocessor(Byte_p start, Byte_p end)
 {
   if (end is start or *start is_not '#') return NULL;
