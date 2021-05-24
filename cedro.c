@@ -281,11 +281,11 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
 
 /* Lexer definitions. */
 
-/** Match an identifier. */
+/** Match an identifier.
+ * Assumes `end` > `start`. */
 static inline Byte_p
 identifier(Byte_p start, Byte_p end)
 {
-  if (end <= start) return NULL;
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
   if (in('a',c,'z') or in('A',c,'Z') or c is '_') {
@@ -303,13 +303,12 @@ identifier(Byte_p start, Byte_p end)
 }
 
 /** Match a number.
- *  This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
- *  Rejecting that is left to the compiler.
- */
+ * This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+ * Rejecting that is left to the compiler.
+ * Assumes `end` > `start`. */
 static inline Byte_p
 number(Byte_p start, Byte_p end)
 {
-  if (end <= start) return NULL;
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
   if (c >= '1' and c <= '9') {
@@ -344,11 +343,12 @@ number(Byte_p start, Byte_p end)
   }
 }
 
-/** Match a string literal. */
+/** Match a string literal.
+ * Assumes `end` > `start`. */
 static inline Byte_p
 string(Byte_p start, Byte_p end)
 {
-  if (end <= start or *start is_not '"') return NULL;
+  if (*start is_not '"') return NULL;
   Byte_mut_p cursor = start + 1;
   while (cursor is_not end and *cursor is_not '"') {
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
@@ -357,11 +357,12 @@ string(Byte_p start, Byte_p end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
-/** Match a character literal. */
+/** Match a character literal.
+ * Assumes `end` > `start`. */
 static inline Byte_p
 character(Byte_p start, Byte_p end)
 {
-  if (end <= start or *start is_not '\'') return NULL;
+  if (*start is_not '\'') return NULL;
   Byte_mut_p cursor = start + 1;
   while (cursor is_not end and *cursor is_not '\'') {
     if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
@@ -370,11 +371,11 @@ character(Byte_p start, Byte_p end)
   return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
 }
 
-/** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters. */
+/** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters.
+ * Assumes `end` > `start`. */
 static inline Byte_p
 space(Byte_p start, Byte_p end)
 {
-  if (end <= start) return NULL;
   Byte_mut_p cursor = start;
   while (cursor < end) {
     switch (*cursor) {
@@ -395,11 +396,12 @@ exit:
   return (cursor is start)? NULL: cursor;
 }
 
-/** Match a comment block. */
+/** Match a comment block.
+ * Assumes `end` > `start`. */
 static inline Byte_p
 comment(Byte_p start, Byte_p end)
 {
-  if (end <= start + 1 or *start is_not '/') return NULL;
+  if (*start is_not '/') return NULL;
   Byte_mut_p cursor = start + 1;
   if (*cursor is '/') {
     do {
@@ -419,11 +421,12 @@ comment(Byte_p start, Byte_p end)
   return (cursor is end)? end: cursor + 1;// Token includes the closing symbol.
 }
 
-/** Match a pre-processor directive. */
+/** Match a pre-processor directive.
+ * Assumes `end` > `start`. */
 static inline Byte_p
 preprocessor(Byte_p start, Byte_p end)
 {
-  if (end is start or *start is_not '#') return NULL;
+  if (*start is_not '#') return NULL;
   Byte_mut_p cursor = start;
   do {
     cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
