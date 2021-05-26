@@ -40,6 +40,7 @@
 
 #include <assert.h>
 #include <sys/resource.h>
+#include <errno.h>
 
 /** Same as `fprintf(stderr, fmt, ...), fputc('\n', stderr)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
@@ -614,8 +615,9 @@ read_file(mut_Byte_array_p _, FilePath path)
   mut_File_p input = fopen(path, "r");
   if (!input) {
     fprintf(stderr,
-            LANG("Fichero no econtrado: %s\n", "File not found: %s\n"),
-            path);
+            LANG("Error al abrir el fichero: «%s»: 0x%02X %s.\n",
+                 "Error when opening the file: “%s”: 0x%02X %s.\n"),
+            path, errno, strerror(errno));
     init_Byte_array(_, 0);
     return;
   }
@@ -631,8 +633,9 @@ read_file(mut_Byte_array_p _, FilePath path)
             _->len, path);
   } else if (ferror(input)) {
     fprintf(stderr,
-            LANG("Error leyendo «%s».\n", "Error reading “%s”.\n"),
-            path);
+            LANG("Error leyendo «%s»: 0x%02X %s.\n",
+                 "Error reading “%s”: 0x%02X %s.\n"),
+            path, errno, strerror(errno));
   } else {
     memset((mut_Byte_p) _->items + _->len, 0,
            (_->capacity - _->len) * sizeof(_->items[0]));
@@ -865,8 +868,13 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         file_name[end - len] = '\0';
         mut_Byte_array bin;
         read_file(&bin, file_name);
-        if (bin.len) fprintf(out, "[%lu] = {\n0x%2X", bin.len, bin.items[0]);
-        else         fprintf(out, "[0] = { // %s", file_name);
+        if (not bin.len) {
+          fprintf(out, ";// No data for %s\n#error %s",
+                  file_name, strerror(errno));
+          break;
+        }
+        fprintf(out, "[%lu] = { // %s\n0x%2X",
+                bin.len, file_name, bin.items[0]);
         for (size_t i = 1; i is_not bin.len; ++i) {
           fprintf(out,
                   (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.items[i]);
@@ -1518,6 +1526,11 @@ int main(int argc, char** argv)
 
     mut_Byte_array src;
     read_file(&src, arg);
+    if (not src.len) {
+      fprintf(stdout, ";// File \"%s\"\n#error %s\n",
+              arg, strerror(errno));
+      break;
+    }
 
     markers.len = 0;
 
