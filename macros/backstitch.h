@@ -197,15 +197,17 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               }
               splice_Marker_array(&replacement, replacement.len, 0, NULL,
                                   &slice);
-              splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                  &object);
-              if (inside_parenthesis) {
-                if (insertion_point->token_type is_not T_TUPLE_END) {
-                  push_Marker_array(&replacement, comma);
+              if (object.end_p is_not object.start_p) { // Allow elided object.
+                splice_Marker_array(&replacement, replacement.len, 0, NULL,
+                                    &object);
+                if (inside_parenthesis) {
+                  if (insertion_point->token_type is_not T_TUPLE_END) {
+                    push_Marker_array(&replacement, comma);
+                    push_Marker_array(&replacement, space);
+                  }
+                } else {
                   push_Marker_array(&replacement, space);
                 }
-              } else {
-                push_Marker_array(&replacement, space);
               }
             }
             slice.start_p = insertion_point;
