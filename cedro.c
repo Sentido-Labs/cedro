@@ -66,6 +66,7 @@ eprintln(const char * const fmt, ...)
       }
       vsnprintf(buffer, needed, fmt, args);
     }
+    char* end = buffer + needed;
     char* p = buffer;
     char* s = p;
     char c;
@@ -77,6 +78,10 @@ eprintln(const char * const fmt, ...)
         if      (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
         else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
         else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+        if (p + len >= end) {
+          fprintf(stderr, "UTF-8 DECODE ERROR.\n");
+          return;
+        }
         switch (len) {
           case 4: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
           case 3: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
