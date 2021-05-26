@@ -48,6 +48,8 @@
 #include <sys/resource.h>
 #include <errno.h>
 
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+
 /** Same as `fprintf(stderr, fmt, ...), fputc('\n', stderr)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
