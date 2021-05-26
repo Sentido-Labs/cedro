@@ -23,6 +23,12 @@
  * Created: 2020-11-25 22:41
  */
 #define CEDRO_VERSION "1.0"
+/** Versions with the same major number are compatible in that they produce
+ * semantically equivalent output: there might be differeces in indentation
+ * etc. but will be the same after parsing by the compiler.
+ */
+#define CEDRO_PRAGMA "#pragma Cedro 1."
+#define CEDRO_PRAGMA_LEN 16
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1009,6 +1015,12 @@ keyword_or_identifier(Byte_p start, Byte_p end)
 
 /** Parse the given source code into the `markers` array,
  * appending the new markers to whatever was already there.
+ *
+ *  The file must contain `#pragma Cedro x.y`
+ * with `x` as the major and `y` as the minor revision.
+ *  Everything up to that marker is output verbatim without any processing,
+ * so standard C files are by default not modified.
+ *
  *  Remember to empty the `markers` array before calling this function
  * if you are re-parsing from scratch.
  */
@@ -1020,21 +1032,55 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   Byte_p     end    = Byte_array_end(src);
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
+
+  while (cursor is_not end) {
+    assert(cursor is_not prev_cursor);
+    prev_cursor = cursor;
+
+    Byte_mut_p token_end = NULL;
+    if        ((token_end = preprocessor(cursor, end))) {
+      if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
+        if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
+          mut_Marker inert;
+          init_Marker(&inert, Byte_array_start(src), cursor, src, T_NONE);
+          push_Marker_array(markers, inert);
+          cursor = token_end;
+          if (cursor is_not end) ++cursor; // Skip LF after line.
+          break;
+        }
+      }
+    } else if ((token_end = string    (cursor, end))) {
+    } else if ((token_end = character (cursor, end))) {
+    } else if ((token_end = comment   (cursor, end))) {
+    } else if ((token_end = space     (cursor, end))) {
+    } else if ((token_end = identifier(cursor, end))) {
+    } else if ((token_end = number    (cursor, end))) {
+    } else {    token_end =            cursor + 1;    }
+    cursor = token_end;
+  }
+  if (markers->len is 0) {
+    // No “#pragma Cedro x.y”, so just wrap the whole C code verbatim.
+    mut_Marker inert;
+    init_Marker(&inert,
+                Byte_array_start(src), Byte_array_end(src), src, T_NONE);
+    push_Marker_array(markers, inert);
+  }
+
+
+  // If CEDRO_PRAGMA is not present, markers will be empty.
+
   while (cursor is_not end) {
     assert(cursor is_not prev_cursor);
     prev_cursor = cursor;
 
     mut_TokenType token_type = T_NONE;
     Byte_mut_p token_end = NULL;
-    if        ((token_end = identifier(cursor, end))) {
-      TOKEN1(keyword_or_identifier(cursor, token_end));
-      if (token_end is cursor) eprintln("error T_IDENTIFIER");
+    if        ((token_end = preprocessor(cursor, end))) {
+      TOKEN1(T_PREPROCESSOR);
+      if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
     } else if ((token_end = string(cursor, end))) {
       TOKEN1(T_STRING);
       if (token_end is cursor) { eprintln("error T_STRING"); break; }
-    } else if ((token_end = number(cursor, end))) {
-      TOKEN1(T_NUMBER);
-      if (token_end is cursor) { eprintln("error T_NUMBER"); break; }
     } else if ((token_end = character(cursor, end))) {
       TOKEN1(T_CHARACTER);
       if (token_end is cursor) { eprintln("error T_CHARACTER"); break; }
@@ -1044,9 +1090,12 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = space(cursor, end))) {
       TOKEN1(T_SPACE);
       if (token_end is cursor) { eprintln("error T_SPACE"); break; }
-    } else if ((token_end = preprocessor(cursor, end))) {
-      TOKEN1(T_PREPROCESSOR);
-      if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
+    } else if ((token_end = identifier(cursor, end))) {
+      TOKEN1(keyword_or_identifier(cursor, token_end));
+      if (token_end is cursor) eprintln("error T_IDENTIFIER");
+    } else if ((token_end = number(cursor, end))) {
+      TOKEN1(T_NUMBER);
+      if (token_end is cursor) { eprintln("error T_NUMBER"); break; }
     } else {
       uint8_t c = *cursor;
       token_end = cursor + 1;
@@ -1441,7 +1490,9 @@ usage_es =
     " (implícito)\n"
     "  --no-enable-core-dump No activa el volcado de memoria al estrellarse.\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
-    "  --version          Muestra la versión: " CEDRO_VERSION
+    "  --version          Muestra la versión: " CEDRO_VERSION "\n"
+    "                     El «pragma» correspondiente es: #pragma Cedro "
+    CEDRO_VERSION
     ;
 static const char* const
 usage_en =
@@ -1461,7 +1512,9 @@ usage_en =
     "  --enable-core-dump    Enable core dump on crash.   (default)\n"
     "  --no-enable-core-dump Do not enable core dump on crash.\n"
     "  --benchmark        Run a performance benchmark.\n"
-    "  --version          Show version: " CEDRO_VERSION
+    "  --version          Show version: " CEDRO_VERSION "\n"
+    "                     The corresponding “pragma” is: #pragma Cedro "
+    CEDRO_VERSION
     ;
 
 int main(int argc, char** argv)

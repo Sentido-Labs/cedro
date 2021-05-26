@@ -11,6 +11,8 @@
       <h1><img alt="" src="doc/cedro.png"/> Cedro</h1>
       <span class="language-selector">Español, <a href="README.en.html">English</a></span>
       <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con cuatro prestaciones:</p>
+      <p>Para activarlo, el fichero fuente debe contener esta línea:
+        <code>#pragma Cedro 1.0</code></p>
       <ol>
         <li>El <a href="#backstitch-operator">operador <em>pespunte</em></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>].</li>
         <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos</a> [«<em>defer</em>»]</li>
@@ -33,7 +35,8 @@
   --enable-core-dump    Activa el volcado de memoria al estrellarse. (implícito)
   --no-enable-core-dump No activa el volcado de memoria al estrellarse.
   --benchmark        Realiza una medición de rendimiento.
-  --version          Muestra la versión: 1.0</code>
+  --version          Muestra la versión: 1.0
+                     El «pragma» correspondiente es: #pragma Cedro 1.0</code>
       <p>Para la documentación (en inglés) de la API, véase <a href="doc/api/index.html">doc/api/index.html</a>
         tras ejecutar <code>make doc</code> que necesita tener
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> instalado.</p>
@@ -188,6 +191,8 @@ nvgFill(contexto_grafico);</code>
 <code>#include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
 #include &lt;errno.h&gt;
+
+#pragma Cedro 1.0
 
 int repite_letra(char letra, size_t cuenta,
                  char* nombre_de_fichero)

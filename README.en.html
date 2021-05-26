@@ -11,6 +11,8 @@
       <h1><img alt="" src="doc/cedro.png"/> Cedro</h1>
       <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
       <p><em>Cedro</em> is a C language extension that works as a pre-processor with four features:</p>
+      <p>To activate it, the source file must contain this line:
+        <code>#pragma Cedro 1.0</code></p>
       <ol>
         <li>The <a href="#backstitch-operator"><em>backstitch</em> operator</a>.</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release</a>.</li>
@@ -33,7 +35,8 @@
   --enable-core-dump    Enable core dump on crash.   (default)
   --no-enable-core-dump Do not enable core dump on crash.
   --benchmark        Run a performance benchmark.
-  --version          Show version: 1.0</code>
+  --version          Show version: 1.0
+                     The corresponding “pragma” is: #pragma Cedro 1.0</code>
       <p>For API documentation, see <a href="doc/api/index.html">doc/api/index.html</a>
         after running <code>make doc</code> that requires having
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
@@ -190,6 +193,8 @@ nvgFill(graphics_context);</code>
 <code>#include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
 #include &lt;errno.h&gt;
+
+#pragma Cedro 1.0
 
 int repeat_letter(char letter, size_t count,
                   char* file_name)
