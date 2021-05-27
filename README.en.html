@@ -11,14 +11,15 @@
       <h1><img alt="" src="doc/cedro.png"/> Cedro</h1>
       <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
       <p><em>Cedro</em> is a C language extension that works as a pre-processor with four features:</p>
-      <p>To activate it, the source file must contain this line:
-        <code>#pragma Cedro 1.0</code></p>
       <ol>
         <li>The <a href="#backstitch-operator"><em>backstitch</em> operator</a>.</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release</a>.</li>
         <li><a href="#block-macros"><em>Block macros</em></a>.</li>
         <li><a href="#binary-include"><em>Binary inclusion</em></a>.</li>
       </ol>
+      <p>To activate it, the source file must contain this line:
+        <code>#pragma Cedro 1.0</code><br/>
+        Otherwise, the file is copied directly to the output.</p>
       <code>Usage: cedro [options] file.c [file2.c … ]
   The result goes to stdout, can be used without an intermediate file like this:
  cedro file.c | gcc -x c - -o file
@@ -167,9 +168,11 @@ nvgFill(graphics_context);</code>
         As time passes and changes accumulate in the program,
         it’s easy to forget releasing them in all cases
         or to attempt releasing a resource twice.</p>
-      <p>Programming languages like C++ use functions called
-        <em>destructors</em> that get run <strong>implicitly</strong>
-        when exiting the scope of the corresponding variable.</p>
+      <p>Other programming languages have mechanisms for automatic
+        resource release:
+        C++ for instance, uses functions called <em>destructors</em>
+        that get run <strong>implicitly</strong>
+        when exiting a variable’s scope.</p>
       <p>The programming language Go introduced an <strong>explicit</strong> notation called
         «<a href="https://blog.golang.org/defer-panic-and-recover"><em>defer</em></a>»
         that fits better the style of C.
@@ -194,7 +197,7 @@ nvgFill(graphics_context);</code>
 #include &lt;stdlib.h&gt;
 #include &lt;errno.h&gt;
 
-#pragma Cedro 1.0
+<b>#pragma Cedro 1.0</b>
 
 int repeat_letter(char letter, size_t count,
                   char* file_name)
@@ -349,7 +352,7 @@ const uint8_t image
 ;</code>
       <code>#include &lt;stdint.h&gt;
 const uint8_t image
-[1480] = {
+[1480] = { // cedro-32x32.png
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮

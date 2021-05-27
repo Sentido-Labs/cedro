@@ -11,14 +11,15 @@
       <h1><img alt="" src="doc/cedro.png"/> Cedro</h1>
       <span class="language-selector">Español, <a href="README.en.html">English</a></span>
       <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con cuatro prestaciones:</p>
-      <p>Para activarlo, el fichero fuente debe contener esta línea:
-        <code>#pragma Cedro 1.0</code></p>
       <ol>
         <li>El <a href="#backstitch-operator">operador <em>pespunte</em></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>].</li>
         <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos</a> [«<em>defer</em>»]</li>
         <li><a href="#block-macros"><em>Macros de bloque</em></a>.</li>
         <li><a href="#binary-include"><em>Inclusión binaria</em></a>.</li>
       </ol>
+      <p>Para activarlo, el fichero fuente debe contener esta línea:
+        <code>#pragma Cedro 1.0</code><br/>
+        Si no, el fichero se copia directamente a la salida.</p>
       <code>Uso: cedro [opciones] fichero.c [fichero2.c … ]
   El resultado va a stdout, puede usarse sin fichero intermedio así:
  cedro fichero.c | gcc -x c - -o fichero
@@ -165,9 +166,11 @@ nvgFill(contexto_grafico);</code>
         Al pasar el tiempo y acumularse cambios en el programa,
         es fácil olvidar devolverlos en todos los casos
         o intentar devolver un recurso dos veces.</p>
-      <p>Lenguajes de programación como C++ usan funciones llamadas
-        <em>destructores</em> que se ejecutan de forma <strong>implícita</strong>
-        al salir del alcance de la variable correspondiente.</p>
+      <p>Otros lenguages de programación tienen mecanismos para devolución
+        automática de recursos:
+        C++ por ejemplo, usa funciones llamadas <em>destructores</em>
+        que se ejecutan de manera <strong>implícita</strong>
+        al salir del alcance de una variable.</p>
       <p>El lenguaje Go introdujo una notación <strong>explícita</strong> llamada
         «<a href="https://blog.golang.org/defer-panic-and-recover"><em>defer</em></a>»
         que pega mejor con el estilo del C.
@@ -192,7 +195,7 @@ nvgFill(contexto_grafico);</code>
 #include &lt;stdlib.h&gt;
 #include &lt;errno.h&gt;
 
-#pragma Cedro 1.0
+<b>#pragma Cedro 1.0</b>
 
 int repite_letra(char letra, size_t cuenta,
                  char* nombre_de_fichero)
@@ -347,7 +350,7 @@ const uint8_t imagen
 ;</code>
       <code>#include &lt;stdint.h&gt;
 const uint8_t imagen
-[1480] = {
+[1480] = { // cedro-32x32.png
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮
