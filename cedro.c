@@ -1050,7 +1050,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           init_Marker(&inert, Byte_array_start(src), cursor, src, T_NONE);
           push_Marker_array(markers, inert);
           cursor = token_end;
-          if (cursor is_not end) ++cursor; // Skip LF after line.
+          // Skip LF and empty lines after line.
+          while (cursor is_not end and '\n' == *cursor) ++cursor;
           break;
         }
       }
