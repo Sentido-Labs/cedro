@@ -881,8 +881,11 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
                   file_name, strerror(errno));
           break;
         }
+        char*          basename = strrchr(file_name, '/');
+        if (!basename) basename = strrchr(file_name, '\\');
+        if (basename) ++basename; else basename = file_name;
         fprintf(out, "[%lu] = { // %s\n0x%2X",
-                bin.len, file_name, bin.items[0]);
+                bin.len, basename, bin.items[0]);
         for (size_t i = 1; i is_not bin.len; ++i) {
           fprintf(out,
                   (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.items[i]);
