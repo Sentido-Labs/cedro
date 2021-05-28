@@ -78,7 +78,7 @@ prefijo_g(objeto, b);</code></td>
 g_sufijo(objeto, b);</code></td>
         </tr><tr>
           <td>
-<code>contexto_grafico @<a href="https://github.com/memononen/nanovg">nvg</a>...
+<code>contexto_gráfico @<a href="https://github.com/memononen/nanovg">nvg</a>...
     BeginPath(),
     Rect(100,100, 120,30),
     Circle(120,120, 5),
@@ -86,12 +86,12 @@ g_sufijo(objeto, b);</code></td>
     FillColor(nvgRGBA(255,192,0,255)),
     Fill();</code>
           </td><td>
-<code>nvgBeginPath(contexto_grafico);
-nvgRect(contexto_grafico, 100,100, 120,30);
-nvgCircle(contexto_grafico, 120,120, 5);
-nvgPathWinding(contexto_grafico, NVG_HOLE);
-nvgFillColor(contexto_grafico, nvgRGBA(255,192,0,255));
-nvgFill(contexto_grafico);</code>
+<code>nvgBeginPath(contexto_gráfico);
+nvgRect(contexto_gráfico, 100,100, 120,30);
+nvgCircle(contexto_gráfico, 120,120, 5);
+nvgPathWinding(contexto_gráfico, NVG_HOLE);
+nvgFillColor(contexto_gráfico, nvgRGBA(255,192,0,255));
+nvgFill(contexto_gráfico);</code>
           </td>
         </tr>
       </table>
@@ -106,12 +106,12 @@ nvgFill(contexto_grafico);</code>
 
       <table>
         <tr>
-          <td><code>ristra_de_numeros @ [3]=44, [2]=11;</code></td>
-          <td><code>ristra_de_numeros[3]=44; ristra_de_numeros[2]=11;</code></td>
+          <td><code>ristra_de_números @ [3]=44, [2]=11;</code></td>
+          <td><code>ristra_de_números[3]=44; ristra_de_números[2]=11;</code></td>
         </tr>
         <tr>
-          <td><code>*ristra_de_numeros++ = @ 1, 2;</code></td>
-          <td><code>*ristra_de_numeros++ = 1; *ristra_de_numeros++ = 2;</code></td>
+          <td><code>*ristra_de_números++ = @ 1, 2;</code></td>
+          <td><code>*ristra_de_números++ = 1; *ristra_de_números++ = 2;</code></td>
         </tr>
         <tr>
           <td><code>punto_central_de_figura @ .x=44, .y=11;</code></td>

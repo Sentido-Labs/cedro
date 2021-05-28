@@ -80,43 +80,51 @@ eprintln(const char * const fmt, ...)
     char* s = p;
     char c;
     while ((c = *p)) {
-      if (c & 0x80) {
-        if (p is_not s) fwrite(s, sizeof(char), (unsigned long)(p - s), stderr);
-        uint32_t u = 0;
-        uint32_t len =   /* Incorrect length, used in switch below: */ 1;
-        if      (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
-        else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
-        else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-        if (p + len >= end) {
-          fprintf(stderr, "UTF-8 DECODE ERROR.\n");
-          return;
-        }
-        switch (len) {
-          case 4: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-          case 3: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-          case 2: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F); break;
-          case 1: c = 0;
-        }
-        if (c is 0 or u is 0) {
-          fprintf(stderr, "UTF-8 DECODE ERROR.\n");
-          return;
-        }
-        ++p;
-        if ((u & 0xFFFFFF00) is 0) {
-          fputc((unsigned char) u, stderr); // ISO-8859-1/ISO-8859-15
-        } else {
-          switch (u) {
-            case 0x0000201C:
-            case 0x0000201D: fputc('"',   stderr); break;
-            case 0x00002019: fputc('\'',  stderr); break;
-            case 0x00002026: fputs("...", stderr); break;
-            default:         fputc('_',   stderr);
-          }
-        }
-        s = p;
-      } else {
-        ++p;
+      if (p is_not s) fwrite(s, sizeof(char), (unsigned long)(p - s), stderr);
+      uint32_t u = 0;
+      uint32_t len = 0;
+      if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+      else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
+      else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
+      else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+      if (len is 0 or p + len >= end) {
+        fprintf(stderr, "UTF-8 DECODE ERROR AT %lu.\n",
+                (size_t)(p - buffer));
+        return;
       }
+      switch (len) {
+        case 4: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+        case 3: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+        case 2: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+        case 1:      (++p);
+      }
+      ++p;
+      /* Not a problem in this case:
+      if (len is 2 and u <    0x80 or
+          len is 3 and u <  0x0800 or
+          len is 4 and u < 0x10000) {
+        fprintf(stderr, "UTF-8 DECODE ERROR AT %lu, OVERLONG SEQUENCE.\n",
+                (size_t)(p - buffer));
+        return;
+      }
+      if (u >= 0xD800 and u < 0xE000) {
+        fprintf(stderr, "UTF-8 DECODE ERROR AT %lu, SURROGATE CODE POINT.\n",
+                (size_t)(p - buffer));
+        return;
+      }
+      */
+      if ((u & 0xFFFFFF00) is 0) {
+        fputc((unsigned char) u, stderr); // ISO-8859-1/ISO-8859-15
+      } else {
+        switch (u) {
+          case 0x0000201C:
+          case 0x0000201D: fputc('"',   stderr); break;
+          case 0x00002019: fputc('\'',  stderr); break;
+          case 0x00002026: fputs("...", stderr); break;
+          default:         fputc('_',   stderr);
+        }
+      }
+      s = p;
     }
     if (p is_not s) fwrite(s, sizeof(char), (unsigned long)(p - s), stderr);
     if (buffer != &small[0]) free(buffer);
@@ -283,6 +291,100 @@ TYPEDEF(Byte, uint8_t);
  * for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
 
+/** Append the C string bytes to the end of the given buffer. */
+static void
+push_str(mut_Byte_array_p _, const char * const str)
+{
+  Byte_array_slice insert = {
+    .start_p = (Byte_p) str,
+    .end_p   = (Byte_p) str + strlen(str)
+  };
+  splice_Byte_array(_, _->len, 0, NULL, &insert);
+}
+
+/** Append a formatted C string to the end of the given buffer.
+ *  It’s the same as printf(...), only the result is stored instead
+ * of printed to stdout. */
+static void
+push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+
+  ensure_capacity_Byte_array(_, _->len + 80);
+  size_t available = _->capacity - _->len;
+  size_t needed = (size_t) vsnprintf((char*) Byte_array_end(_), available - 1,
+                                     fmt, args);
+  if (needed > available) {
+    ensure_capacity_Byte_array(_, _->len + needed + 1);
+    available = _->capacity - _->len;
+    vsnprintf((char*) Byte_array_end(_), available - 1,
+              fmt, args);
+  }
+  _->len += needed;
+
+  va_end(args);
+}
+
+/** Make it be a valid C string, by adding a `'\0'` character after the last
+ * last valid element, without increasing the length.
+ *  It first makes sure there is at least one extra byte after the array
+ * contents in memory, by increasing the capacity if needed, and then
+ * sets it to `0`.
+ *  Returns the pointer `_->items` which now can be used as a C string
+ * as long as you don’t modify it.
+ */
+static const char *
+as_c_string(mut_Byte_array_p _)
+{
+  if (_->len is _->capacity) {
+    push_Byte_array(_, '\0');
+    --_->len;
+  } else {
+    *((mut_Byte_p) _->items + _->len) = 0;
+  }
+  return (const char *) _->items;
+}
+
+typedef FILE* mut_File_p;
+typedef char*const FilePath;
+/** Read a file into the given buffer. Errors are printed to `stderr`. */
+static void
+read_file(mut_Byte_array_p _, FilePath path)
+{
+  mut_File_p input = fopen(path, "r");
+  if (!input) {
+    fprintf(stderr,
+            LANG("Error al abrir el fichero: «%s»: 0x%02X %s.\n",
+                 "Error when opening the file: “%s”: 0x%02X %s.\n"),
+            path, errno, strerror(errno));
+    init_Byte_array(_, 0);
+    return;
+  }
+  fseek(input, 0, SEEK_END);
+  size_t size = (size_t)ftell(input);
+  init_Byte_array(_, size);
+  rewind(input);
+  _->len = fread((mut_Byte_p) _->items, sizeof(_->items[0]), size, input);
+  if (feof(input)) {
+    fprintf(stderr,
+            LANG("Fin de fichero inesperado en %ld leyendo «%s».\n",
+                 "Unexpected EOF at %ld reading “%s”.\n"),
+            _->len, path);
+  } else if (ferror(input)) {
+    fprintf(stderr,
+            LANG("Error leyendo «%s»: 0x%02X %s.\n",
+                 "Error reading “%s”: 0x%02X %s.\n"),
+            path, errno, strerror(errno));
+  } else {
+    memset((mut_Byte_p) _->items + _->len, 0,
+           (_->capacity - _->len) * sizeof(_->items[0]));
+  }
+  fclose(input); input = NULL;
+}
+
+static mut_Byte_array error = { 0 };// 0 in all bytes is a valid initialization.
+
 /** Initialize a marker with the given values. */
 static void
 init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
@@ -302,13 +404,324 @@ identifier(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
-  if (in('a',c,'z') or in('A',c,'Z') or c is '_') {
-    ++cursor;
+  uint32_t u = 0;
+  uint32_t len = 0;
+  if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+  else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
+  else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
+  else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+  if (len is 0 or cursor + len >= end) {
+    error.len = 0;
+    push_fmt(&error, "UTF-8 DECODE ERROR, BYTE IS 0x%02X.\n", c);
+    return NULL;
+  }
+  switch (len) {
+    case 4: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 3: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 2: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 1:      (++cursor);
+  }
+  if (len is 2 and u <    0x80 or
+      len is 3 and u <  0x0800 or
+      len is 4 and u < 0x10000) {
+    error.len = 0;
+    push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, OVERLONG SEQUENCE.\n",
+             (size_t)(cursor - start));
+    return NULL;
+  }
+  if (u >= 0xD800 and u < 0xE000) {
+    error.len = 0;
+    push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, SURROGATE CODE POINT.\n",
+             (size_t)(cursor - start));
+    return NULL;
+  }
+  if (in('a',u,'z') or in('A',u,'Z') or u is '_' or
+      u > 0x7F and
+      (
+          // ISO/IEC 9899:TC3 Annex D:
+          // Latin:
+          u is 0x00AA or u is 0x00BA or
+          in(0x00C0,u,0x00D6) or in(0x00D8,u,0x00F6) or in(0x00F8,u,0x01F5) or
+          in(0x01FA,u,0x0217) or in(0x0250,u,0x02A8) or in(0x1E00,u,0x1E9B) or
+          in(0x1EA0,u,0x1EF9) or u is 0x207F or
+          // Greek:
+          u is 0x0386 or in(0x0388,u,0x038A) or u is 0x038C or
+          in(0x038E,u,0x03A1) or in(0x03A3,u,0x03CE) or in(0x03D0,u,0x03D6) or
+          u is 0x03DA or u is 0x03DC or u is 0x03DE or u is 0x03E0 or
+          in(0x03E2,u,0x03F3) or in(0x1F00,u,0x1F15) or in(0x1F18,u,0x1F1D) or
+          in(0x1F20,u,0x1F45) or in(0x1F48,u,0x1F4D) or in(0x1F50,u,0x1F57) or
+          u is 0x1F59 or u is 0x1F5B or u is 0x1F5D or
+          in(0x1F5F,u,0x1F7D) or in(0x1F80,u,0x1FB4) or in(0x1FB6,u,0x1FBC) or
+          in(0x1FC2,u,0x1FC4) or in(0x1FC6,u,0x1FCC) or in(0x1FD0,u,0x1FD3) or
+          in(0x1FD6,u,0x1FDB) or in(0x1FE0,u,0x1FEC) or in(0x1FF2,u,0x1FF4) or
+          in(0x1FF6,u,0x1FFC) or
+          // Cyrillic:
+          in(0x0401,u,0x040C) or in(0x040E,u,0x044F) or in(0x0451,u,0x045C) or
+          in(0x045E,u,0x0481) or in(0x0490,u,0x04C4) or in(0x04C7,u,0x04C8) or
+          in(0x04CB,u,0x04CC) or in(0x04D0,u,0x04EB) or in(0x04EE,u,0x04F5) or
+          in(0x04F8,u,0x04F9) or
+          // Armenian:
+          in(0x0531,u,0x0556) or in(0x0561,u,0x0587) or
+          // Hebrew:
+          in(0x05B0,u,0x05B9) or in(0x05F0,u,0x05F2) or
+          // Arabic:
+          in(0x0621,u,0x063A) or in(0x0640,u,0x0652) or in(0x0670,u,0x06B7) or
+          in(0x06BA,u,0x06BE) or in(0x06C0,u,0x06CE) or in(0x06D0,u,0x06DC) or
+          in(0x06E5,u,0x06E8) or in(0x06EA,u,0x06ED) or
+          // Devanagari:
+          in(0x0901,u,0x0903) or in(0x0905,u,0x0939) or in(0x093E,u,0x094D) or
+          in(0x0950,u,0x0952) or in(0x0958,u,0x0963) or
+          // Bengali:
+          in(0x0981,u,0x0983) or in(0x0985,u,0x098C) or in(0x098F,u,0x0990) or
+          in(0x0993,u,0x09A8) or in(0x09AA,u,0x09B0) or
+          u is 0x09B2 or in(0x09B6,u,0x09B9) or in(0x09BE,u,0x09C4) or
+          in(0x09C7,u,0x09C8) or in(0x09CB,u,0x09CD) or in(0x09DC,u,0x09DD) or
+          in(0x09DF,u,0x09E3) or in(0x09F0,u,0x09F1) or
+          // Gurmukhi:
+          u is 0x0A02 or in(0x0A05,u,0x0A0A) or in(0x0A0F,u,0x0A10) or
+          in(0x0A13,u,0x0A28) or in(0x0A2A,u,0x0A30) or in(0x0A32,u,0x0A33) or
+          in(0x0A35,u,0x0A36) or in(0x0A38,u,0x0A39) or in(0x0A3E,u,0x0A42) or
+          in(0x0A47,u,0x0A48) or in(0x0A4B,u,0x0A4D) or in(0x0A59,u,0x0A5C) or
+          u is 0x0A5E or u is 0x0A74 or
+          // Gujarati:
+          in(0x0A81,u,0x0A83) or in(0x0A85,u,0x0A8B) or u is 0x0A8D or
+          in(0x0A8F,u,0x0A91) or in(0x0A93,u,0x0AA8) or in(0x0AAA,u,0x0AB0) or
+          in(0x0AB2,u,0x0AB3) or in(0x0AB5,u,0x0AB9) or in(0x0ABD,u,0x0AC5) or
+          in(0x0AC7,u,0x0AC9) or in(0x0ACB,u,0x0ACD) or
+          u is 0x0AD0 or u is 0x0AE0 or
+          // Oriya:
+          in(0x0B01,u,0x0B03) or in(0x0B05,u,0x0B0C) or in(0x0B0F,u,0x0B10) or
+          in(0x0B13,u,0x0B28) or in(0x0B2A,u,0x0B30) or in(0x0B32,u,0x0B33) or
+          in(0x0B36,u,0x0B39) or in(0x0B3E,u,0x0B43) or in(0x0B47,u,0x0B48) or
+          in(0x0B4B,u,0x0B4D) or in(0x0B5C,u,0x0B5D) or in(0x0B5F,u,0x0B61) or
+          // Tamil:
+          in(0x0B82,u,0x0B83) or in(0x0B85,u,0x0B8A) or in(0x0B8E,u,0x0B90) or
+          in(0x0B92,u,0x0B95) or in(0x0B99,u,0x0B9A) or u is 0x0B9C or
+          in(0x0B9E,u,0x0B9F) or in(0x0BA3,u,0x0BA4) or in(0x0BA8,u,0x0BAA) or
+          in(0x0BAE,u,0x0BB5) or in(0x0BB7,u,0x0BB9) or in(0x0BBE,u,0x0BC2) or
+          in(0x0BC6,u,0x0BC8) or in(0x0BCA,u,0x0BCD) or
+          // Telugu:
+          in(0x0C01,u,0x0C03) or in(0x0C05,u,0x0C0C) or in(0x0C0E,u,0x0C10) or
+          in(0x0C12,u,0x0C28) or in(0x0C2A,u,0x0C33) or in(0x0C35,u,0x0C39) or
+          in(0x0C3E,u,0x0C44) or in(0x0C46,u,0x0C48) or in(0x0C4A,u,0x0C4D) or
+          in(0x0C60,u,0x0C61) or
+          // Kannada:
+          in(0x0C82,u,0x0C83) or in(0x0C85,u,0x0C8C) or in(0x0C8E,u,0x0C90) or
+          in(0x0C92,u,0x0CA8) or in(0x0CAA,u,0x0CB3) or in(0x0CB5,u,0x0CB9) or
+          in(0x0CBE,u,0x0CC4) or in(0x0CC6,u,0x0CC8) or in(0x0CCA,u,0x0CCD) or
+          u is 0x0CDE or in(0x0CE0,u,0x0CE1) or
+          // Malayalam:
+          in(0x0D02,u,0x0D03) or in(0x0D05,u,0x0D0C) or in(0x0D0E,u,0x0D10) or
+          in(0x0D12,u,0x0D28) or in(0x0D2A,u,0x0D39) or in(0x0D3E,u,0x0D43) or
+          in(0x0D46,u,0x0D48) or in(0x0D4A,u,0x0D4D) or in(0x0D60,u,0x0D61) or
+          // Thai:
+          in(0x0E01,u,0x0E3A) or in(0x0E40,u,0x0E5B) or
+          // Lao:
+          in(0x0E81,u,0x0E82) or u is 0x0E84 or in(0x0E87,u,0x0E88) or
+          u is 0x0E8A or u is 0x0E8D or
+          in(0x0E94,u,0x0E97) or in(0x0E99,u,0x0E9F) or in(0x0EA1,u,0x0EA3) or
+          u is 0x0EA5 or u is 0x0EA7 or in(0x0EAA,u,0x0EAB) or
+          in(0x0EAD,u,0x0EAE) or in(0x0EB0,u,0x0EB9) or in(0x0EBB,u,0x0EBD) or
+          in(0x0EC0,u,0x0EC4) or u is 0x0EC6 or
+          in(0x0EC8,u,0x0ECD) or in(0x0EDC,u,0x0EDD) or
+          // Tibetan:
+          u is 0x0F00 or in(0x0F18,u,0x0F19) or u is 0x0F35 or u is 0x0F37 or
+          u is 0x0F39 or in(0x0F3E,u,0x0F47) or in(0x0F49,u,0x0F69) or
+          in(0x0F71,u,0x0F84) or in(0x0F86,u,0x0F8B) or in(0x0F90,u,0x0F95) or
+          u is 0x0F97 or in(0x0F99,u,0x0FAD) or in(0x0FB1,u,0x0FB7) or
+          u is 0x0FB9 or
+          // Georgian:
+          in(0x10A0,u,0x10C5) or in(0x10D0,u,0x10F6) or
+          // Hiragana:
+          in(0x3041,u,0x3093) or in(0x309B,u,0x309C) or
+          // Katakana:
+          in(0x30A1,u,0x30F6) or in(0x30FB,u,0x30FC) or
+          // Bopomofo:
+          in(0x3105,u,0x312C) or
+          // CJK Unified Ideographs:
+          in(0x4E00,u,0x9FA5) or
+          // Hangul:
+          in(0xAC00,u,0xD7A3) or
+          // Digits:
+          in(0x0660,u,0x0669) or in(0x06F0,u,0x06F9) or in(0x0966,u,0x096F) or
+          in(0x09E6,u,0x09EF) or in(0x0A66,u,0x0A6F) or in(0x0AE6,u,0x0AEF) or
+          in(0x0B66,u,0x0B6F) or in(0x0BE7,u,0x0BEF) or in(0x0C66,u,0x0C6F) or
+          in(0x0CE6,u,0x0CEF) or in(0x0D66,u,0x0D6F) or in(0x0E50,u,0x0E59) or
+          in(0x0ED0,u,0x0ED9) or in(0x0F20,u,0x0F33) or
+          // Special characters:
+          u is 0x00B5 or u is 0x00B7 or in(0x02B0,u,0x02B8) or u is 0x02BB or
+          in(0x02BD,u,0x02C1) or in(0x02D0,u,0x02D1) or in(0x02E0,u,0x02E4) or
+          u is 0x037A or u is 0x0559 or u is 0x093D or u is 0x0B3D or
+          u is 0x1FBE or in(0x203F,u,0x2040) or u is 0x2102 or u is 0x2107 or
+          in(0x210A,u,0x2113) or u is 0x2115 or in(0x2118,u,0x211D) or
+          u is 0x2124 or u is 0x2126 or u is 0x2128 or in(0x212A,u,0x2131) or
+          in(0x2133,u,0x2138) or in(0x2160,u,0x2182) or in(0x3005,u,0x3007) or
+          in(0x3021,u,0x3029)
+       )) {
     while (cursor < end) {
-      c = *cursor;
-      if (in('0',c,'9') or in('a',c,'z') or in('A',c,'Z') or c is '_') {
-        ++cursor;
-      } else break;
+      Byte_mut_p p = cursor;
+      c = *p;
+      u = 0;
+      len = 0;
+      if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+      else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
+      else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
+      else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+      if (len is 0 or p + len >= end) {
+        error.len = 0;
+        push_fmt(&error, "UTF-8 DECODE ERROR AT %lu.\n",
+                 (size_t)(cursor - start));
+        return NULL;
+      }
+      switch (len) {
+        case 4: c = *(++p); u = (u << 6) | (c & 0x3F);
+        case 3: c = *(++p); u = (u << 6) | (c & 0x3F);
+        case 2: c = *(++p); u = (u << 6) | (c & 0x3F);
+        case 1:      (++p);
+      }
+      if (len is 2 and u <    0x80 or
+          len is 3 and u <  0x0800 or
+          len is 4 and u < 0x10000) {
+        error.len = 0;
+        push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, OVERLONG SEQUENCE.\n",
+                 (size_t)(cursor - start));
+        return NULL;
+      }
+      if (u >= 0xD800 and u < 0xE000) {
+        error.len = 0;
+        push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, SURROGATE CODE POINT.\n",
+                 (size_t)(cursor - start));
+        return NULL;
+      }
+      if (in('a',u,'z') or in('A',u,'Z') or u is '_' or in('0',u,'9')) {
+        cursor = p;
+      } else if (
+          (u & 0x80) and
+          (
+          // ISO/IEC 9899:TC3 Annex D:
+          // Latin:
+          u is 0x00AA or u is 0x00BA or
+          in(0x00C0,u,0x00D6) or in(0x00D8,u,0x00F6) or in(0x00F8,u,0x01F5) or
+          in(0x01FA,u,0x0217) or in(0x0250,u,0x02A8) or in(0x1E00,u,0x1E9B) or
+          in(0x1EA0,u,0x1EF9) or u is 0x207F or
+          // Greek:
+          u is 0x0386 or in(0x0388,u,0x038A) or u is 0x038C or
+          in(0x038E,u,0x03A1) or in(0x03A3,u,0x03CE) or in(0x03D0,u,0x03D6) or
+          u is 0x03DA or u is 0x03DC or u is 0x03DE or u is 0x03E0 or
+          in(0x03E2,u,0x03F3) or in(0x1F00,u,0x1F15) or in(0x1F18,u,0x1F1D) or
+          in(0x1F20,u,0x1F45) or in(0x1F48,u,0x1F4D) or in(0x1F50,u,0x1F57) or
+          u is 0x1F59 or u is 0x1F5B or u is 0x1F5D or
+          in(0x1F5F,u,0x1F7D) or in(0x1F80,u,0x1FB4) or in(0x1FB6,u,0x1FBC) or
+          in(0x1FC2,u,0x1FC4) or in(0x1FC6,u,0x1FCC) or in(0x1FD0,u,0x1FD3) or
+          in(0x1FD6,u,0x1FDB) or in(0x1FE0,u,0x1FEC) or in(0x1FF2,u,0x1FF4) or
+          in(0x1FF6,u,0x1FFC) or
+          // Cyrillic:
+          in(0x0401,u,0x040C) or in(0x040E,u,0x044F) or in(0x0451,u,0x045C) or
+          in(0x045E,u,0x0481) or in(0x0490,u,0x04C4) or in(0x04C7,u,0x04C8) or
+          in(0x04CB,u,0x04CC) or in(0x04D0,u,0x04EB) or in(0x04EE,u,0x04F5) or
+          in(0x04F8,u,0x04F9) or
+          // Armenian:
+          in(0x0531,u,0x0556) or in(0x0561,u,0x0587) or
+          // Hebrew:
+          in(0x05B0,u,0x05B9) or in(0x05F0,u,0x05F2) or
+          // Arabic:
+          in(0x0621,u,0x063A) or in(0x0640,u,0x0652) or in(0x0670,u,0x06B7) or
+          in(0x06BA,u,0x06BE) or in(0x06C0,u,0x06CE) or in(0x06D0,u,0x06DC) or
+          in(0x06E5,u,0x06E8) or in(0x06EA,u,0x06ED) or
+          // Devanagari:
+          in(0x0901,u,0x0903) or in(0x0905,u,0x0939) or in(0x093E,u,0x094D) or
+          in(0x0950,u,0x0952) or in(0x0958,u,0x0963) or
+          // Bengali:
+          in(0x0981,u,0x0983) or in(0x0985,u,0x098C) or in(0x098F,u,0x0990) or
+          in(0x0993,u,0x09A8) or in(0x09AA,u,0x09B0) or
+          u is 0x09B2 or in(0x09B6,u,0x09B9) or in(0x09BE,u,0x09C4) or
+          in(0x09C7,u,0x09C8) or in(0x09CB,u,0x09CD) or in(0x09DC,u,0x09DD) or
+          in(0x09DF,u,0x09E3) or in(0x09F0,u,0x09F1) or
+          // Gurmukhi:
+          u is 0x0A02 or in(0x0A05,u,0x0A0A) or in(0x0A0F,u,0x0A10) or
+          in(0x0A13,u,0x0A28) or in(0x0A2A,u,0x0A30) or in(0x0A32,u,0x0A33) or
+          in(0x0A35,u,0x0A36) or in(0x0A38,u,0x0A39) or in(0x0A3E,u,0x0A42) or
+          in(0x0A47,u,0x0A48) or in(0x0A4B,u,0x0A4D) or in(0x0A59,u,0x0A5C) or
+          u is 0x0A5E or u is 0x0A74 or
+          // Gujarati:
+          in(0x0A81,u,0x0A83) or in(0x0A85,u,0x0A8B) or u is 0x0A8D or
+          in(0x0A8F,u,0x0A91) or in(0x0A93,u,0x0AA8) or in(0x0AAA,u,0x0AB0) or
+          in(0x0AB2,u,0x0AB3) or in(0x0AB5,u,0x0AB9) or in(0x0ABD,u,0x0AC5) or
+          in(0x0AC7,u,0x0AC9) or in(0x0ACB,u,0x0ACD) or
+          u is 0x0AD0 or u is 0x0AE0 or
+          // Oriya:
+          in(0x0B01,u,0x0B03) or in(0x0B05,u,0x0B0C) or in(0x0B0F,u,0x0B10) or
+          in(0x0B13,u,0x0B28) or in(0x0B2A,u,0x0B30) or in(0x0B32,u,0x0B33) or
+          in(0x0B36,u,0x0B39) or in(0x0B3E,u,0x0B43) or in(0x0B47,u,0x0B48) or
+          in(0x0B4B,u,0x0B4D) or in(0x0B5C,u,0x0B5D) or in(0x0B5F,u,0x0B61) or
+          // Tamil:
+          in(0x0B82,u,0x0B83) or in(0x0B85,u,0x0B8A) or in(0x0B8E,u,0x0B90) or
+          in(0x0B92,u,0x0B95) or in(0x0B99,u,0x0B9A) or u is 0x0B9C or
+          in(0x0B9E,u,0x0B9F) or in(0x0BA3,u,0x0BA4) or in(0x0BA8,u,0x0BAA) or
+          in(0x0BAE,u,0x0BB5) or in(0x0BB7,u,0x0BB9) or in(0x0BBE,u,0x0BC2) or
+          in(0x0BC6,u,0x0BC8) or in(0x0BCA,u,0x0BCD) or
+          // Telugu:
+          in(0x0C01,u,0x0C03) or in(0x0C05,u,0x0C0C) or in(0x0C0E,u,0x0C10) or
+          in(0x0C12,u,0x0C28) or in(0x0C2A,u,0x0C33) or in(0x0C35,u,0x0C39) or
+          in(0x0C3E,u,0x0C44) or in(0x0C46,u,0x0C48) or in(0x0C4A,u,0x0C4D) or
+          in(0x0C60,u,0x0C61) or
+          // Kannada:
+          in(0x0C82,u,0x0C83) or in(0x0C85,u,0x0C8C) or in(0x0C8E,u,0x0C90) or
+          in(0x0C92,u,0x0CA8) or in(0x0CAA,u,0x0CB3) or in(0x0CB5,u,0x0CB9) or
+          in(0x0CBE,u,0x0CC4) or in(0x0CC6,u,0x0CC8) or in(0x0CCA,u,0x0CCD) or
+          u is 0x0CDE or in(0x0CE0,u,0x0CE1) or
+          // Malayalam:
+          in(0x0D02,u,0x0D03) or in(0x0D05,u,0x0D0C) or in(0x0D0E,u,0x0D10) or
+          in(0x0D12,u,0x0D28) or in(0x0D2A,u,0x0D39) or in(0x0D3E,u,0x0D43) or
+          in(0x0D46,u,0x0D48) or in(0x0D4A,u,0x0D4D) or in(0x0D60,u,0x0D61) or
+          // Thai:
+          in(0x0E01,u,0x0E3A) or in(0x0E40,u,0x0E5B) or
+          // Lao:
+          in(0x0E81,u,0x0E82) or u is 0x0E84 or in(0x0E87,u,0x0E88) or
+          u is 0x0E8A or u is 0x0E8D or
+          in(0x0E94,u,0x0E97) or in(0x0E99,u,0x0E9F) or in(0x0EA1,u,0x0EA3) or
+          u is 0x0EA5 or u is 0x0EA7 or in(0x0EAA,u,0x0EAB) or
+          in(0x0EAD,u,0x0EAE) or in(0x0EB0,u,0x0EB9) or in(0x0EBB,u,0x0EBD) or
+          in(0x0EC0,u,0x0EC4) or u is 0x0EC6 or
+          in(0x0EC8,u,0x0ECD) or in(0x0EDC,u,0x0EDD) or
+          // Tibetan:
+          u is 0x0F00 or in(0x0F18,u,0x0F19) or u is 0x0F35 or u is 0x0F37 or
+          u is 0x0F39 or in(0x0F3E,u,0x0F47) or in(0x0F49,u,0x0F69) or
+          in(0x0F71,u,0x0F84) or in(0x0F86,u,0x0F8B) or in(0x0F90,u,0x0F95) or
+          u is 0x0F97 or in(0x0F99,u,0x0FAD) or in(0x0FB1,u,0x0FB7) or
+          u is 0x0FB9 or
+          // Georgian:
+          in(0x10A0,u,0x10C5) or in(0x10D0,u,0x10F6) or
+          // Hiragana:
+          in(0x3041,u,0x3093) or in(0x309B,u,0x309C) or
+          // Katakana:
+          in(0x30A1,u,0x30F6) or in(0x30FB,u,0x30FC) or
+          // Bopomofo:
+          in(0x3105,u,0x312C) or
+          // CJK Unified Ideographs:
+          in(0x4E00,u,0x9FA5) or
+          // Hangul:
+          in(0xAC00,u,0xD7A3) or
+          // Digits:
+          in(0x0660,u,0x0669) or in(0x06F0,u,0x06F9) or in(0x0966,u,0x096F) or
+          in(0x09E6,u,0x09EF) or in(0x0A66,u,0x0A6F) or in(0x0AE6,u,0x0AEF) or
+          in(0x0B66,u,0x0B6F) or in(0x0BE7,u,0x0BEF) or in(0x0C66,u,0x0C6F) or
+          in(0x0CE6,u,0x0CEF) or in(0x0D66,u,0x0D6F) or in(0x0E50,u,0x0E59) or
+          in(0x0ED0,u,0x0ED9) or in(0x0F20,u,0x0F33) or
+          // Special characters:
+          u is 0x00B5 or u is 0x00B7 or in(0x02B0,u,0x02B8) or u is 0x02BB or
+          in(0x02BD,u,0x02C1) or in(0x02D0,u,0x02D1) or in(0x02E0,u,0x02E4) or
+          u is 0x037A or u is 0x0559 or u is 0x093D or u is 0x0B3D or
+          u is 0x1FBE or in(0x203F,u,0x2040) or u is 0x2102 or u is 0x2107 or
+          in(0x210A,u,0x2113) or u is 0x2115 or in(0x2118,u,0x211D) or
+          u is 0x2124 or u is 0x2126 or u is 0x2128 or in(0x212A,u,0x2131) or
+          in(0x2133,u,0x2138) or in(0x2160,u,0x2182) or in(0x3005,u,0x3007) or
+          in(0x3021,u,0x3029)
+           )) {
+        cursor = p;
+      } else {
+        break;
+      }
     }
     return cursor;
   } else {
@@ -449,7 +862,19 @@ preprocessor(Byte_p start, Byte_p end)
   return cursor; // The newline is not part of the token.
 }
 
-
+/** Fallback match, just read one Unicode Code Point
+ * as one token of type `T_OTHER`.
+ * Assumes `end` > `start`. */
+static inline Byte_p
+other(Byte_p start, Byte_p end)
+{
+  mut_Byte c = *start;
+  if      (0x00 == (c & 0x80)) { return start + 1; }
+  else if (0xC0 == (c & 0xE0)) { return start + 2; }
+  else if (0xE0 == (c & 0xF0)) { return start + 3; }
+  else if (0xF0 == (c & 0xF8)) { return start + 4; }
+  else                           return NULL;
+}
 
 /** Get new slice for the given marker.
  */
@@ -557,98 +982,6 @@ line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
                                Marker_array_start(markers),
                                position,
                                src);
-}
-
-/** Append the C string bytes to the end of the given buffer. */
-static void
-push_str(mut_Byte_array_p _, const char * const str)
-{
-  Byte_array_slice insert = {
-    .start_p = (Byte_p) str,
-    .end_p   = (Byte_p) str + strlen(str)
-  };
-  splice_Byte_array(_, _->len, 0, NULL, &insert);
-}
-
-/** Append a formatted C string to the end of the given buffer.
- *  It’s the same as printf(...), only the result is stored instead
- * of printed to stdout. */
-static void
-push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
-{
-  va_list args;
-  va_start(args, fmt);
-
-  ensure_capacity_Byte_array(_, _->len + 80);
-  size_t available = _->capacity - _->len;
-  size_t needed = (size_t) vsnprintf((char*) Byte_array_end(_), available - 1,
-                                     fmt, args);
-  if (needed > available) {
-    ensure_capacity_Byte_array(_, _->len + needed + 1);
-    available = _->capacity - _->len;
-    vsnprintf((char*) Byte_array_end(_), available - 1,
-              fmt, args);
-  }
-  _->len += needed;
-
-  va_end(args);
-}
-
-/** Make it be a valid C string, by adding a `'\0'` character after the last
- * last valid element, without increasing the length.
- *  It first makes sure there is at least one extra byte after the array
- * contents in memory, by increasing the capacity if needed, and then
- * sets it to `0`.
- *  Returns the pointer `_->items` which now can be used as a C string
- * as long as you don’t modify it.
- */
-static const char *
-as_c_string(mut_Byte_array_p _)
-{
-  if (_->len is _->capacity) {
-    push_Byte_array(_, '\0');
-    --_->len;
-  } else {
-    *((mut_Byte_p) _->items + _->len) = 0;
-  }
-  return (const char *) _->items;
-}
-
-typedef FILE* mut_File_p;
-typedef char*const FilePath;
-/** Read a file into the given buffer. Errors are printed to `stderr`. */
-static void
-read_file(mut_Byte_array_p _, FilePath path)
-{
-  mut_File_p input = fopen(path, "r");
-  if (!input) {
-    fprintf(stderr,
-            LANG("Error al abrir el fichero: «%s»: 0x%02X %s.\n",
-                 "Error when opening the file: “%s”: 0x%02X %s.\n"),
-            path, errno, strerror(errno));
-    init_Byte_array(_, 0);
-    return;
-  }
-  fseek(input, 0, SEEK_END);
-  size_t size = (size_t)ftell(input);
-  init_Byte_array(_, size);
-  rewind(input);
-  _->len = fread((mut_Byte_p) _->items, sizeof(_->items[0]), size, input);
-  if (feof(input)) {
-    fprintf(stderr,
-            LANG("Fin de fichero inesperado en %ld leyendo «%s».\n",
-                 "Unexpected EOF at %ld reading “%s”.\n"),
-            _->len, path);
-  } else if (ferror(input)) {
-    fprintf(stderr,
-            LANG("Error leyendo «%s»: 0x%02X %s.\n",
-                 "Error reading “%s”: 0x%02X %s.\n"),
-            path, errno, strerror(errno));
-  } else {
-    memset((mut_Byte_p) _->items + _->len, 0,
-           (_->capacity - _->len) * sizeof(_->items[0]));
-  }
-  fclose(input); input = NULL;
 }
 
 /** Indent by the given number of double spaces, for the next `eprintln()`
@@ -1038,6 +1371,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
 
+  error.len = 0;
   while (cursor is_not end) {
     assert(cursor is_not prev_cursor);
     prev_cursor = cursor;
@@ -1061,7 +1395,12 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = space     (cursor, end))) {
     } else if ((token_end = identifier(cursor, end))) {
     } else if ((token_end = number    (cursor, end))) {
-    } else {    token_end =            cursor + 1;    }
+    } else      token_end = other     (cursor, end);
+    if (error.len) {
+      eprintln("Error: src[%lu]: %s",
+               cursor-Byte_array_start(src), as_c_string(&error));
+      return cursor;
+    }
     cursor = token_end;
   }
   if (markers->len is 0) {
@@ -1075,6 +1414,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
 
   // If CEDRO_PRAGMA is not present, markers will be empty.
 
+  error.len = 0;
   while (cursor is_not end) {
     assert(cursor is_not prev_cursor);
     prev_cursor = cursor;
@@ -1219,6 +1559,11 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           break;
         default: TOKEN1(T_OTHER);
       }
+    }
+    if (error.len) {
+      eprintln("Error: src[%lu]: %s",
+               cursor-Byte_array_start(src), as_c_string(&error));
+      return cursor;
     }
     mut_Marker marker;
     init_Marker(&marker, cursor, token_end, src, token_type);
