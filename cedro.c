@@ -407,7 +407,7 @@ identifier(Byte_p start, Byte_p end)
   else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
   if (len is 0 or cursor + len >= end) {
     error.len = 0;
-    push_fmt(&error, "UTF-8 DECODE ERROR, BYTE IS 0x%02X.\n", c);
+    push_fmt(&error, "UTF-8 DECODE ERROR, BYTE IS 0x%02X.", c);
     return NULL;
   }
   switch (len) {
@@ -420,14 +420,12 @@ identifier(Byte_p start, Byte_p end)
       len is 3 and u <  0x0800 or
       len is 4 and u < 0x10000) {
     error.len = 0;
-    push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, OVERLONG SEQUENCE.\n",
-             (size_t)(cursor - start));
+    push_fmt(&error, "UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
     return NULL;
   }
   if (u >= 0xD800 and u < 0xE000) {
     error.len = 0;
-    push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, SURROGATE CODE POINT.\n",
-             (size_t)(cursor - start));
+    push_fmt(&error, "UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
     return NULL;
   }
   if (in('a',u,'z') or in('A',u,'Z') or u is '_' or
@@ -564,8 +562,7 @@ identifier(Byte_p start, Byte_p end)
       else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
       if (len is 0 or p + len >= end) {
         error.len = 0;
-        push_fmt(&error, "UTF-8 DECODE ERROR AT %lu.\n",
-                 (size_t)(cursor - start));
+        push_fmt(&error, "UTF-8 DECODE ERROR.");
         return NULL;
       }
       switch (len) {
@@ -578,14 +575,12 @@ identifier(Byte_p start, Byte_p end)
           len is 3 and u <  0x0800 or
           len is 4 and u < 0x10000) {
         error.len = 0;
-        push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, OVERLONG SEQUENCE.\n",
-                 (size_t)(cursor - start));
+        push_fmt(&error, "UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
         return NULL;
       }
       if (u >= 0xD800 and u < 0xE000) {
         error.len = 0;
-        push_fmt(&error, "UTF-8 DECODE ERROR AT %lu, SURROGATE CODE POINT.\n",
-                 (size_t)(cursor - start));
+        push_fmt(&error, "UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
         return NULL;
       }
       if (in('a',u,'z') or in('A',u,'Z') or u is '_' or in('0',u,'9')) {
