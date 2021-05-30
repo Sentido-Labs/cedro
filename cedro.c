@@ -155,6 +155,9 @@ typedef struct Options {
   bool discard_space;
   /// Skip comments, or include them in the markers array.
   bool discard_comments;
+  /// Escape Unicode® code points (“chararacters”) in identifiers
+  /// as universal character names (ISO/IEC 9899:TC3 Annex D).
+  bool escape_ucn;
   /// Apply the macros.
   bool apply_macros;
   /// Print markers array.
@@ -423,6 +426,39 @@ identifier(Byte_p start, Byte_p end)
     push_fmt(&error, "UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
     return NULL;
   }
+  if (u is '\\') {
+    if (cursor is_not end) {
+      switch(*cursor) {
+        case 'U': len = 8; u = 0; break;
+        case 'u': len = 4; u = 0; break;
+        default:
+          --cursor;
+          return cursor is start? NULL: cursor;
+      }
+      if (cursor + len >= end) {
+        error.len = 0;
+        push_fmt(&error, "Incomplete universal character name.");
+        return NULL;
+      }
+      while (len is_not 0) {
+        --len;
+        c = *(++cursor);
+        Byte value =
+            in('0',c,'9')? c-'0':
+            in('A',c,'F')? c-'A'+10:
+            in('a',c,'f')? c-'a'+10:
+            0xFF;
+        if (value is 0xFF) {
+          error.len = 0;
+          push_fmt(&error, "Malformed universal character name.");
+          return NULL;
+        }
+        u = (u << 4) | value;
+      }
+    } else {
+      return cursor is start? NULL: cursor;
+    }
+  }
   if (u >= 0xD800 and u < 0xE000) {
     error.len = 0;
     push_fmt(&error, "UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
@@ -577,6 +613,38 @@ identifier(Byte_p start, Byte_p end)
         error.len = 0;
         push_fmt(&error, "UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
         return NULL;
+      }
+      if (u is '\\') {
+        if (p is_not end) {
+          switch(*p) {
+            case 'U': len = 8; u = 0; break;
+            case 'u': len = 4; u = 0; break;
+            default:
+              --p;
+              return p is start? NULL: p;
+          }
+          if (p + len >= end) {
+            error.len = 0;
+            push_fmt(&error, "Incomplete universal character name.");
+            return NULL;
+          }
+          while (len is_not 0) {
+            --len;
+            c = *(++p);
+            Byte value =
+                in('0',c,'9')? c-'0':
+                in('A',c,'F')? c-'A':
+                in('a',c,'F')? c-'a':
+                0xFF;
+            if (value is 0xFF) {
+              error.len = 0;
+              push_fmt(&error, "Malformed universal character name.");
+              return NULL;
+            }
+            u = (u << 4) | value;
+          }
+          eprintln("Decoded following character: 0x%X", u);
+        }
       }
       if (u >= 0xD800 and u < 0xE000) {
         error.len = 0;
@@ -1220,7 +1288,37 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         continue;
       }
     }
-    fwrite(text, sizeof(src->items[0]), m->len, out);
+    if (options.escape_ucn and m->token_type is T_IDENTIFIER) {
+      Byte_p end = text + m->len;
+      Byte_mut_p p = text;
+      while ((p is_not end)) {
+        mut_Byte c = *p;
+        uint32_t u = 0;
+        uint32_t len = 0;
+        if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+        else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
+        else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
+        else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+        if (len is 0 or p + len > end) {
+          fprintf(out, "len=%d, p=%p, end=%p\n", len, p, end);
+          fprintf(out, "UTF-8 DECODE ERROR, BYTE IS 0x%02X.\n", c);
+          return;
+        }
+        switch (len) {
+          case 4: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+          case 3: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+          case 2: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
+          case 1:      (++p);
+        }
+        // No need for UTF-8 overlong encoding error checks here
+        // because they were done already when parsing the file.
+        if      ((u & 0xFFFFFF80) is 0) fputc(c, out);
+        else if ((u & 0xFFFF0000) is 0) fprintf(out, "\\u%04X", u);
+        else                            fprintf(out, "\\U%08X", u);
+      }
+    } else {
+      fwrite(text, sizeof(src->items[0]), m->len, out);
+    }
   }
 }
 
@@ -1820,11 +1918,15 @@ usage_es =
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
     "\n"
-    "  --discard-space    Descarta los espacios en blanco.\n"
+    "  --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)\n"
+    "  --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.\n"
     "  --discard-comments Descarta los comentarios.\n"
+    "  --discard-space    Descarta los espacios en blanco.\n"
     "  --print-markers    Imprime los marcadores.\n"
-    "  --no-discard-space    No descarta los espacios.    (implícito)\n"
+    "  --no-apply-macros     No aplica las macros.\n"
+    "  --no-escape-ucn       No encapsula caracteres en identificadores. (implícito)\n"
     "  --no-discard-comments No descarta los comentarios. (implícito)\n"
+    "  --no-discard-space    No descarta los espacios.    (implícito)\n"
     "  --no-print-markers    No imprime los marcadores.   (implícito)\n"
     "\n"
     "  --enable-core-dump    Activa el volcado de memoria al estrellarse."
@@ -1843,11 +1945,15 @@ usage_en =
     "  It is what the cedrocc program does:\n"
     " cedrocc -o file file.c\n"
     "\n"
-    "  --discard-space    Discards all whitespace.\n"
+    "  --apply-macros     Apply the macros: backstitch, defer, etc. (default)\n"
+    "  --escape-ucn       Escape non-ASCII in identifiers as UCN.\n"
     "  --discard-comments Discards the comments.\n"
+    "  --discard-space    Discards all whitespace.\n"
     "  --print-markers    Prints the markers.\n"
-    "  --no-discard-space    Does not discard whitespace. (default)\n"
+    "  --no-apply-macros     Do not apply the macros.\n"
+    "  --no-escape-ucn       Do not escape non-ASCII in identifiers. (default)\n"
     "  --no-discard-comments Does not discard comments.   (default)\n"
+    "  --no-discard-space    Does not discard whitespace. (default)\n"
     "  --no-print-markers    Does not print the markers.  (default)\n"
     "\n"
     "  --enable-core-dump    Enable core dump on crash.   (default)\n"
@@ -1861,9 +1967,10 @@ usage_en =
 int main(int argc, char** argv)
 {
   Options options = { // Remember to keep the usage strings updated.
+    .apply_macros     = true,
+    .escape_ucn       = false,
     .discard_comments = false,
     .discard_space    = false,
-    .apply_macros     = true,
     .print_markers    = false,
   };
 
@@ -1875,15 +1982,21 @@ int main(int argc, char** argv)
     if (arg[0] is '-') {
       bool flag_value = true;
       if (strn_eq("--no-", arg, 6)) flag_value = false;
-      if (str_eq("--discard-comments", arg) ||
-          str_eq("--not-discard-comments", arg)) {
+      if (str_eq("--apply-macros", arg) ||
+          str_eq("--not-apply-macros", arg)) {
+        options.apply_macros = flag_value;
+      } else if (str_eq("--escape-ucn", arg) ||
+                 str_eq("--not-escape-ucn", arg)) {
+        options.escape_ucn = flag_value;
+      } else if (str_eq("--discard-comments", arg) ||
+                 str_eq("--not-discard-comments", arg)) {
         options.discard_comments = flag_value;
       } else if (str_eq("--discard-space", arg) ||
                  str_eq("--not-discard-space", arg)) {
         options.discard_space = flag_value;
-      } else if (str_eq("--apply-macros", arg) ||
-                 str_eq("--not-apply-macros", arg)) {
-        options.apply_macros = flag_value;
+      } else if (str_eq("--output-ucn", arg) ||
+                 str_eq("--not-output-ucn", arg)) {
+        options.escape_ucn = flag_value;
       } else if (str_eq("--print-markers", arg) ||
                  str_eq("--not-print-markers", arg)) {
         options.print_markers = flag_value;

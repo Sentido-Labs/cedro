@@ -22,15 +22,19 @@
         Otherwise, the file is copied directly to the output.</p>
       <code>Usage: cedro [options] file.c [file2.c … ]
   The result goes to stdout, can be used without an intermediate file like this:
- cedro file.c | gcc -x c - -o file
+ cedro file.c | cc -x c - -o file
   It is what the cedrocc program does:
  cedrocc -o file file.c
 
-  --discard-space    Discards all whitespace.
+  --apply-macros     Apply the macros: backstitch, defer, etc. (default)
+  --escape-ucn       Escape non-ASCII in identifiers as UCN.
   --discard-comments Discards the comments.
+  --discard-space    Discards all whitespace.
   --print-markers    Prints the markers.
-  --no-discard-space    Does not discard whitespace. (default)
+  --no-apply-macros     Do not apply the macros.
+  --no-escape-ucn       Do not escape non-ASCII in identifiers. (default)
   --no-discard-comments Does not discard comments.   (default)
+  --no-discard-space    Does not discard whitespace. (default)
   --no-print-markers    Does not print the markers.  (default)
 
   --enable-core-dump    Enable core dump on crash.   (default)
