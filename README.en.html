@@ -12,7 +12,7 @@
       <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
       <p><em>Cedro</em> is a C language extension that works as a pre-processor with four features:</p>
       <ol>
-        <li>The <a href="#backstitch-operator"><em>backstitch</em> operator</a>.</li>
+        <li>The <a href="#backstitch-operator"><em>backstitch</em> <code>@</code> operator</a>.</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release</a>.</li>
         <li><a href="#block-macros"><em>Block macros</em></a>.</li>
         <li><a href="#binary-include"><em>Binary inclusion</em></a>.</li>
@@ -267,10 +267,10 @@ int main(void)
         </tr>
       </table>
 
-      <p>Compiling it with GCC:</p>
+      <p>Compiling it with GCC or clang:</p>
       <table>
         <tr>
-<td><code>$ cedro repeat.c | gcc -o repeat -x c -
+<td><code>$ cedro repeat.c | cc -o repeat -x c -
 $ ./repeat 
 Repeated 6 times: AAAAAA
 $ cat aaaaaa.txt

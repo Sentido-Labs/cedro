@@ -1,10 +1,11 @@
 /* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
 /** \file */
 /** \mainpage
- * The Cedro C pre-processor has three features:
- * the *backstitch* operator,
- * a simple resource release *defer* functionality,
- * and *block* (or multi-line) macros.
+ * The Cedro C pre-processor has four features:
+ * - the *backstitch* `@` operator.
+ * - *deferred* resource release.
+ * - *block* (or multi-line) macros.
+ * - *binary* inclusion.
  *
  * For usage instructions, see [README.en.html](../../README.en.html).
  *
