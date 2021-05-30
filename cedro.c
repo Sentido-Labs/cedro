@@ -77,10 +77,8 @@ eprintln(const char * const fmt, ...)
     }
     char* end = buffer + needed;
     char* p = buffer;
-    char* s = p;
     char c;
     while ((c = *p)) {
-      if (p is_not s) fwrite(s, sizeof(char), (unsigned long)(p - s), stderr);
       uint32_t u = 0;
       uint32_t len = 0;
       if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
@@ -98,7 +96,6 @@ eprintln(const char * const fmt, ...)
         case 2: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
         case 1:      (++p);
       }
-      ++p;
       /* Not a problem in this case:
       if (len is 2 and u <    0x80 or
           len is 3 and u <  0x0800 or
@@ -124,9 +121,7 @@ eprintln(const char * const fmt, ...)
           default:         fputc('_',   stderr);
         }
       }
-      s = p;
     }
-    if (p is_not s) fwrite(s, sizeof(char), (unsigned long)(p - s), stderr);
     if (buffer != &small[0]) free(buffer);
   }
   fputc('\n', stderr);
