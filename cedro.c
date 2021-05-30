@@ -1795,7 +1795,7 @@ static Macro macros[] = {
 static double
 benchmark(mut_Byte_array_p src_p, Options_p options)
 {
-  const size_t repetitions = 100;
+  const size_t repetitions = 1000;
   time_t start, end;
   time(&start);
 
