@@ -586,7 +586,7 @@ identifier(Byte_p start, Byte_p end)
       if (in('a',u,'z') or in('A',u,'Z') or u is '_' or in('0',u,'9')) {
         cursor = p;
       } else if (
-          (u & 0x80) and
+          u > 0x7F and
           (
           // ISO/IEC 9899:TC3 Annex D:
           // Latin:
