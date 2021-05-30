@@ -150,13 +150,17 @@ nvgFill(contexto_gráfico);</code>
         <a href="https://github.com/eudoxia0/cmacro">cmacro</a>
         que tiene el inconveniente de necesitar el compilador Common Lisp
         <a href="http://www.sbcl.org/">SBCL</a>.</p>
-      <p>Otra que he encontrado es la
-        <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">macro <code>-></code></a> (hilvanado)
-        de <a href="https://clojure.org/guides/threading_macros">Clojure</a>
-        que se parece pero
+      <p>Los lenguajes funcionales suelen tener un operador similar aunque
         hilvana el <em>resultado</em> de la primera función
         como primer parámetro de la siguiente etc.
-        en vez del mismo valor para todas las funciones.</p>
+        en vez del mismo valor para todas las funciones.
+        Por ejemplo, el equivalente de <code>f₃(f₂(f₁(x)))</code>:</p>
+      <ul>
+        <li><a href="https://es.wikipedia.org/wiki/Thompson_shell">Shell</a>: operador <a href="http://doc.cat-v.org/unix/pipes/"><code>|</code></a> (tubería), <code>echo x | f₁ | f₂ | f₃</code></li>
+        <li><a href="https://www.haskell.org/">Haskell</a>: operador <a href="https://downloads.haskell.org/~ghc/latest/docs/html/libraries/base-4.15.0.0/Data-Function.html#v:-38-"><code>&</code></a> (aplicación inversa), <code>x & f₁ & f₂ & f₃</code></li>
+        <li><a href="https://elixir-lang.org/">Elixir</a>: operador <a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2"><code>|&gt;</code></a> (tubería), <code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code>
+        <li><a href="https://clojure.org/guides/threading_macros">Clojure</a>: macro <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-&gt;</code></a> (hilvanado), <code>(-&gt; x f₁ f₂ f₃)</code></li>
+      </ul>
     </section>
 
     <section id="deferred-resource-release">
@@ -302,10 +306,7 @@ $ valgrind --leak-check=yes ./repeat
         <code>for (<em>reserva e inicialización</em>; <em>condición</em>; <em>devolución</em>) { <em>acciones</em> }</code>
         [<a href="#note-defer-1" name="node-defer-1-ref">1</a>]
         u otras técnicas
-        [<a href="#note-defer-2" name="node-defer-2-ref">2</a>]
-        para mantener la devolución de recursos cerca de su reserva,
-        pero no cuentan con la salida anticipada de un bloque usando
-        <code>break</code> o <code>return</code>.</p>
+        [<a href="#note-defer-2" name="node-defer-2-ref">2</a>].</p>
       <div id="note-defer-1">
         [<a href="#note-defer-1-ref">1</a>]
         “<em><a href="https://gustedt.gitlabpages.inria.fr/p99/p99-html/utilities.html#blocks">P99 Scope-bound resource management with for-statements</a></em>” del mismo autor (2010), “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), ”<em><a href="https://news.ycombinator.com/item?id=25419916">C compatible scoped locks</a></em>“ (2021)

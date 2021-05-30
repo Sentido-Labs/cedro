@@ -152,13 +152,17 @@ nvgFill(graphics_context);</code>
         pre-processor
         which has the inconvenient of needing the Common Lisp
         <a href="http://www.sbcl.org/">SBCL</a> compiler.</p>
-      <p>Another I’ve found is the
-        <a href="https://clojure.org/guides/threading_macros">Clojure</a>
-        <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-></code> (threading) macro</a>
-        which is similar but
+      <p>Functional languages often have a similar operator although
         it threads the <em>result</em> of the first function
         as first parameter of the next one etc.
-        instead of the same value for all functions.</p>
+        instead of the same value for all functions.
+        For instance, the equivalent of <code>f₃(f₂(f₁(x)))</code>:</p>
+      <ul>
+        <li><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a>: <a href="http://doc.cat-v.org/unix/pipes/"><code>|</code></a> (pipe) operator, <code>echo x | f₁ | f₂ | f₃</code></li>
+        <li><a href="https://www.haskell.org/">Haskell</a>: <a href="https://downloads.haskell.org/~ghc/latest/docs/html/libraries/base-4.15.0.0/Data-Function.html#v:-38-"><code>&</code></a> (reverse application) operator, <code>x & f₁ & f₂ & f₃</code></li>
+        <li><a href="https://elixir-lang.org/">Elixir</a>: <a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2"><code>|&gt;</code></a> (pipe) operator, <code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code>
+        <li><a href="https://clojure.org/guides/threading_macros">Clojure</a>: <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-></code></a> (threading) macro, <code>(-&gt; x f₁ f₂ f₃)</code></li>
+      </ul>
     </section>
 
     <section id="deferred-resource-release">
@@ -304,10 +308,7 @@ $ valgrind --leak-check=yes ./repeat
         <code>for (<em>allocation and initialization</em>; <em>condition</em>; <em>release</em>) { <em>actions</em> }</code>
         [<a href="#note-defer-1" name="node-defer-1-ref">1</a>]
         or other techniques
-        [<a href="#note-defer-2" name="node-defer-2-ref">2</a>]
-        to keep resource release close to their allocation,
-        but they don’t account for early exit from a block using
-        <code>break</code> or <code>return</code>.</p>
+        [<a href="#note-defer-2" name="node-defer-2-ref">2</a>].</p>
       <div id="note-defer-1">
         [<a href="#note-defer-1-ref">1</a>]
         “<em><a href="https://gustedt.gitlabpages.inria.fr/p99/p99-html/utilities.html#blocks">P99 Scope-bound resource management with for-statements</a></em>” from the same author (2010), “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), ”<em><a href="https://news.ycombinator.com/item?id=25419916">C compatible scoped locks</a></em>“ (2021)
