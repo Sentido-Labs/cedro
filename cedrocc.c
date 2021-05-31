@@ -42,10 +42,10 @@ int main(int argc, char* argv[])
   }
 
   Options options = {
+    .apply_macros     = true,
+    .escape_ucn       = false,
     .discard_comments = false,
     .discard_space    = false,
-    .apply_macros     = true,
-    .print_markers    = false,
   };
 
   char* file_name = NULL;

@@ -152,17 +152,15 @@ eprintln(const char * const fmt, ...)
 
 /** Parameters set by command line options. */
 typedef struct Options {
+  /// Apply the macros.
+  bool apply_macros;
+  /// Escape Unicode® code points (“chararacters”) in identifiers
+  /// as universal character names (ISO/IEC 9899:TC3 Annex D).
+  bool escape_ucn;
   /// Whether to skip space tokens, or include them in the markers array.
   bool discard_space;
   /// Skip comments, or include them in the markers array.
   bool discard_comments;
-  /// Escape Unicode® code points (“chararacters”) in identifiers
-  /// as universal character names (ISO/IEC 9899:TC3 Annex D).
-  bool escape_ucn;
-  /// Apply the macros.
-  bool apply_macros;
-  /// Print markers array.
-  bool print_markers;
 } Options, *Options_p;
 
 /** Binary string, `const unsigned char const*`. */
@@ -1927,12 +1925,12 @@ usage_es =
     "  --discard-space       Descarta los espacios en blanco.\n"
     "  --no-discard-comments No descarta los comentarios. (implícito)\n"
     "  --no-discard-space    No descarta los espacios.    (implícito)\n"
+    "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
-    "\n"
-    "  --enable-core-dump Activa el volcado de memoria al estrellarse."
+    "  --enable-core-dump Activa el volcado de memoria al estrellarse.\n"
+    "  --no-enable-core-dump No activa el volcado de memoria al estrellarse."
     " (implícito)\n"
-    "  --no-enable-core-dump No activa el volcado de memoria al estrellarse.\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
     "  --version          Muestra la versión: " CEDRO_VERSION "\n"
     "                     El «pragma» correspondiente es: #pragma Cedro "
@@ -1954,11 +1952,11 @@ usage_en =
     "  --discard-space       Discards all whitespace.\n"
     "  --no-discard-comments Does not discard comments.   (default)\n"
     "  --no-discard-space    Does not discard whitespace. (default)\n"
+    "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
-    "\n"
-    "  --enable-core-dump    Enable core dump on crash. (default)\n"
-    "  --no-enable-core-dump Do not enable core dump on crash.\n"
+    "  --enable-core-dump    Enable core dump on crash.\n"
+    "  --no-enable-core-dump Do not enable core dump on crash. (default)\n"
     "  --benchmark        Run a performance benchmark.\n"
     "  --version          Show version: " CEDRO_VERSION "\n"
     "                     The corresponding “pragma” is: #pragma Cedro "
@@ -1971,12 +1969,12 @@ int main(int argc, char** argv)
     .apply_macros     = true,
     .escape_ucn       = false,
     .discard_comments = false,
-    .discard_space    = false,
-    .print_markers    = false,
+    .discard_space    = false
   };
 
-  bool enable_core_dump = true;
-  bool run_benchmark    = false;
+  bool opt_print_markers    = false;
+  bool opt_enable_core_dump = false;
+  bool opt_run_benchmark    = false;
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
@@ -1995,17 +1993,14 @@ int main(int argc, char** argv)
       } else if (str_eq("--discard-space", arg) ||
                  str_eq("--not-discard-space", arg)) {
         options.discard_space = flag_value;
-      } else if (str_eq("--output-ucn", arg) ||
-                 str_eq("--not-output-ucn", arg)) {
-        options.escape_ucn = flag_value;
       } else if (str_eq("--print-markers", arg) ||
                  str_eq("--not-print-markers", arg)) {
-        options.print_markers = flag_value;
+        opt_print_markers = flag_value;
       } else if (str_eq("--enable-core-dump", arg) ||
                  str_eq("--not-enable-core-dump", arg)) {
-        enable_core_dump = flag_value;
+        opt_enable_core_dump = flag_value;
       } else if (str_eq("--benchmark", arg)) {
-        run_benchmark = true;
+        opt_run_benchmark = true;
       } else if (str_eq("--version", arg)) {
         fprintf(stderr, CEDRO_VERSION "\n");
       } else {
@@ -2015,14 +2010,14 @@ int main(int argc, char** argv)
     }
   }
 
-  if (enable_core_dump) {
+  if (opt_enable_core_dump) {
     struct rlimit core_limit = { RLIM_INFINITY, RLIM_INFINITY };
     assert(0 is setrlimit(RLIMIT_CORE, &core_limit));
   }
 
-  if (run_benchmark) {
-    options.print_markers = false;
+  if (opt_run_benchmark) {
     options.apply_macros  = false;
+    opt_print_markers     = false;
   }
 
   mut_Marker_array markers;
@@ -2044,7 +2039,7 @@ int main(int argc, char** argv)
 
     parse(&src, &markers);
 
-    if (run_benchmark) {
+    if (opt_run_benchmark) {
       double t = benchmark(&src, &options);
       if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, arg);
       else         eprintln("%.1fs for %s", t         , arg);
@@ -2059,7 +2054,7 @@ int main(int argc, char** argv)
         }
       }
 
-      if (options.print_markers) {
+      if (opt_print_markers) {
         print_markers(&markers, &src, 0, 0, options);
       } else {
         unparse(&markers, &src, options, stdout);
