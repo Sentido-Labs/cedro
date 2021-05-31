@@ -20,14 +20,18 @@ usage_es =
     "Uso: cedrocc [opciones] <fichero.c> [ fichero2.o … ]\n"
     "Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
     "y compila el resultado con «%s» mas los otros argumentos.\n"
-    "Para usar otro compilador, p.ej. gcc: CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "  cedrocc -o fichero fichero.c\n"
+    "  cedro fichero.c | cc -x c - -o fichero\n"
+    "Para usar otro compilador, p.ej. gcc: CEDRO_CC='gcc -x c -' cedrocc …"
     ;
 static const char* const
 usage_en =
     "Usage: cedrocc [options] <file.c> [ file2.o … ]\n"
     "Runs Cedro on the first file name that ends with “.c”,\n"
     "and compiles the result with “%s” plus the other arguments.\n"
-    "To use another compiler, e.g. gcc: CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "  cedrocc -o fichero fichero.c\n"
+    "  cedro fichero.c | cc -x c - -o fichero\n"
+    "To use another compiler, e.g. gcc: CEDRO_CC='gcc -x c -' cedrocc …"
     ;
 
 int main(int argc, char* argv[])

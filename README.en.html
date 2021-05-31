@@ -42,6 +42,12 @@
   --benchmark        Run a performance benchmark.
   --version          Show version: 1.0
                      The corresponding “pragma” is: #pragma Cedro 1.0</code>
+      <p>The option <code>--escape-ucn</code> encodes Unicode® characters
+        outside of the ASCII range, when they appear as part of an identifier,
+        as C99 universal character names
+        (“C99 standard”, page 65, “<a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf#65">6.4.3 Universal character names</a>”),
+        which can be useful for older compilers without UTF-8 support such as
+        <a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67224#c32">GCC before version 10</a>.</p>
       <p>For API documentation, see <a href="doc/api/index.html">doc/api/index.html</a>
         after running <code>make doc</code> that requires having
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
@@ -141,6 +147,11 @@ nvgFill(graphics_context);</code>
           </td>
         </tr>
       </table>
+
+      <p>Note: the <code>@</code> symbol is not recognized
+        when written as <code>\u0040</code>.
+        This can be used to escape it when chaining Cedro with another
+        pre-processor that uses it.</p>
 
       <h3>Related work</h3>
       <p>Looking for prior implementations of this idea I’ve found

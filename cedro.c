@@ -571,11 +571,15 @@ identifier(Byte_p start, Byte_p end)
           // Hangul:
           in(0xAC00,u,0xD7A3) or
           // Digits:
+          /* “Note that a strictly conforming program [...]
+             may not begin an identifier with an extended digit.”
+             http://www.open-std.org/jtc1/sc22/wg14/www/C99RationaleV5.10.pdf#58
           in(0x0660,u,0x0669) or in(0x06F0,u,0x06F9) or in(0x0966,u,0x096F) or
           in(0x09E6,u,0x09EF) or in(0x0A66,u,0x0A6F) or in(0x0AE6,u,0x0AEF) or
           in(0x0B66,u,0x0B6F) or in(0x0BE7,u,0x0BEF) or in(0x0C66,u,0x0C6F) or
           in(0x0CE6,u,0x0CEF) or in(0x0D66,u,0x0D6F) or in(0x0E50,u,0x0E59) or
           in(0x0ED0,u,0x0ED9) or in(0x0F20,u,0x0F33) or
+          */
           // Special characters:
           u is 0x00B5 or u is 0x00B7 or in(0x02B0,u,0x02B8) or u is 0x02BB or
           in(0x02BD,u,0x02C1) or in(0x02D0,u,0x02D1) or in(0x02E0,u,0x02E4) or
@@ -919,7 +923,7 @@ preprocessor(Byte_p start, Byte_p end)
   return cursor; // The newline is not part of the token.
 }
 
-/** Fallback match, just read one Unicode Code Point
+/** Fallback match, just read one UTF-8 Unicode® Code Point
  * as one token of type `T_OTHER`.
  * Assumes `end` > `start`. */
 static inline Byte_p
@@ -1311,7 +1315,10 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         }
         // No need for UTF-8 overlong encoding error checks here
         // because they were done already when parsing the file.
-        if      ((u & 0xFFFFFF80) is 0) fputc(c, out);
+        if      ((u & 0xFFFFFF80) is 0 and
+                 u is_not 0x0024 and
+                 u is_not 0x0040 and
+                 u is_not 0x0060)       fputc(c, out);
         else if ((u & 0xFFFF0000) is 0) fprintf(out, "\\u%04X", u);
         else                            fprintf(out, "\\U%08X", u);
       }
