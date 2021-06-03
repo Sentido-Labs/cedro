@@ -134,7 +134,7 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
 {                                                                       \
   _->len = 0;                                                           \
   _->capacity = initial_capacity + PADDING;                             \
-  _->items = malloc(_->capacity * sizeof(*_->items));                   \
+  _->items = _->capacity? malloc(_->capacity * sizeof(*_->items)): 0;   \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
