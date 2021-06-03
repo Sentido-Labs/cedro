@@ -171,7 +171,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_back(start, previous_line);
         if (previous_line is_not start) --previous_line;
       }
-      // If previous line starts with return, abort.
+      // If previous line diverts control flow, abort.
       if (previous_line is_not start) {
         previous_line = find_line_start(previous_line - 1, start, &err);
         if (err.message) {
@@ -290,6 +290,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_forward(line.start_p, line.end_p);
 
         marker_buffer.len = 0;
+        // Invalidates: marker_buffer
         push_Marker_array(&marker_buffer, block_start);
         insert_deferred_actions(&pending, block_level,
                                 &line,
@@ -304,6 +305,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         };
         // Here, line.start_p = insertion_point.
         cursor_position = (size_t)(line.start_p - start);
+        // Invalidates: markers
         splice_Marker_array(markers,
                             cursor_position,
                             (size_t)(line.end_p - line.start_p), NULL,

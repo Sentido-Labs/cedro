@@ -53,7 +53,6 @@
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
     </section>
 
-    <a name="backstitch-operator"></a>
     <section id="backstitch-operator">
       <h2><a href="https://en.wikipedia.org/wiki/Backstitch">Backstitch</a> operator: @</h2>
       <p>Threads a value through a sequence of function calls,
@@ -174,6 +173,11 @@ nvgFill(graphics_context);</code>
         <li><a href="https://elixir-lang.org/">Elixir</a>: <a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2"><code>|&gt;</code></a> (pipe) operator, <code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code>
         <li><a href="https://clojure.org/guides/threading_macros">Clojure</a>: <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-></code></a> (threading) macro, <code>(-&gt; x f₁ f₂ f₃)</code></li>
       </ul>
+      <p>Ada 2005 introduced a feature called
+        <a href="https://www.adaic.org/resources/add_content/standards/05rat/html/Rat-2-3.html">prefixed-view notation</a>
+        that is actually more similar to C++ etc.
+        as the exact function being called can not be determined without
+        knowing which methods are implemented for the object type.</p>
     </section>
 
     <section id="deferred-resource-release">
@@ -241,7 +245,7 @@ int repeat_letter(char letter, size_t count,
 
 int main(void)
 {
-  return repeat_letter('A', 6, "aaaaaa.txt");
+    return repeat_letter('A', 6, "aaaaaa.txt");
 }</code></td><td>
 <br/><br/><code>#include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -273,7 +277,7 @@ int repeat_letter(char letter, size_t count,
 
 int main(void)
 {
-  return repeat_letter('A', 6, "aaaaaa.txt");
+    return repeat_letter('A', 6, "aaaaaa.txt");
 }</code></td>
         </tr>
       </table>

@@ -1465,6 +1465,9 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
 
+  // First look for the pragma.
+  // We need to do some tokenization to avoid false positives if it appears
+  // in a comment or string, for instance.
   error.len = 0;
   while (cursor is_not end) {
     assert(cursor is_not prev_cursor);
