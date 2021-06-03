@@ -328,7 +328,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
                                       &between, NULL,
                                       (size_t)(insertion_point - start),
                                       markers)
-            + (size_t)(line.end_p - line.start_p);
+            + (size_t)(line.end_p - insertion_point);
       }
 
       start = mut_Marker_array_start(markers);
