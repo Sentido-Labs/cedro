@@ -1112,6 +1112,22 @@ print_markers(Marker_array_p markers, Byte_array_p src,
               size_t cursor, const char* cursor_label)
 {
   size_t indent = 0;
+  if (start is_not 0) {
+    Marker_p m_end = get_Marker_array(markers, start);
+    for (Marker_mut_p m = Marker_array_start(markers); m is_not m_end; ++m) {
+      switch (m->token_type) {
+        case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+          ++indent;
+          break;
+        case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+          --indent;
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
   mut_Byte_array token_text;
   init_Byte_array(&token_text, 80);
 
