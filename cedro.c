@@ -86,7 +86,7 @@ eprintln(const char * const fmt, ...)
       else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
       else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
       else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-      if (len is 0 or p + len >= end) {
+      if (len is 0 or p + len > end) {
         fprintf(stderr, "UTF-8 DECODE ERROR AT %lu.\n",
                 (size_t)(p - buffer));
         return;
@@ -407,7 +407,7 @@ identifier(Byte_p start, Byte_p end)
   else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
   else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
   else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-  if (len is 0 or cursor + len >= end) {
+  if (len is 0 or cursor + len > end) {
     error.len = 0;
     push_fmt(&error, "UTF-8 DECODE ERROR, BYTE IS 0x%02X.", c);
     return NULL;
@@ -599,7 +599,7 @@ identifier(Byte_p start, Byte_p end)
       else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
       else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
       else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-      if (len is 0 or p + len >= end) {
+      if (len is 0 or p + len > end) {
         error.len = 0;
         push_fmt(&error, "UTF-8 DECODE ERROR.");
         return NULL;
