@@ -1096,16 +1096,20 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
 }
 
 /** Print a human-legible dump of the markers array to stderr.
+ * Ignores the options about showing spaces/comments:
+ * it is meant as a raw display of the markers array.
  *  @param[in] markers parsed program.
  *  @param[in] src original source code.
  *  @param[in] start index to start with.
  *  @param[in] end   index to end with: if `0`, use the end of the array.
+ *  @param[in] cursor       position where cursor_label will be displayed.
+ *  @param[in] cursor_label text to show at cursor position. Can be `NULL`.
  *  @param[in] options formatting options.
  */
 static void
 print_markers(Marker_array_p markers, Byte_array_p src,
               size_t start, size_t end,
-              Options options)
+              size_t cursor, const char* cursor_label)
 {
   size_t indent = 0;
   mut_Byte_array token_text;
@@ -1137,21 +1141,6 @@ print_markers(Marker_array_p markers, Byte_array_p src,
       case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
         eprintln_indent(--indent, "%s %s← %s",
                         token, spc, TokenType_STRING[m->token_type]);
-        break;
-      case T_GROUP_START: case T_GROUP_END:
-        /* Invisible grouping of tokens. */
-        break;
-      case T_SPACE:
-        if (not options.discard_space) {
-          eprintln_indent(indent, "%s %s← Space",
-                          token, spc);
-        }
-        break;
-      case T_COMMENT:
-        if (not options.discard_comments) {
-          eprintln_indent(indent, "%s %s← Comment",
-                          token, spc);
-        }
         break;
       default:
         eprintln_indent(indent, "%s %s← %s",
@@ -2065,7 +2054,7 @@ int main(int argc, char** argv)
       }
 
       if (opt_print_markers) {
-        print_markers(&markers, &src, 0, 0, options);
+        print_markers(&markers, &src, 0, 0, 0, NULL);
       } else {
         unparse(&markers, &src, options, stdout);
       }
