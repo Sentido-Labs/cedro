@@ -3,9 +3,9 @@ NAME=cedro
 CC=gcc -g -fshort-enums
 CC_STRICT=$(CC) -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
 
-all: debug release
-	if which valgrind; then valgrind --leak-check=yes ./$(NAME) $(NAME).c >/dev/null; fi
+all: release
 debug:   $(NAME)-debug $(NAME)cc-debug
+	if which valgrind; then valgrind --leak-check=yes ./$(NAME)-debug $(NAME).c >/dev/null; fi
 release: $(NAME) $(NAME)cc
 .PHONY: all debug release
 
