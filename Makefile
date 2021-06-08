@@ -13,10 +13,10 @@ run: $(NAME)
 	./$(NAME) $(NAME).c
 .PHONY: run
 
-%cc-debug: %cc.c %-debug array.h macros.h macros/*.h Makefile
+%cc-debug: %cc.c %.c array.h macros.h macros/*.h Makefile
 	$(CC_STRICT) -o $@ $<
 
-%cc:       %cc.c % array.h macros.h macros/*.h Makefile
+%cc:       %cc.c %.c array.h macros.h macros/*.h Makefile
 	$(CC_STRICT) -o $@ $< -O
 
 %-debug: %.c array.h macros.h macros/*.h Makefile
