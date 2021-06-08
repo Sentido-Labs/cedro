@@ -237,6 +237,7 @@ int repeat_letter(char letter, size_t count,
         if (!file) return errno;
         <b>auto fclose(file);</b>
         fwrite(text, sizeof(char), count, file);
+        fputc('\n', file);
     }
     printf("Repeated %lu times: %s\n",
            count, text);
@@ -267,6 +268,7 @@ int repeat_letter(char letter, size_t count,
             return errno;
         }
         fwrite(text, sizeof(char), count, file);
+        fputc('\n', file);
         <b>fclose(file);</b>
     }
     printf("Repeated %lu times: %s\n",
