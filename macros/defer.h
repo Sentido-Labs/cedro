@@ -1,3 +1,6 @@
+#define STRINGIZE(x) #x
+#define STR(x) STRINGIZE(x)
+
 /// Simple `defer`-style functionality using the `auto` keyword.
 TYPEDEF_STRUCT(DeferredAction, {
     size_t level;
@@ -50,7 +53,7 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
   size_t inserted_length = 0;
   mut_Marker_array_slice indent = {
     .start_p = &between[0],
-    .end_p   = &between[1 + (between[1].len? 1: 0)]
+    .end_p   = &between[between[1].len? 2: 1]
   };
   DeferredAction_p     actions_start  = DeferredAction_array_start(pending);
   DeferredAction_mut_p actions_cursor = DeferredAction_array_end(pending);
@@ -121,8 +124,6 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
   init_Marker_array(&marker_buffer, 8);
 
   while (cursor is_not end) {
-    // TODO: should we try to handle forward goto?
-    // TODO: should we try to handle initializers in for loops?
     if (cursor->token_type is T_BLOCK_START) {
       // Now find the start of the statement:
       Marker_mut_p statement = cursor;
@@ -139,8 +140,11 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
             goto free_all_and_return;
           }
           --nesting;
-        } else if (not nesting and statement->token_type is_not T_SPACE) {
-          if (statement->token_type is_not T_CONTROL_FLOW_IF   and
+        } else if (not nesting and
+                   statement->token_type is_not T_SPACE and
+                   statement->token_type is_not T_COMMENT) {
+          if (statement->token_type is_not T_IDENTIFIER        and
+              statement->token_type is_not T_CONTROL_FLOW_IF   and
               statement->token_type is_not T_CONTROL_FLOW_LOOP and
               statement->token_type is_not T_CONTROL_FLOW_SWITCH) {
             statement = cursor;
@@ -166,37 +170,34 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
     } else if (cursor->token_type is T_BLOCK_END) {
       size_t block_level = block_stack.len;
       Marker_mut_p previous_line = cursor;
-      if (previous_line is_not start) {
-        --previous_line;
-        skip_space_back(start, previous_line);
-        if (previous_line is_not start) --previous_line;
-      }
+      if (previous_line is_not start) --previous_line;
+      skip_space_back(start, previous_line);
+      if (previous_line is_not start) --previous_line;
       // If previous line diverts control flow, abort.
-      if (previous_line is_not start) {
-        previous_line = find_line_start(previous_line - 1, start, &err);
-        if (err.message) {
-          eprintln("At line %lu: %s",
-                   line_number(src, markers, err.position), err.message);
-          err.message = NULL;
-          goto free_all_and_return;
-        }
-        skip_space_forward(previous_line, end);
-        if (previous_line->token_type is T_CONTROL_FLOW_RETURN or
-            previous_line->token_type is T_CONTROL_FLOW_BREAK  or
-            previous_line->token_type is T_CONTROL_FLOW_CONTINUE) {
-          goto exit_level_and_continue;
-        }
+      previous_line = find_line_start(previous_line, start, &err);
+      if (err.message) {
+        eprintln("At line %lu: %s",
+                 line_number(src, markers, err.position), err.message);
+        err.message = NULL;
+        goto free_all_and_return;
+      }
+      skip_space_forward(previous_line, end);
+      if (previous_line->token_type is T_CONTROL_FLOW_BREAK    or
+          previous_line->token_type is T_CONTROL_FLOW_CONTINUE or
+          previous_line->token_type is T_CONTROL_FLOW_GOTO     or
+          previous_line->token_type is T_CONTROL_FLOW_RETURN) {
+        goto exit_level_and_continue;
       }
 
       Marker_p insertion_point =
           cursor is_not start and (cursor-1)->token_type is T_SPACE?
           cursor-1: cursor;
-      Marker between = indentation(src, previous_line);
+      Marker between = indentation(markers, cursor, false, src);
       // Invalidates: markers
       cursor_position = (size_t)(cursor - start)
           + insert_deferred_actions(&pending, block_level,
                                     NULL,
-                                    &between, NULL,
+                                    &between, &indent_one_level,
                                     (size_t)(insertion_point - start),
                                     markers);
       start  = mut_Marker_array_start(markers);
@@ -209,6 +210,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       ++cursor;
     } else if (cursor->token_type is T_CONTROL_FLOW_BREAK    or
                cursor->token_type is T_CONTROL_FLOW_CONTINUE or
+               cursor->token_type is T_CONTROL_FLOW_GOTO     or
                cursor->token_type is T_CONTROL_FLOW_RETURN) {
       size_t block_level = 0; // This is the correct value for ..._RETURN.
       if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
@@ -221,7 +223,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         }
         while (block_level) {
           --block_level;
-          TokenType block_type = *get_TokenType_array(&block_stack, block_level);
+          TokenType block_type =
+              *get_TokenType_array(&block_stack, block_level);
           if (block_type is T_CONTROL_FLOW_LOOP or
               block_type is T_CONTROL_FLOW_SWITCH) {
             ++block_level;
@@ -238,23 +241,95 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         }
         while (block_level) {
           --block_level;
-          TokenType block_type = *get_TokenType_array(&block_stack, block_level);
+          TokenType block_type =
+              *get_TokenType_array(&block_stack, block_level);
           if (block_type is T_CONTROL_FLOW_LOOP) {
             ++block_level;
             break;
           }
         }
+      } else if (cursor->token_type is T_CONTROL_FLOW_GOTO) {
+        block_level = block_stack.len;
+        if (block_level is 0) {
+          eprintln("At line %lu: goto outside of block.",
+                   line_number(src, markers, cursor));
+          break;
+        }
+        size_t function_level = block_level + 1;
+        while (block_level) {
+          --block_level;
+          TokenType block_type =
+              *get_TokenType_array(&block_stack, block_level);
+          if (block_type is T_IDENTIFIER) {
+            function_level = block_level + 1;
+            break;
+          }
+        }
+
+        Marker_mut_p label_p = cursor + 1;
+        skip_space_forward(label_p, end);
+        if (label_p is end or label_p->token_type is_not T_IDENTIFIER) {
+          eprintln("At line %lu: goto without label.",
+                   line_number(src, markers, cursor));
+          break;
+        }
+        mut_Byte_array label; init_Byte_array(&label, 10);
+        extract_src(label_p, label_p+1, src, &label);
+
+        // Find minimum block level traversed to reach label.
+        label_p = NULL;
+        Marker_mut_p m;
+        block_level = block_stack.len;
+        size_t nesting = block_level;
+
+        // First forward, because that’s the most usual case:
+        m = cursor + 1;
+        block_level = block_stack.len;
+        nesting = block_level;
+        while (m is_not end and nesting >= function_level) {
+          if        (m->token_type is T_BLOCK_START) {
+            ++nesting;
+          } else if (m->token_type is T_BLOCK_END) {
+            --nesting;
+            if (nesting < block_level) block_level = nesting;
+          } else if (m->token_type is T_CONTROL_FLOW_LABEL) {
+            if (src_eq(m, &label, src)) {
+              label_p = m;
+              break;
+            }
+          }
+          ++m;
+        }
+
+        if (!label_p) {
+          // Then backwards:
+          m = cursor - 1;
+          while (m is_not start and nesting >= function_level) {
+            if        (m->token_type is T_BLOCK_END) {
+              ++nesting;
+            } else if (m->token_type is T_BLOCK_START) {
+              --nesting;
+              if (nesting < block_level) block_level = nesting;
+            } else if (m->token_type is T_CONTROL_FLOW_LABEL) {
+              if (src_eq(m, &label, src)) {
+                label_p = m;
+                break;
+              }
+            }
+            --m;
+          }
+        }
+
+        if (label_p) ++block_level;
+        else         block_level = block_stack.len;
+
+        destruct_Byte_array(&label);
       }
 
       if (not are_there_pending_deferred_actions(&pending, block_level)) {
         ++cursor;
         continue;
       }
-
-      Marker_p insertion_point =
-          cursor is_not start and (cursor-1)->token_type is T_SPACE?
-          cursor-1: cursor;
-      mut_Marker between = indentation(src, cursor);
 
       mut_Marker_array_slice line = { .start_p = NULL, .end_p = NULL };
       line.start_p = find_line_start(cursor, start, &err);
@@ -271,6 +346,13 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         err.message = NULL;
         break;
       }
+
+      mut_Marker between =
+          indentation(markers, line.start_p, true, src);
+
+      Marker_p insertion_point =
+          cursor is_not start and (cursor-1)->token_type is T_SPACE?
+          cursor-1: cursor;
 
       if (line.start_p is_not start and
           ((line.start_p+1)->token_type is T_CONTROL_FLOW_IF ||

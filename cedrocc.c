@@ -78,9 +78,9 @@ int main(int argc, char* argv[])
   assert(i <= argc);
 
   if (not file_name) {
-    eprintln("Missing file name.");
+    eprintln(LANG("Falta el nombre de fichero.", "Missing file name."));
     free(args);
-    return 1;
+    return ENOENT;
   }
 
   size_t length = 0;
@@ -104,26 +104,28 @@ int main(int argc, char* argv[])
   init_Marker_array(&markers, 8192);
 
   mut_Byte_array src;
-  read_file(&src, file_name);
+  int err = read_file(&src, file_name);
+  if (err) {
+    print_file_error(err, file_name, &src);
+    return_code = err;
+  } else {
+    parse(&src, &markers);
 
-  markers.len = 0;
+    Macro_p macro = macros;
+    while (macro->name and macro->function) {
+      macro->function(&markers, &src);
+      ++macro;
+    }
 
-  parse(&src, &markers);
+    fflush(stderr);
+    fflush(stdout);
 
-  Macro_p macro = macros;
-  while (macro->name and macro->function) {
-    macro->function(&markers, &src);
-    ++macro;
+    FILE* cc_stdin = popen(cmd, "w");
+    unparse(&markers, &src, options, cc_stdin);
+    return_code = pclose(cc_stdin);
+
+    fflush(stdout);
   }
-
-  fflush(stderr);
-  fflush(stdout);
-
-  FILE* cc_stdin = popen(cmd, "w");
-  unparse(&markers, &src, options, cc_stdin);
-  return_code = pclose(cc_stdin);
-
-  fflush(stdout);
 
   destruct_Marker_array(&markers);
   destruct_Byte_array(&src);

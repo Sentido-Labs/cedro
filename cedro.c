@@ -51,11 +51,11 @@
 
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
-/** Same as `fprintf(stderr, fmt, ...), fputc('\n', stderr)`
+/** Same as `fprintf(stderr, fmt, ...)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
 static void
-eprintln(const char * const fmt, ...)
+eprint(const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
@@ -119,16 +119,23 @@ eprintln(const char * const fmt, ...)
           case 0x0000201D: fputc('"',   stderr); break;
           case 0x00002019: fputc('\'',  stderr); break;
           case 0x00002026: fputs("...", stderr); break;
+          case 0x00002190: fputs("<-",  stderr); break;
+          case 0x00002192: fputs("->",  stderr); break;
           default:         fputc('_',   stderr);
         }
       }
     }
     if (buffer != &small[0]) free(buffer);
   }
-  fputc('\n', stderr);
 
   va_end(args);
 }
+
+/** Same as `fprintf(stderr, fmt, ...), fputc('\n', stderr)`
+ * but converting UTF-8 characters to Latin-1 if the `LANG` environment
+ * variable does not contain `UTF-8`. */
+#define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
+
 #define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
 /** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
@@ -194,6 +201,7 @@ typedef enum TokenType {
   /** Control flow keyword: `continue`.               */ T_CONTROL_FLOW_CONTINUE,
   /** Control flow keyword: `return`.                 */ T_CONTROL_FLOW_RETURN,
   /** Control flow keyword: `goto`.                   */ T_CONTROL_FLOW_GOTO,
+  /** Control flow, label for `goto`.                 */ T_CONTROL_FLOW_LABEL,
   /** Number, either integer or float.
       See `number()`.                                 */ T_NUMBER,
   /** String including the quotes: `"ABC"`            */ T_STRING,
@@ -228,6 +236,7 @@ typedef enum TokenType {
   /** `= += -= *= /= %= <<= >>= &= ^= |=`        */ T_OP_14,
   /** `,`                                        */ T_COMMA /* = T_OP_15 */,
   /** End of line: `;`                               */ T_SEMICOLON,
+  /** Colon after label: `:`                         */ T_LABEL_COLON,
   /** Backstitch: `@`                                */ T_BACKSTITCH,
   /** Ellipsis: `...`                                */ T_ELLIPSIS,
   /** Other token that is not part of the C grammar. */ T_OTHER
@@ -245,7 +254,7 @@ TokenType_STRING[1+T_OTHER] = {
   B("Control flow loop"),
   B("Control flow switch"), B("Control flow case"),
   B("Control flow break"), B("Control flow continue"), B("Control flow return"),
-  B("Control flow goto"),
+  B("Control flow goto"), B("Control flow label"),
   B("Number"), B("String"), B("Character"),
   B("Space"), B("Comment"),
   B("Preprocessor"), B("Generic macro"),
@@ -255,13 +264,14 @@ TokenType_STRING[1+T_OTHER] = {
   B("Op 1"), B("Op 2"), B("Op 3"), B("Op 4"), B("Op 5"), B("Op 6"),
   B("Op 7"), B("Op 8"), B("Op 9"), B("Op 10"), B("Op 11"), B("Op 12"),
   B("Op 13"), B("Op 14"),
-  B("Comma (op 15)"), B("Semicolon"),
+  B("Comma (op 15)"), B("Semicolon"), B("Colon after label"),
   B("Backstitch"),
   B("Ellipsis"),
   B("OTHER")
 };
 
 #define precedence(token_type) (token_type - T_OP_1)
+#define is_keyword(token_type) (token_type >= T_TYPE && token_type <= T_CONTROL_FLOW_LABEL)
 #define is_operator(token_type) (token_type >= T_OP_1 && token_type <= T_COMMA)
 #define is_fence(token_type) (token_type >= T_BLOCK_START && token_type <= T_GROUP_END)
 
@@ -345,18 +355,15 @@ as_c_string(mut_Byte_array_p _)
 
 typedef FILE* mut_File_p;
 typedef char*const FilePath;
-/** Read a file into the given buffer. Errors are printed to `stderr`. */
-static void
+/** Read a file into the given buffer. Returns error code, 0 if it succeeds. */
+static int
 read_file(mut_Byte_array_p _, FilePath path)
 {
+  int err = 0; // No error.
   mut_File_p input = fopen(path, "r");
   if (!input) {
-    fprintf(stderr,
-            LANG("Error al abrir el fichero: «%s»: 0x%02X %s.\n",
-                 "Error when opening the file: “%s”: 0x%02X %s.\n"),
-            path, errno, strerror(errno));
     init_Byte_array(_, 0);
-    return;
+    return errno;
   }
   fseek(input, 0, SEEK_END);
   size_t size = (size_t)ftell(input);
@@ -364,20 +371,32 @@ read_file(mut_Byte_array_p _, FilePath path)
   rewind(input);
   _->len = fread((mut_Byte_p) _->items, sizeof(_->items[0]), size, input);
   if (feof(input)) {
-    fprintf(stderr,
-            LANG("Fin de fichero inesperado en %ld leyendo «%s».\n",
-                 "Unexpected EOF at %ld reading “%s”.\n"),
-            _->len, path);
+    err = EIO;
   } else if (ferror(input)) {
-    fprintf(stderr,
-            LANG("Error leyendo «%s»: 0x%02X %s.\n",
-                 "Error reading “%s”: 0x%02X %s.\n"),
-            path, errno, strerror(errno));
+    err = errno;
   } else {
     memset((mut_Byte_p) _->items + _->len, 0,
            (_->capacity - _->len) * sizeof(_->items[0]));
   }
   fclose(input); input = NULL;
+  return err;
+}
+
+/** Print an error produced when reading a file. */
+static void
+print_file_error(int err, const char* file_name, Byte_array_p src)
+{
+  switch (err) {
+    case EIO:
+      eprintln(LANG("Fin de fichero inesperado en %ld leyendo «%s».",
+                    "Unexpected EOF at %ld reading “%s”."),
+               src->len, file_name);
+      break;
+    default:
+      eprintln(LANG("Error leyendo «%s»: 0x%02X %s.",
+                    "Error reading “%s”: 0x%02X %s."),
+               file_name, err, strerror(err));
+  }
 }
 
 static mut_Byte_array error = { 0 };// 0 in all bytes is a valid initialization.
@@ -937,6 +956,7 @@ other(Byte_p start, Byte_p end)
   else                           return NULL;
 }
 
+
 /** Get new slice for the given marker.
  */
 static Byte_array_slice
@@ -948,36 +968,6 @@ slice_for_marker(Byte_array_p src, Marker_p cursor)
     .end_p   = get_mut_Byte_array(src, cursor->start) + cursor->len
   };
   return slice;
-}
-
-/** Extract the indentation of the line for the character at `index`,
- * including the preceding `LF` character if it exists.
- */
-static Marker
-indentation(Byte_array_p src, Marker_p marker)
-{
-  Byte_p start = Byte_array_start(src);
-  Byte_p end   = Byte_array_end(src);
-  Byte_mut_p start_of_line = slice_for_marker(src, marker).start_p;
-  while (*start_of_line is_not '\n') {
-    if (start_of_line is start) break;
-    --start_of_line;
-  }
-  // If *start_of_line is not '\n' here, there is no LF to re-use.
-  // This can only happen at the very fist line of the file,
-  // which should have no indentation anyway.
-  // Handling the hypothetical case where the first line of the file is indented
-  // is not worth the complication.
-  Byte_mut_p end_of_indentation = start_of_line + 1;
-  // TODO: this no longer makes sense: this is a single token of type T_SPACE.
-  while (end_of_indentation is_not end) {
-    if (*end_of_indentation is_not ' ' &&
-        *end_of_indentation is_not '\t') break;
-    ++end_of_indentation;
-  }
-  mut_Marker indentation;
-  init_Marker(&indentation, start_of_line, end_of_indentation, src, T_SPACE);
-  return indentation;
 }
 
 /** Copy the characters between `start` and `end` into the given Byte array,
@@ -1013,14 +1003,24 @@ extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p str
   }
 }
 
+/** Check whether the text in a marker is the same as the given string. */
+static inline bool
+src_eq(Marker_p marker, Byte_array_p string, Byte_array_p src)
+{
+  if (marker->len is_not string->len) return false;
+  return mem_eq(get_Byte_array(src, marker->start),
+                Byte_array_start(string),
+                string->len);
+}
+
 /** Count appearances of the given byte in a marker. */
-static size_t
+static inline size_t
 count_appearances(Byte byte, Marker_p start, Marker_p end, Byte_array_p src)
 {
-  if (end == start) return 0;
   size_t count = 0;
-  Marker_mut_p cursor = end - 1;
+  Marker_mut_p cursor = end;
   while (cursor is_not start) {
+    --cursor;
     Byte_array_slice src_segment = slice_for_marker(src, cursor);
     Byte_mut_p pointer = src_segment.start_p;
     while ((pointer =
@@ -1028,9 +1028,264 @@ count_appearances(Byte byte, Marker_p start, Marker_p end, Byte_array_p src)
       ++pointer;
       ++count;
     }
-    --cursor;
   }
   return count;
+}
+
+/** Skip forward all `T_SPACE` and `T_COMMENT` markers. */
+#define skip_space_forward(start, end) while (start is_not end and (start->token_type is T_SPACE or start->token_type is T_COMMENT)) ++start
+
+/** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
+#define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
+
+/** starting at `cursor`, which should point to an
+ * opening fence `{`, `[` or `(`, advance until the corresponding
+ * closing fence `}`, `]` or `)` is found, then return that address.
+ *  If the fences are not closed, the return value is `ènd`
+ * and an error message is stored in `err`.
+ */
+static inline Marker_p
+find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
+{
+  // TODO: search backwards if we start at a closing fence.
+  Marker_mut_p matching_close = cursor;
+  size_t nesting = 0;
+  do {
+    switch (matching_close->token_type) {
+      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+        ++nesting;
+        break;
+      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+        --nesting;
+        break;
+      default: break;
+    }
+    ++matching_close;
+  } while (matching_close is_not end and nesting is_not 0);
+
+  if (nesting is_not 0 or matching_close is end) {
+    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
+    err->position = cursor;
+  }
+
+  return matching_close;
+}
+
+/** Find start of line that contains `cursor`,
+ * looking back no further than `start`.
+ */
+static inline Marker_p
+find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
+{
+  Marker_mut_p start_of_line = cursor;
+  size_t nesting = 0;
+  while (start_of_line is_not start) {
+    switch (start_of_line->token_type) {
+      case T_SEMICOLON: case T_LABEL_COLON:
+      case T_BLOCK_START: case T_BLOCK_END:
+      case T_PREPROCESSOR:
+        if (nesting is 0 and start_of_line is_not cursor) {
+          ++start_of_line;
+          goto found;
+        }
+        break;
+      case T_TUPLE_START: case T_INDEX_START:
+        if (nesting is 0) {
+          ++start_of_line;
+          goto found;
+        } else {
+          --nesting;
+        }
+        break;
+      case T_TUPLE_END: case T_INDEX_END:
+        ++nesting;
+        break;
+      default:
+        break;
+    }
+    --start_of_line;
+  }
+found:
+
+  if (nesting is_not 0 or start_of_line < start) {
+    err->message = LANG("Demasiados cierres de grupo.",
+                        "Excess group closings.");
+    err->position = cursor;
+  }
+
+  return start_of_line;
+}
+
+/** Find end of line that contains `cursor`,
+ * looking forward no further than right before `end`.
+ */
+static inline Marker_p
+find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
+{
+  Marker_mut_p end_of_line = cursor;
+  size_t nesting = 0;
+  while (end_of_line is_not end) {
+    switch (end_of_line->token_type) {
+      case T_SEMICOLON: case T_LABEL_COLON:
+        if (nesting is 0) goto found;
+        break;
+      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+        ++nesting;
+        break;
+      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+        if (nesting is 0) goto found;
+        else              --nesting;
+        break;
+      default: break;
+    }
+    ++end_of_line;
+  }
+found:
+
+  if (nesting is_not 0 or end_of_line is end) {
+    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
+    err->position = cursor;
+  }
+
+  return end_of_line;
+}
+
+/** Find start of block that contains `cursor`,
+ * looking back no further than `start`.
+ */
+static inline Marker_p
+find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
+{
+  Marker_mut_p start_of_block = cursor;
+  size_t nesting = 0;
+  while (start_of_block >= start) {
+    switch (start_of_block->token_type) {
+      case T_BLOCK_START:
+        if (nesting is 0) {
+          ++start_of_block;
+          goto found;
+        } else {
+          --nesting;
+        }
+        break;
+      case T_BLOCK_END:
+        ++nesting;
+        break;
+      default: break;
+    }
+    --start_of_block;
+  }
+found:
+
+  if (nesting is_not 0 or start_of_block < start) {
+    err->message = LANG("Demasiados cierres de bloque.",
+                        "Excess block closings.");
+    err->position = cursor;
+  }
+
+  return start_of_block;
+}
+
+/** Find end of block that contains `cursor`,
+ * looking forward no further than right before `end`.
+ */
+static inline Marker_p
+find_block_end(Marker_p cursor, Marker_p end, mut_Error_p err)
+{
+  Marker_mut_p end_of_block = cursor;
+  size_t nesting = 0;
+  while (end_of_block is_not end) {
+    switch (end_of_block->token_type) {
+      case T_BLOCK_START:
+        ++nesting;
+        break;
+      case T_BLOCK_END:
+        if (nesting is 0) goto found;
+        else              --nesting;
+        break;
+      default: break;
+    }
+    ++end_of_block;
+  }
+found:
+
+  if (nesting is_not 0 or end_of_block is end) {
+    err->message = LANG("Bloque sin cerrar.", "Unclosed block.");
+    err->position = cursor;
+  }
+
+  return end_of_block;
+}
+
+/** Extract the indentation of the line for the character at `index`,
+ * including the preceding `LF` character if it exists.
+ */
+static Marker
+indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
+            Byte_array_p src)
+{
+  /*Byte_p start = Byte_array_start(src);
+  Byte_p end   = Byte_array_end(src);
+  Byte_mut_p start_of_line = slice_for_marker(src, marker).start_p;
+  while (*start_of_line is_not '\n') {
+    if (start_of_line is start) break;
+    --start_of_line;
+    }*/
+  // If *start_of_line is not '\n' here, there is no LF to re-use.
+  // This can only happen at the very fist line of the file,
+  // which should have no indentation anyway.
+  // Handling the hypothetical case where the first line of the file is indented
+  // is not worth the complication.
+  /*Byte_mut_p end_of_indentation = start_of_line + 1;*/
+  // TODO: this no longer makes sense: this is a single token of type T_SPACE.
+  /*while (end_of_indentation is_not end) {
+    if (*end_of_indentation is_not ' ' &&
+        *end_of_indentation is_not '\t') break;
+    ++end_of_indentation;
+  }*/
+  mut_Marker indentation = {0};
+  Marker_p start = Marker_array_start(markers);
+  Marker_mut_p cursor = marker;
+  if (cursor) {
+    mut_Error err = {0};
+    if (not already_at_line_start) {
+      cursor = find_line_start(cursor, start, &err);
+      if (err.message) {
+        eprintln("Error: %s", err.message);
+        return indentation;
+      }
+    }
+    if (cursor->token_type is_not T_SPACE) {
+      return indentation;
+    }
+    indentation = *cursor;
+    // Prefer space tokens with LF if available, for the case where we have
+    // a comment at the end of the previous line.
+    Marker_p end = Marker_array_end(markers);
+    while (cursor is_not end and
+           (cursor->token_type is T_SPACE or cursor->token_type is T_COMMENT)
+           ) {
+      ++cursor;
+      if (cursor->token_type is T_SPACE and
+          count_appearances('\n', cursor, cursor + 1, src) is_not 0) {
+        indentation = *cursor;
+      } else if (cursor->token_type is_not T_COMMENT) {
+        break;
+      }
+    }
+    // Remove empty lines, and trailing space in previous line.
+    Byte_array_slice slice = slice_for_marker(src, &indentation);
+    Byte_mut_p b = slice.end_p;
+    while (b is_not slice.start_p) {
+      if ('\n' == *(--b)) {
+        indentation.start = (size_t)(b - Byte_array_start(src));
+        indentation.len   = (size_t)(slice.end_p - b          );
+        break;
+      }
+    }
+  }
+  //init_Marker(&indentation, start_of_line, end_of_indentation, src, T_SPACE);
+  return indentation;
 }
 
 /** Compute the line number as
@@ -1051,7 +1306,7 @@ static void
 indent_eprintln(size_t indent)
 {
   if (indent > 40) indent = 40;
-  while (indent-- is_not 0) fprintf(stderr, "  ");
+  while (indent-- is_not 0) eprint("  ");
 }
 /** Log to `stderr` with the given indentation. */
 #define eprintln_indent(indent, ...) { indent_eprintln(indent); eprintln(__VA_ARGS__); }
@@ -1107,9 +1362,8 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
  *  @param[in] options formatting options.
  */
 static void
-print_markers(Marker_array_p markers, Byte_array_p src,
-              size_t start, size_t end,
-              size_t cursor, const char* cursor_label)
+print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
+              size_t start, size_t end)
 {
   size_t indent = 0;
   if (start is_not 0) {
@@ -1128,12 +1382,20 @@ print_markers(Marker_array_p markers, Byte_array_p src,
     }
   }
 
+  const char* token_number_format =
+      markers->len <     10? "%s% 1lu: ":
+      markers->len <    100? "%s% 2lu: ":
+      markers->len <   1000? "%s% 3lu: ":
+      markers->len <  10000? "%s% 4lu: ":
+      markers->len < 100000? "%s% 5lu: ": "%s% 6lu: ";
+
   mut_Byte_array token_text;
   init_Byte_array(&token_text, 80);
 
   const char * const spacing = "                                ";
   const size_t spacing_len = strlen(spacing);
 
+  Marker_p markers_start = Marker_array_start(markers);
   Marker_p m_start =
       get_Marker_array(markers, start);
   Marker_p m_end   = end?
@@ -1145,26 +1407,61 @@ print_markers(Marker_array_p markers, Byte_array_p src,
     extract_src(m, m+1, src, &token_text);
     token = as_c_string(&token_text);
 
-    const char * const spc = m->len <= spacing_len?
-        spacing + m->len:
-        spacing + spacing_len;
+    size_t len = m->len;
+    const char * const spc = len < spacing_len? spacing + len: " ";
 
+    eprint(token_number_format, prefix, (size_t)(m - markers_start));
     switch (m->token_type) {
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
-        eprintln_indent(indent++, "%s %s← %s",
+        eprintln_indent(indent++, "“%s” %s← %s",
                         token, spc, TokenType_STRING[m->token_type]);
         break;
       case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
-        eprintln_indent(--indent, "%s %s← %s",
+        eprintln_indent(--indent, "“%s” %s← %s",
                         token, spc, TokenType_STRING[m->token_type]);
         break;
+      case T_SPACE:
+        eprint("“");
+        for (size_t i = 0; i is_not token_text.len; ++i) {
+          Byte c = *get_Byte_array(&token_text, i);
+          switch (c) {
+            case '\n': eprint("\\n"); ++len; break;
+            case '\r': eprint("\\r"); ++len; break;
+            case '\t': eprint("\\t"); ++len; break;
+            default:   eprint("%c", c);
+          }
+        }
+        eprint("”");
+        eprintln_indent(indent, " %s← %s",
+                        len < spacing_len? spacing + len: " ",
+                        TokenType_STRING[m->token_type]);
+        break;
       default:
-        eprintln_indent(indent, "%s %s← %s",
+        eprintln_indent(indent, "“%s” %s← %s",
                         token, spc, TokenType_STRING[m->token_type]);
     }
   }
 
   destruct_Byte_array(&token_text);
+}
+
+/** Call `print_markers()` in an area around the given cursor.
+ */
+static void
+debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p markers, Byte_array_p src) {
+  size_t i = (size_t)(cursor - Marker_array_start(markers));
+  eprintln("%s:", label);
+
+  if (markers->len is 0) return;
+  print_markers(markers, src, "  ",
+                i > radius      ? i - radius: 0,
+                i < markers->len? i         : markers->len - 1);
+  print_markers(markers, src, "* ",
+                i   < markers->len? i  : markers->len - 1,
+                i+1 < markers->len? i+1: markers->len - 1);
+  print_markers(markers, src, "  ",
+                i+1 < markers->len         ? i+1         : markers->len - 1,
+                i+1 + radius < markers->len? i+1 + radius: markers->len - 1);
 }
 
 /** Format the markers back into source code form.
@@ -1274,10 +1571,10 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         memcpy(file_name, text + len, end - len);
         file_name[end - len] = '\0';
         mut_Byte_array bin;
-        read_file(&bin, file_name);
-        if (not bin.len) {
-          fprintf(out, ";// No data for %s\n#error %s",
-                  file_name, strerror(errno));
+        int err = read_file(&bin, file_name);
+        if (err) {
+          print_file_error(err, file_name, &bin);
+          fprintf(out, ";\n#error %s: %s\n", strerror(errno), file_name);
           break;
         }
         char*          basename = strrchr(file_name, '/');
@@ -1563,7 +1860,56 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           else                        { TOKEN1(T_OP_1);     }
           break;
         case '~': TOKEN1(T_OP_2);        break;
-        case '?': case ':': TOKEN1(T_OP_13); break;
+        case '?': TOKEN1(T_OP_13); break;
+        case ':':
+          TOKEN1(T_OP_13); // Default.
+          if (markers->len is_not 0) {
+            // skip_space_back:
+            Marker_p start = Marker_array_start(markers);
+            mut_Marker_mut_p m = mut_Marker_array_end(markers);
+            while (m is_not start and
+                   ((m-1)->token_type is T_SPACE or
+                    (m-1)->token_type is T_COMMENT)
+                   ) --m;
+            --m;
+            if (m->token_type is T_IDENTIFIER) {
+              mut_Marker_p label_candidate = m;
+              // skip_space_back:
+              while (m is_not start and
+                     ((m-1)->token_type is T_SPACE or
+                      (m-1)->token_type is T_COMMENT)
+                     ) --m;
+              --m;
+              if (m->token_type is T_SEMICOLON   or
+                  m->token_type is T_LABEL_COLON or
+                  m->token_type is T_BLOCK_START or
+                  m->token_type is T_BLOCK_END) {
+                label_candidate->token_type = T_CONTROL_FLOW_LABEL;
+                token_type = T_LABEL_COLON;
+                mut_Byte_array text;
+                init_Byte_array(&text, 10);
+                extract_src(label_candidate, label_candidate+1, src, &text);
+                eprintln("Found label: %s", as_c_string(&text));
+                destruct_Byte_array(&text);
+              }
+            } else {
+              mut_Error err = {0};
+              Marker_mut_p line_start = find_line_start(m, start, &err);
+              if (err.message) {
+                eprintln("Error: src[%lu]: %s",
+                         cursor-Byte_array_start(src), err.message);
+                return cursor;
+              }
+              while (line_start->token_type is T_SPACE or
+                     line_start->token_type is T_COMMENT) ++line_start;
+              if (line_start->token_type is T_CONTROL_FLOW_CASE) {
+                token_type = T_LABEL_COLON;
+              } else {
+                eprintln("---- line_start is %s", TokenType_STRING[line_start->token_type]);
+              }
+            }
+          }
+          break;
         case '+':
           switch (c2) {
             case '+':
@@ -1659,7 +2005,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
         case '@':
           TOKEN1(T_BACKSTITCH);
           break;
-        default: TOKEN1(T_OTHER);
       }
     }
     if (error.len) {
@@ -1667,6 +2012,15 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                cursor-Byte_array_start(src), as_c_string(&error));
       return cursor;
     }
+    if (token_type is T_NONE) {
+      token_end = other(cursor, end);
+      if (not token_end) {
+        eprintln("Error: src[%lu]: problem extracting other token.",
+                 cursor-Byte_array_start(src), as_c_string(&error));
+        break;
+      }
+    }
+
     mut_Marker marker;
     init_Marker(&marker, cursor, token_end, src, token_type);
     push_Marker_array(markers, marker);
@@ -1691,190 +2045,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   }
 
   return cursor;
-}
-
-/** Skip forward all `T_SPACE` and `T_COMMENT` markers. */
-#define skip_space_forward(start, end) while (start is_not end and (start->token_type is T_SPACE or start->token_type is T_COMMENT)) ++start
-
-/** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
-#define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
-
-/** starting at `cursor`, which should point to an
- * opening fence `{`, `[` or `(`, advance until the corresponding
- * closing fence `}`, `]` or `)` is found, then return that address.
- *  If the fences are not closed, the return value is `ènd`
- * and an error message is stored in `err`.
- */
-static inline Marker_p
-find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
-{
-  // TODO: search backwards if we start at a closing fence.
-  Marker_mut_p matching_close = cursor;
-  size_t nesting = 0;
-  do {
-    switch (matching_close->token_type) {
-      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
-        ++nesting;
-        break;
-      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
-        --nesting;
-        break;
-      default: break;
-    }
-    ++matching_close;
-  } while (matching_close is_not end and nesting is_not 0);
-
-  if (nesting is_not 0 or matching_close is end) {
-    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
-    err->position = cursor;
-  }
-
-  return matching_close;
-}
-
-/** Find start of line that contains `cursor`,
- * looking back no further than `start`.
- */
-static inline Marker_p
-find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
-{
-  Marker_mut_p start_of_line = cursor;
-  size_t nesting = 0;
-  while (start_of_line is_not start) {
-    switch (start_of_line->token_type) {
-      case T_SEMICOLON: case T_BLOCK_START: case T_BLOCK_END:
-      case T_PREPROCESSOR:
-        if (nesting is 0) {
-          ++start_of_line;
-          goto found;
-        }
-        break;
-      case T_TUPLE_START: case T_INDEX_START:
-        if (nesting is 0) {
-          ++start_of_line;
-          goto found;
-        } else {
-          --nesting;
-        }
-        break;
-      case T_TUPLE_END: case T_INDEX_END:
-        ++nesting;
-        break;
-      default:
-        break;
-    }
-    --start_of_line;
-  }
-found:
-
-  if (nesting is_not 0 or start_of_line < start) {
-    err->message = LANG("Demasiados cierres de grupo.",
-                        "Excess group closings.");
-    err->position = cursor;
-  }
-
-  return start_of_line;
-}
-
-/** Find end of line that contains `cursor`,
- * looking forward no further than right before `end`.
- */
-static inline Marker_p
-find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
-{
-  Marker_mut_p end_of_line = cursor;
-  size_t nesting = 0;
-  while (end_of_line is_not end) {
-    switch (end_of_line->token_type) {
-      case T_SEMICOLON:
-        if (nesting is 0) goto found;
-        break;
-      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
-        ++nesting;
-        break;
-      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
-        if (nesting is 0) goto found;
-        else              --nesting;
-        break;
-      default: break;
-    }
-    ++end_of_line;
-  }
-found:
-
-  if (nesting is_not 0 or end_of_line is end) {
-    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
-    err->position = cursor;
-  }
-
-  return end_of_line;
-}
-
-/** Find start of block that contains `cursor`,
- * looking back no further than `start`.
- */
-static inline Marker_p
-find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
-{
-  Marker_mut_p start_of_block = cursor;
-  size_t nesting = 0;
-  while (start_of_block >= start) {
-    switch (start_of_block->token_type) {
-      case T_BLOCK_START:
-        if (nesting is 0) {
-          ++start_of_block;
-          goto found;
-        } else {
-          --nesting;
-        }
-        break;
-      case T_BLOCK_END:
-        ++nesting;
-        break;
-      default: break;
-    }
-    --start_of_block;
-  }
-found:
-
-  if (nesting is_not 0 or start_of_block < start) {
-    err->message = LANG("Demasiados cierres de bloque.",
-                        "Excess block closings.");
-    err->position = cursor;
-  }
-
-  return start_of_block;
-}
-
-/** Find end of block that contains `cursor`,
- * looking forward no further than right before `end`.
- */
-static inline Marker_p
-find_block_end(Marker_p cursor, Marker_p end, mut_Error_p err)
-{
-  Marker_mut_p end_of_block = cursor;
-  size_t nesting = 0;
-  while (end_of_block is_not end) {
-    switch (end_of_block->token_type) {
-      case T_BLOCK_START:
-        ++nesting;
-        break;
-      case T_BLOCK_END:
-        if (nesting is 0) goto found;
-        else              --nesting;
-        break;
-      default: break;
-    }
-    ++end_of_block;
-  }
-found:
-
-  if (nesting is_not 0 or end_of_block is end) {
-    err->message = LANG("Bloque sin cerrar.", "Unclosed block.");
-    err->position = cursor;
-  }
-
-  return end_of_block;
 }
 
 /***************** macros *****************/
@@ -1910,8 +2080,11 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
     parse(src_p, &markers);
 
     if (options->apply_macros) {
-      macro_backstitch(&markers, src_p);
-      macro_defer(&markers, src_p);
+      Macro_p macro = macros;
+      while (macro->name && macro->function) {
+        macro->function(&markers, src_p);
+        ++macro;
+      }
     }
     fputc('.', stderr);
   }
@@ -2017,7 +2190,7 @@ int main(int argc, char** argv)
       } else if (str_eq("--benchmark", arg)) {
         opt_run_benchmark = true;
       } else if (str_eq("--version", arg)) {
-        fprintf(stderr, CEDRO_VERSION "\n");
+        eprintln(CEDRO_VERSION);
       } else {
         eprintln(LANG(usage_es, usage_en));
         return str_eq("-h", arg) || str_eq("--help", arg)? 0: 1;
@@ -2042,11 +2215,13 @@ int main(int argc, char** argv)
     char* arg = argv[i];
     if (arg[0] is '-') continue;
 
+    FILE* out = stdout;
+
     mut_Byte_array src;
-    read_file(&src, arg);
-    if (not src.len) {
-      fprintf(stdout, ";// File \"%s\"\n#error %s\n",
-              arg, strerror(errno));
+    int err = read_file(&src, arg);
+    if (err) {
+      print_file_error(err, arg, &src);
+      fprintf(out, ";\n#error %s: %s\n", strerror(errno), arg);
       break;
     }
 
@@ -2070,13 +2245,13 @@ int main(int argc, char** argv)
       }
 
       if (opt_print_markers) {
-        print_markers(&markers, &src, 0, 0, 0, NULL);
+        print_markers(&markers, &src, "", 0, 0);
       } else {
-        unparse(&markers, &src, options, stdout);
+        unparse(&markers, &src, options, out);
       }
     }
 
-    fflush(stdout);
+    fflush(out);
     destruct_Marker_array(&markers);
     destruct_Byte_array(&src);
   }

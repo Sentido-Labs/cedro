@@ -60,10 +60,11 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                  line_number(src, markers, err.position), err.message);
         err.message = NULL;
       } else {
+        Marker object_indentation =
+            indentation(markers, start_of_line, true, src);
         // Trim space before object.
         skip_space_forward(start_of_line, object.end_p);
         object.start_p = start_of_line;
-        Marker object_indentation = indentation(src, object.start_p);
         // Trim space after object, between it and backstitch operator.
         skip_space_back(object.start_p, object.end_p);
         cursor = first_segment_start;
@@ -126,18 +127,22 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
             mut_Marker_mut_p insertion_point = segment_start;
             bool inside_parenthesis = false;
+            bool is_function_call   = true;
             if (segment_start->token_type is T_INDEX_START ||
                 segment_start->token_type is T_OP_1        ||
                 segment_start->token_type is T_OP_14) {
-              // If the segment starts with “[”, “.”, or “->”,
+              // If the segment starts with “[”, “.”, “->”, or “=”,
               // then this is already the correct insertion point.
             } else {
               // Assume function call, look for parenthesis:
               while (not inside_parenthesis and insertion_point < segment_end) {
                 TokenType t = insertion_point->token_type;
-                if (T_TUPLE_START is t) {
-                  if (insertion_point is_not start and
-                      (insertion_point-1)->token_type is T_IDENTIFIER) {
+                if (T_IDENTIFIER is t) {
+                  is_function_call = true;
+                } else if (is_keyword(t)) {
+                  is_function_call = false;
+                } else if (T_TUPLE_START is t) {
+                  if (insertion_point is_not start and is_function_call) {
                     // Ignore control flow statements like if(...) etc.
                     inside_parenthesis = true;
                   }
@@ -150,6 +155,9 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               // this is clearly not a function call.
               // Useful for prefix declaration like: const @ int x, float y;
             }
+            if (insertion_point is segment_end) {
+              insertion_point = segment_start;
+            }
 
             if (insertion_point is segment_start) {
               if (object.start_p is_not object.end_p) {
@@ -158,18 +166,6 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 if ((segment_start+1)->token_type == T_SPACE) {
                   push_Marker_array(&replacement, space);
                 }
-              }
-              if (prefix) push_Marker_array(&replacement, *prefix);
-              if (suffix) {
-                push_Marker_array(&replacement, *insertion_point++);
-                push_Marker_array(&replacement, *suffix);
-              }
-            } else if (insertion_point is segment_end) {
-              insertion_point = segment_start;
-              if (object.start_p is_not object.end_p) {
-                splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    &object);
-                push_Marker_array(&replacement, space);
               }
               if (prefix) push_Marker_array(&replacement, *prefix);
               if (suffix) {
@@ -197,7 +193,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               }
               splice_Marker_array(&replacement, replacement.len, 0, NULL,
                                   &slice);
-              if (object.end_p is_not object.start_p) { // Allow elided object.
+              // Only insert object if not empty, allow elided object.
+              if (object.end_p is_not object.start_p) {
                 splice_Marker_array(&replacement, replacement.len, 0, NULL,
                                     &object);
                 if (inside_parenthesis) {
