@@ -1509,8 +1509,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
     }
     if (m->token_type is T_PREPROCESSOR) {
       size_t len = 9; // = strlen("#define {");
-      if (m->len >= len and
-          strn_eq("#define {", (char*)text, m->len < len? m->len: len)) {
+      if (m->len >= len and strn_eq("#define {", (char*)text, len)) {
         text += len;
         if (text is_not Byte_array_end(src) && *text == ' ') {
           fputs("#define", out);
@@ -1523,7 +1522,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
             continue;
           } else if (m->token_type is T_PREPROCESSOR) {
             text = slice_for_marker(src, m).start_p;
-            if (strn_eq("#define }", (char*)text, m->len < 9? m->len: 9)) {
+            if (m->len >= 9 and strn_eq("#define }", (char*)text, 9)) {
               puts("// End #define");
               break;
             }
@@ -1563,8 +1562,7 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
         continue;
       }
       len = 10; // = strlen("#include {");
-      if (m->len >= len and
-          strn_eq("#include {", (char*)text, m->len < len? m->len: len)) {
+      if (m->len >= len and strn_eq("#include {", (char*)text, len)) {
         size_t end;
         for (end = len; end < m->len; ++end) if (text[end] is '}') break;
         char* file_name = malloc(end - len + 1);
