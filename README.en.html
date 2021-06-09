@@ -352,8 +352,8 @@ $ valgrind --leak-check=yes ./repeat
 <code>#define { macro(A, B, C)
 f_##A(B, C); /// Specialized version of f() for type A.
 #define }</code>
-<code>#define macro(A, B, C) \
-f_##A(B, C); /** Specialized version of f() for type A. */ \
+<code>#define macro(A, B, C)                                                        \
+f_##A(B, C); /** Specialized version of f() for type A. */                    \
 // End #define</code>
       <p>Preprocessor directives are still not allowed
         inside macros, so you can not use

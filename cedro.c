@@ -933,8 +933,9 @@ comment(Byte_p start, Byte_p end)
 static inline Byte_p
 preprocessor(Byte_p start, Byte_p end)
 {
-  if (*start is_not '#') return NULL;
-  Byte_mut_p cursor = start;
+  if (start is end or *start is_not '#') return NULL;
+  Byte_mut_p cursor = start + 1;
+  if (cursor is_not end and *cursor is '#') return cursor + 1;
   do {
     cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
     if (!cursor) { cursor = end; break; }
@@ -1300,16 +1301,39 @@ line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
                                src);
 }
 
-/** Indent by the given number of double spaces, for the next `eprintln()`
+/** ISO/IEC 9899:TC3 WG14/N1256 §6.7.8 page 126:
+ * “14 An array of character type may be initialized by a character string
+ *     literal, optionally enclosed in braces. Successive characters of the
+ *     character string literal (including the terminating null character
+ *     if there is room or if the array is of unknown size) initialize the
+ *     elements of the array.”
+ * http://www.open-std.org/jtc1/sc22/WG14/www/docs/n1256.pdf#138
+ */
+static const char spacing[80] =
+    //123456789/123456789/123456789/123456789
+    "                                        "
+    "                                        ";
+/** Tabulator position when printing markers in `print_markers()`. */
+static const size_t markers_tabulator = 20;
+/** Right margin position for the newline escapes in block macros. */
+static const size_t right_margin = sizeof(spacing) - 2;
+
+/** Indent by the given number of spaces, for the next `eprint()`
  * or `fprintf(stder, …)`. */
 static void
-indent_eprintln(size_t indent)
+indent_eprint(size_t indent)
 {
-  if (indent > 40) indent = 40;
-  while (indent-- is_not 0) eprint("  ");
+  if (indent > sizeof(spacing)) indent = sizeof(spacing);
+  while (indent-- is_not 0) eprint(" ");
 }
-/** Log to `stderr` with the given indentation. */
-#define eprintln_indent(indent, ...) { indent_eprintln(indent); eprintln(__VA_ARGS__); }
+/** Tabulate to the given number of spaces, for the next `eprint()`
+ * or `fprintf(stder, …)`. */
+static void
+tabulate_eprint(size_t skip, size_t tabulator)
+{
+  if (skip > tabulator) skip = tabulator;
+  while (skip++ is_not tabulator) eprint(" ");
+}
 
 /** Build a new marker for the given string,
  * pointing to its first appearance in `src`.
@@ -1392,9 +1416,6 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
   mut_Byte_array token_text;
   init_Byte_array(&token_text, 80);
 
-  const char * const spacing = "                                ";
-  const size_t spacing_len = strlen(spacing);
-
   Marker_p markers_start = Marker_array_start(markers);
   Marker_p m_start =
       get_Marker_array(markers, start);
@@ -1408,19 +1429,19 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
     token = as_c_string(&token_text);
 
     size_t len = m->len;
-    const char * const spc = len < spacing_len? spacing + len: " ";
 
     eprint(token_number_format, prefix, (size_t)(m - markers_start));
     switch (m->token_type) {
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
-        eprintln_indent(indent++, "“%s” %s← %s",
-                        token, spc, TokenType_STRING[m->token_type]);
+        indent_eprint(indent++ * 2);
+        eprint("“%s”", token);
         break;
       case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
-        eprintln_indent(--indent, "“%s” %s← %s",
-                        token, spc, TokenType_STRING[m->token_type]);
+        indent_eprint(--indent * 2);
+        eprint("“%s”", token);
         break;
       case T_SPACE:
+        indent_eprint(indent * 2);
         eprint("“");
         for (size_t i = 0; i is_not token_text.len; ++i) {
           Byte c = *get_Byte_array(&token_text, i);
@@ -1432,14 +1453,13 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
           }
         }
         eprint("”");
-        eprintln_indent(indent, " %s← %s",
-                        len < spacing_len? spacing + len: " ",
-                        TokenType_STRING[m->token_type]);
         break;
       default:
-        eprintln_indent(indent, "“%s” %s← %s",
-                        token, spc, TokenType_STRING[m->token_type]);
+        indent_eprint(indent * 2);
+        eprint("“%s”", token);
     }
+    tabulate_eprint(len, markers_tabulator);
+    eprintln(" ← %s", TokenType_STRING[m->token_type]);
   }
 
   destruct_Byte_array(&token_text);
@@ -1510,13 +1530,17 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
     if (m->token_type is T_PREPROCESSOR) {
       size_t len = 9; // = strlen("#define {");
       if (m->len >= len and strn_eq("#define {", (char*)text, len)) {
+        size_t line_length;
         text += len;
         if (text is_not Byte_array_end(src) && *text == ' ') {
           fputs("#define", out);
+          line_length = 7;
         } else {
           fputs("#define ", out);
+          line_length = 8;
         }
         fwrite(text, sizeof(src->items[0]), m->len - len, out);
+        line_length += m->len - len;
         for (++m; m is_not m_end; ++m) {
           if (options.discard_comments && m->token_type is T_COMMENT) {
             continue;
@@ -1524,9 +1548,11 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
             text = slice_for_marker(src, m).start_p;
             if (m->len >= 9 and strn_eq("#define }", (char*)text, 9)) {
               puts("// End #define");
+              // Not needed: line_length += strlen("// End #define");
               break;
             }
             fwrite(text, sizeof(src->items[0]), m->len, out);
+            line_length += m->len;
           } else {
             text = slice_for_marker(src, m).start_p;
             len = m->len;
@@ -1535,9 +1561,9 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
               // Valid comment tokens will always be at least 2 chars long,
               // but we need to check in case this one is not.
               if ('/' == text[1]) {
-                fputc('/', out); ++text; --len;
+                fputc('/', out); ++text; --len; ++line_length;
                 while ('/' == *text and len) {
-                  fputc('*', out); ++text; --len;
+                  fputc('*', out); ++text; --len; ++line_length;
                 }
                 is_line_comment = true;
               }
@@ -1545,17 +1571,29 @@ unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
             Byte_mut_p eol;
             while ((eol = memchr(text, '\n', len))) {
               fwrite(text, sizeof(src->items[0]), (size_t)(eol - text), out);
+              line_length += (size_t)(eol - text);
               if (is_line_comment) {
                 fputs(" */", out);
+                line_length += 3;
                 is_line_comment = false;
               }
-              fputs(" \\\n", out);
+              fputc(' ', out);
+              line_length += 1;
+
+              fwrite(spacing, sizeof(spacing[0]),
+                     line_length < right_margin? right_margin - line_length: 0,
+                     out);
+              fputs("\\\n", out);
+              line_length = 0;
+
               len -= (size_t)(eol - text) + 1;
               text = eol + 1;
             }
             fwrite(text, sizeof(src->items[0]), len, out);
+            line_length += len;
             if (is_line_comment) {
               fputs(" */", out);
+              line_length += 3;
             }
           }
         }

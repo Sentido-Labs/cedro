@@ -351,8 +351,8 @@ $ valgrind --leak-check=yes ./repeat
 <code>#define { macro(A, B, C)
 f_##A(B, C); /// Versión especializada de f() para el tipo A.
 #define }</code>
-<code>#define macro(A, B, C) \
-f_##A(B, C); /** Versión especializada de f() para el tipo A. */ \
+<code>#define macro(A, B, C)                                                        \
+f_##A(B, C); /** Versión especializada de f() para el tipo A. */              \
 // End #define</code>
       <p>Aún así, las directrices de preprocesador no se permiten
         dentro de macros, de manera que no se pueden usar
