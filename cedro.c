@@ -169,6 +169,8 @@ typedef struct Options {
   bool discard_space;
   /// Skip comments, or include them in the markers array.
   bool discard_comments;
+  /// Insert #line directives in the output, mapping to the original file.
+  bool insert_line_directives;
 } Options, *Options_p;
 
 /** Binary string, `const unsigned char const*`. */
@@ -1034,6 +1036,17 @@ count_appearances(Byte byte, Marker_p start, Marker_p end, Byte_array_p src)
   return count;
 }
 
+/** Check whether a given byte appears in a marker.
+ * It is faster than `count_appearances(byte, marker, marker+1, src) != 0`.
+ */
+static inline bool
+has_byte(Byte byte, Marker_p marker, Byte_array_p src)
+{
+  Byte_array_slice src_segment = slice_for_marker(src, marker);
+  Byte_mut_p pointer = src_segment.start_p;
+  return !!memchr(pointer, byte, (size_t)(src_segment.end_p - pointer));
+}
+
 /** Skip forward all `T_SPACE` and `T_COMMENT` markers. */
 #define skip_space_forward(start, end) while (start is_not end and (start->token_type is T_SPACE or start->token_type is T_COMMENT)) ++start
 
@@ -1268,8 +1281,7 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
            (cursor->token_type is T_SPACE or cursor->token_type is T_COMMENT)
            ) {
       ++cursor;
-      if (cursor->token_type is T_SPACE and
-          count_appearances('\n', cursor, cursor + 1, src) is_not 0) {
+      if (cursor->token_type is T_SPACE and has_byte('\n', cursor, src)) {
         indentation = *cursor;
       } else if (cursor->token_type is_not T_COMMENT) {
         break;
@@ -1290,9 +1302,7 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
   return indentation;
 }
 
-/** Compute the line number as
- * ```1 + count_line_ends_between(src, 0, position)```.
- */
+/** Compute the line number in the current state of the file. */
 static size_t
 line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
 {
@@ -1300,6 +1310,22 @@ line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
                                Marker_array_start(markers),
                                position,
                                src);
+}
+
+/** Compute the line number in the original file. */
+static size_t
+original_line_number(size_t position, Byte_array_p src)
+{
+  size_t line = 1;
+  Byte_p end = get_Byte_array(src, position);
+  Byte_mut_p cursor = Byte_array_start(src);
+  while (cursor < end) {
+    cursor = memchr(cursor, '\n', (size_t)(end - cursor));
+    if (not cursor) break;
+    ++cursor;
+    ++line;
+  }
+  return line;
 }
 
 /** ISO/IEC 9899:TC3 WG14/N1256 §6.7.8 page 126:
@@ -1348,18 +1374,17 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
   Byte_mut_p match  = NULL;
   Byte_p     end    = Byte_array_end(src);
   size_t text_len = strlen(text);
-  if (end - cursor >= text_len) {
-    const char first_character = text[0];
-    while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
-      Byte_mut_p p1 = cursor;
-      Byte_mut_p p2 = (Byte_p) text;
-      while (*p2 && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
-      if (*p2 is 0) {
-        match = cursor;
-        break;
-      }
-      ++cursor;
+  const Byte_p text_end = (Byte_p)text + text_len;
+  const char first_character = text[0];
+  while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
+    Byte_mut_p p1 = cursor;
+    Byte_mut_p p2 = (Byte_p) text;
+    while (p2 is_not text_end && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
+    if (p2 is text_end) {
+      match = cursor;
+      break;
     }
+    ++cursor;
   }
   mut_Marker marker;
   if (not match) {
@@ -1487,20 +1512,54 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
 
 /** Format the markers back into source code form.
  *  @param[in] markers tokens for the current form of the program.
- *  @param[in] src original source code.
+ *  @param[in] src original source code, with any new tokens appended.
+ *  @param[in] original_src_len original source code length.
  *  @param[in] options formatting options.
  *  @param[in] out FILE pointer where the source code will be written.
  */
 static void
-unparse(Marker_array_p markers, Byte_array_p src, Options options, FILE* out)
+unparse(Marker_array_p markers, Byte_array_p src,
+        size_t original_src_len, char* src_file_name,
+        Options options, FILE* out)
 {
   Marker_p m_end = Marker_array_end(markers);
   bool eol_pending = false;
+  size_t previous_marker_end        = 0;
+  size_t previous_marker_token_type = T_NONE;
+  bool line_directive_pending = false;
   for (Marker_mut_p m = (Marker_mut_p) markers->items; m is_not m_end; ++m) {
     if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
       continue;
+    }
+    if (options.insert_line_directives) {
+      if (m->start is_not previous_marker_end) {
+        if (m->token_type is T_SPACE) {
+          line_directive_pending = true;
+        } else if (m->start >= original_src_len) {
+          // Skip it if m did not come from the original src.
+        } else {
+          // If both this and the previous tokens were identifiers,
+          // it means a new identifier made by concatenation in a macro,
+          // so do not put a #line directive inbetween.
+          // Same for numbers, in case they are built by some future macro.
+          if (not(previous_marker_token_type is m->token_type and
+                  (previous_marker_token_type is T_IDENTIFIER or
+                   previous_marker_token_type is T_NUMBER)
+                  )) {
+            fprintf(out, "\n#line %lu \"%s\"\n",
+                    original_line_number(m->start, src), src_file_name);
+            line_directive_pending = false;
+          }
+        }
+      } else if (line_directive_pending) {
+        fprintf(out, "\n#line %lu \"%s\"\n",
+                original_line_number(m->start, src), src_file_name);
+        line_directive_pending = false;
+      }
+      previous_marker_end        = m->start + m->len;
+      previous_marker_token_type = m->token_type;
     }
     Byte_mut_p text = slice_for_marker(src, m).start_p;
     if (options.discard_space) {
@@ -2141,6 +2200,8 @@ usage_es =
     " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
+    "  Con cedrocc, las siguientes opciones son implícitas:\n"
+    "    --discard-comments --insert-line-directives\n"
     "\n"
     "  --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)\n"
     "  --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.\n"
@@ -2150,6 +2211,8 @@ usage_es =
     "  --discard-space       Descarta los espacios en blanco.\n"
     "  --no-discard-comments No descarta los comentarios. (implícito)\n"
     "  --no-discard-space    No descarta los espacios.    (implícito)\n"
+    "  --insert-line-directives    Inserta directivas #line.\n"
+    "  --no-insert-line-directives No inserta directivas #line. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
@@ -2168,6 +2231,8 @@ usage_en =
     " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"
     " cedrocc -o file file.c\n"
+    "  With cedrocc, the following options are the defaults:\n"
+    "    --discard-comments --insert-line-directives\n"
     "\n"
     "  --apply-macros     Apply the macros: backstitch, defer, etc. (default)\n"
     "  --escape-ucn       Escape non-ASCII in identifiers as UCN.\n"
@@ -2177,6 +2242,8 @@ usage_en =
     "  --discard-space       Discards all whitespace.\n"
     "  --no-discard-comments Does not discard comments.   (default)\n"
     "  --no-discard-space    Does not discard whitespace. (default)\n"
+    "  --insert-line-directives    Insert #line directives.\n"
+    "  --no-insert-line-directives Do not insert #line directives. (default)\n"
     "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
@@ -2191,10 +2258,11 @@ usage_en =
 int main(int argc, char** argv)
 {
   Options options = { // Remember to keep the usage strings updated.
-    .apply_macros     = true,
-    .escape_ucn       = false,
-    .discard_comments = false,
-    .discard_space    = false
+    .apply_macros           = true,
+    .escape_ucn             = false,
+    .discard_comments       = false,
+    .discard_space          = false,
+    .insert_line_directives = false
   };
 
   bool opt_print_markers    = false;
@@ -2218,6 +2286,9 @@ int main(int argc, char** argv)
       } else if (str_eq("--discard-space", arg) ||
                  str_eq("--not-discard-space", arg)) {
         options.discard_space = flag_value;
+      } else if (str_eq("--insert-line-directives", arg) ||
+                 str_eq("--not-insert-line-directives", arg)) {
+        options.insert_line_directives = flag_value;
       } else if (str_eq("--print-markers", arg) ||
                  str_eq("--not-print-markers", arg)) {
         opt_print_markers = flag_value;
@@ -2266,6 +2337,8 @@ int main(int argc, char** argv)
 
     parse(&src, &markers);
 
+    size_t original_src_len = src.len;
+
     if (opt_run_benchmark) {
       double t = benchmark(&src, &options);
       if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, arg);
@@ -2284,7 +2357,7 @@ int main(int argc, char** argv)
       if (opt_print_markers) {
         print_markers(&markers, &src, "", 0, 0);
       } else {
-        unparse(&markers, &src, options, out);
+        unparse(&markers, &src, original_src_len, arg, options, out);
       }
     }
 

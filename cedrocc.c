@@ -46,10 +46,11 @@ int main(int argc, char* argv[])
   }
 
   Options options = {
-    .apply_macros     = true,
-    .escape_ucn       = false,
-    .discard_comments = false,
-    .discard_space    = false,
+    .apply_macros           = true,
+    .escape_ucn             = false,
+    .discard_comments       = false,
+    .discard_space          = false,
+    .insert_line_directives = true
   };
 
   char* file_name = NULL;
@@ -111,6 +112,8 @@ int main(int argc, char* argv[])
   } else {
     parse(&src, &markers);
 
+    size_t original_src_len = src.len;
+
     Macro_p macro = macros;
     while (macro->name and macro->function) {
       macro->function(&markers, &src);
@@ -121,7 +124,7 @@ int main(int argc, char* argv[])
     fflush(stdout);
 
     FILE* cc_stdin = popen(cmd, "w");
-    unparse(&markers, &src, options, cc_stdin);
+    unparse(&markers, &src, original_src_len, file_name, options, cc_stdin);
     return_code = pclose(cc_stdin);
 
     fflush(stdout);

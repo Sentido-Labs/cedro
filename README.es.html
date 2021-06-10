@@ -25,6 +25,8 @@
  cedro fichero.c | cc -x c - -o fichero
   Es lo que hace el programa cedrocc:
  cedrocc -o fichero fichero.c
+  Con cedrocc, las siguientes opciones son implícitas:
+    --discard-comments --insert-line-directives
 
   --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)
   --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.
@@ -34,6 +36,8 @@
   --discard-space       Descarta los espacios en blanco.
   --no-discard-comments No descarta los comentarios. (implícito)
   --no-discard-space    No descarta los espacios.    (implícito)
+  --insert-line-directives    Inserta directivas #line.
+  --no-insert-line-directives No inserta directivas #line. (implícito)
 
   --print-markers    Imprime los marcadores.
   --no-print-markers No imprime los marcadores. (implícito)

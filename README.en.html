@@ -20,11 +20,14 @@
       <p>To activate it, the source file must contain this line:
         <code>#pragma Cedro 1.0</code><br/>
         Otherwise, the file is copied directly to the output.</p>
-      <code>Usage: cedro [options] file.c [file2.c … ]
+      <code>LANG=en.UTF-8 ./cedro -h
+Usage: cedro [options] file.c [file2.c … ]
   The result goes to stdout, can be used without an intermediate file like this:
  cedro file.c | cc -x c - -o file
   It is what the cedrocc program does:
  cedrocc -o file file.c
+  With cedrocc, the following options are the defaults:
+    --discard-comments --insert-line-directives
 
   --apply-macros     Apply the macros: backstitch, defer, etc. (default)
   --escape-ucn       Escape non-ASCII in identifiers as UCN.
@@ -34,6 +37,8 @@
   --discard-space       Discards all whitespace.
   --no-discard-comments Does not discard comments.   (default)
   --no-discard-space    Does not discard whitespace. (default)
+  --insert-line-directives    Insert #line directives.
+  --no-insert-line-directives Do not insert #line directives. (default)
 
   --print-markers    Prints the markers.
   --no-print-markers Does not print the markers. (default)
