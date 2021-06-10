@@ -112,12 +112,13 @@ eprint(const char * const fmt, ...)
       }
       */
       if ((u & 0xFFFFFF00) is 0) {
-        fputc((unsigned char) u, stderr); // ISO-8859-1/ISO-8859-15
+        fputc((unsigned char) u, stderr); // Latin-1 / ISO-8859-1 / ISO-8859-15
       } else {
         switch (u) {
+          case 0x00002018:
+          case 0x00002019: fputc('\'',  stderr); break;
           case 0x0000201C:
           case 0x0000201D: fputc('"',   stderr); break;
-          case 0x00002019: fputc('\'',  stderr); break;
           case 0x00002026: fputs("...", stderr); break;
           case 0x00002190: fputs("<-",  stderr); break;
           case 0x00002192: fputs("->",  stderr); break;
