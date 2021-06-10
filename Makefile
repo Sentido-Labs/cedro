@@ -48,5 +48,5 @@ check: $(NAME)
 
 clean:
 	rm -f $(NAME) $(NAME)-debug
-	$(MAKE) -C doc clean
+	if [ -e doc ]; then $(MAKE) -C doc clean; fi
 .PHONY: clean
