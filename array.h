@@ -154,7 +154,7 @@ init_from_constant_##T##_array(mut_##T##_array_p _,                     \
                                T* items, size_t len)                    \
 {                                                                       \
   _->len = len;                                                         \
-  _->capacity = len;                                                    \
+  _->capacity = 0;                                                      \
   _->items = items;                                                     \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
