@@ -1692,7 +1692,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
     if (options.escape_ucn and m->token_type is T_IDENTIFIER) {
       Byte_p end = text + m->len;
       Byte_mut_p p = text;
-      while ((p is_not end)) {
+      while (p is_not end) {
         mut_Byte c = *p;
         uint32_t u = 0;
         uint32_t len = 0;
