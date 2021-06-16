@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8"/>
     <title>Extensión del lenguaje de programación C: pre-procesador Cedro</title>
-    <style type="text/css">html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } table { border-collapse:collapse; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
+    <style type="text/css">html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -58,7 +58,7 @@
     </section>
 
     <section id="backstitch-operator">
-      <h2>Operador <a href="https://es.wikipedia.org/wiki/Pespunte">pespunte</a>: @</h2>
+      <h2>Operador <a href="https://es.wikipedia.org/wiki/Pespunte">pespunte</a>: @ <a class="anchor" href="#backstitch-operator">#backstitch-operator</a></h2>
       <p>Hilvana un valor a través de una secuencia de llamadas de función,
         como primer parámetro para cada una.</p>
       <p>Es una versión explícita de lo que hacen otros lenguajes de programación
@@ -156,7 +156,7 @@ nvgFill(contexto_gráfico);</code>
         Esto se puede usar para encapsularlo al encadenar Cedro con otro
         pre-procesador que lo use.</p>
 
-      <h3>Obras relacionadas</h3>
+      <h3 id="backstitch-operator-related-work">Obras relacionadas <a class="anchor" href="#backstitch-operator-related-work">#…-related-work</a></h3>
       <p>Buscando realizaciones anteriores de esta idea he encontrado
         <a href="https://github.com/eudoxia0/magma">magma</a> (2014),
         donde se llama
@@ -184,7 +184,7 @@ nvgFill(contexto_gráfico);</code>
     </section>
 
     <section id="deferred-resource-release">
-      <h2>Devolución diferida de recursos:</h2>
+      <h2>Devolución diferida de recursos: <a class="anchor" href="#deferred-resource-release">#deferred-resource-release</a></h2>
       <p>Mueve el código de devolución de una variable al final de su alcance,
         incluídos los puntos de salida
         <code>break</code>, <code>continue</code>, <code>goto</code>,
@@ -206,10 +206,13 @@ nvgFill(contexto_gráfico);</code>
         La primera diferencia es que en Go,
         todas las devoluciones ocurren al salir de la función,
         mientras que en Cedro las devoluciones ocurren al salir de cada bloque,
-        como hacen los destructores en C++.
-        Hay más diferencias, como por ejemplo que en Go se puede usar para
+        como hacen los destructores en C++.</p>
+      <p>Hay más diferencias, como por ejemplo que en Go se puede usar para
         modificar el valor de retorno de la función,
-        y que Cedro ni siquiera intenta tratar con <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code> porque sólo podría llamar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase “<i id="a-defer-mechanism-for-c"><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
+        y que Cedro ni siquiera intenta tratar con
+        <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code>,
+        <code>exit()</code>, <code>thrd_exit()</code> etc.
+        porque sólo podría aplicar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase “<i id="a-defer-mechanism-for-c"><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
       <p>En Cedro, la función de devolución se marca con la
       <a href="https://en.cppreference.com/w/c/language/storage_duration">palabra clave C <b><code>auto</code></b></a>
       que no se necesita en código estándar C porque es implícita.
@@ -324,7 +327,7 @@ $ valgrind --leak-check=yes ./repeat
 
       <p>En este ejemplo adaptado de
         <a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2542.pdf#40">«Proposal for C2x, WG14 ​n2542, Defer Mechanism for C» pág. 40</a>,
-        los recursos devueltos son candados en bucle [«spin locks»]:</p>
+        los recursos devueltos son bloqueos giratorios [«spin locks»]:</p>
       <table>
         <tr>
           <td>
@@ -373,7 +376,7 @@ int f1(void) {
         </tr>
       </table>
 
-      <h3>Obras relacionadas</h3>
+      <h3 id="deferred-resource-release-related-work">Obras relacionadas <a class="anchor" href="#deferred-resource-release-related-work">#…-related-work</a></h3>
       <p>Aparte de la ya mencionada
         «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
         hay macros que usan un bucle <code>for</code> como
@@ -395,7 +398,7 @@ int f1(void) {
     </section>
 
     <section ="block-macros">
-      <h2>Macros de bloque:</h2>
+      <h2>Macros de bloque: <a class="anchor" href="#block-macros">#block-macros</a></h2>
       <p>Formatea una macro multi-línea en una sóla línea.</p>
       <p>Las macros en C deben escribirse todo en una línea,
         pero a veces hay que partirlas en varias pseudo-líneas
@@ -421,7 +424,7 @@ f_##A(B, C); /** Versión especializada de f() para el tipo A. */              \
     </section>
 
     <section id="binary-include">
-      <h2>Inclusión binaria:</h2>
+      <h2>Inclusión binaria: <a class="anchor" href="#binary-include">#binary-include</a></h2>
       <p>Inserta un fichero en forma de ristra de octetos en C.</p>
       <code>#include &lt;stdint.h&gt;
 const uint8_t imagen
@@ -440,7 +443,7 @@ const uint8_t imagen
       <p>Nota: la directiva debe empezar exactamente con «<code>#include {</code>»,
         ni más ni menos espacio entre
         «<code>#include</code>» y la llave «<code>{</code>».</p>
-      <h3>Obras relacionadas</h3>
+      <h3 id="binary-include-related-work">Obras relacionadas <a class="anchor" href="#binary-include-related-work">#…-related-work</a></h3>
       <p>Esta característica es una vieja idea
         y hay varias implementaciones anteriores, por ejemplo
         <a href="https://sourceforge.net/projects/bin2c/">bin2c</a>

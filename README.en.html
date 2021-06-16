@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8"/>
     <title>C programming language extension: Cedro pre-processor</title>
-    <style type="text/css">html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } table { border-collapse:collapse; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
+    <style type="text/css">html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -58,7 +58,7 @@
     </section>
 
     <section id="backstitch-operator">
-      <h2><a href="https://en.wikipedia.org/wiki/Backstitch">Backstitch</a> operator: @</h2>
+      <h2><a href="https://en.wikipedia.org/wiki/Backstitch">Backstitch</a> operator: @ <a class="anchor" href="#backstitch-operator">#backstitch-operator</a></h2>
       <p>Threads a value through a sequence of function calls,
         as first parameter for each of them.</p>
       <p>It is an explicit version of what other programming languages
@@ -156,7 +156,7 @@ nvgFill(graphics_context);</code>
         This can be used to escape it when chaining Cedro with another
         pre-processor that uses it.</p>
 
-      <h3>Related work</h3>
+      <h3 id="backstitch-operator-related-work">Related work <a class="anchor" href="#backstitch-operator-related-work">#…-related-work</a></h3>
       <p>Looking for prior implementations of this idea I’ve found
         <a href="https://github.com/eudoxia0/magma">magma</a> (2014),
         where it is called
@@ -185,7 +185,7 @@ nvgFill(graphics_context);</code>
     </section>
 
     <section id="deferred-resource-release">
-      <h2>Deferred resource release:</h2>
+      <h2>Deferred resource release: <a class="anchor" href="#deferred-resource-release">#deferred-resource-release</a></h2>
       <p>Moves the clean-up code for a variable to the end of its scope
         including the exit points
         <code>break</code>, <code>continue</code>, <code>goto</code>,
@@ -207,10 +207,13 @@ nvgFill(graphics_context);</code>
         The first difference is that in Go,
         all releases happen when exiting the function,
         while in Cedro the releases happen when exiting each block,
-        like the destructors in C++ do.
-        There are more differences, such as for instance that in Go it
+        like the destructors in C++ do.</p>
+      <p>There are more differences, such as for instance that in Go it
         can be used to modify the return value of the function,
-        and that Cedro does not even try to handle <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code> because it could only call the deferred actions in the current function, not in any function that called this one. See “<i><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">published academic paper as PDF</a> in the <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a> conference) for a compiler-level implementation that does handle <code>longjmp()</code> and stack unwinding.</p>
+        and that Cedro does not even try to handle
+        <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code>
+        <code>exit()</code>, <code>thrd_exit()</code> etc.
+        because it could only apply the deferred actions in the current function, not in any function that called this one. See “<i><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">published academic paper as PDF</a> in the <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a> conference) for a compiler-level implementation that does handle <code>longjmp()</code> and stack unwinding.</p>
       <p>In Cedro, the release function is marked with the
       <a href="https://en.cppreference.com/w/c/language/storage_duration">C keyword <b><code>auto</code></b></a>
       which is not needed in standard C code because it is the default.
@@ -374,7 +377,7 @@ int f1(void) {
         </tr>
       </table>
 
-      <h3>Related work</h3>
+      <h3 id="deferred-resource-release-related-work">Related work <a class="anchor" href="#deferred-resource-release-related-work">#…-related-work</a></h3>
       <p>Apart from the already mentioned
         «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
         there are macros that use a <code>for</code> loop as
@@ -396,7 +399,7 @@ int f1(void) {
     </section>
 
     <section id="block-macros">
-      <h2>Block macros:</h2>
+      <h2>Block macros: <a class="anchor" href="#block-macros">#block-macros</a></h2>
       <p>Formats a multi-line macro into a single line.</p>
       <p>C macros must be written all in one line,
         but some times you need to split them in several pseudo-lines
@@ -422,7 +425,7 @@ f_##A(B, C); /** Specialized version of f() for type A. */                    \
     </section>
 
     <section id="binary-include">
-      <h2>Binary inclusion:</h2>
+      <h2>Binary inclusion: <a class="anchor" href="#binary-include">#binary-include</a></h2>
       <p>Inserts a file as a C byte array.</p>
       <code>#include &lt;stdint.h&gt;
 const uint8_t image
@@ -441,7 +444,7 @@ const uint8_t image
       <p>Note: the directive must start exactly with “<code>#include {</code>”,
         with no more or less space between
         “<code>#include</code>” and the brace “<code>{</code>”.</p>
-      <h3>Related work</h3>
+      <h3 id="binary-include-related-work">Related work <a class="anchor" href="#binary-include-related-work">#…-related-work</a></h3>
       <p>This feature is an old idea
         and there are several implementations, for instance
         <a href="https://sourceforge.net/projects/bin2c/">bin2c</a>
