@@ -1590,6 +1590,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
         eol_pending = eol_pending || (m->len > 1 && '/' is text[1]);
       }
     }
+
     if (m->token_type is T_PREPROCESSOR) {
       size_t len = 9; // = strlen("#define {");
       if (m->len >= len and strn_eq("#define {", (char*)text, len)) {
@@ -1692,6 +1693,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
         continue;
       }
     }
+
     if (options.escape_ucn and m->token_type is T_IDENTIFIER) {
       Byte_p end = text + m->len;
       Byte_mut_p p = text;
@@ -1723,6 +1725,9 @@ unparse(Marker_array_p markers, Byte_array_p src,
         else if ((u & 0xFFFF0000) is 0) fprintf(out, "\\u%04X", u);
         else                            fprintf(out, "\\U%08X", u);
       }
+    } else if (m->token_type is T_OTHER and m->len is 6) {
+          // So far, there is only one token handled this way:
+          putc('@', out);
     } else {
       fwrite(text, sizeof(src->items[0]), m->len, out);
     }
@@ -2100,6 +2105,12 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           break;
         case '@':
           TOKEN1(T_BACKSTITCH);
+          break;
+        case '\\':
+          if (cursor + 6 <= end and mem_eq(cursor, "\\u0040", 6)) {
+            token_end += 5;
+            token_type = T_OTHER;
+          }
           break;
       }
     }
