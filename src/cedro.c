@@ -2212,7 +2212,7 @@ usage_es =
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
-    "  --enable-core-dump Activa el volcado de memoria al estrellarse.\n"
+    "  --enable-core-dump    Activa el volcado de memoria al estrellarse.\n"
     "  --no-enable-core-dump No activa el volcado de memoria al estrellarse."
     " (implícito)\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
