@@ -1735,7 +1735,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
  *
  *  See `enum TokenType` for a list of keywords.
  */
-static TokenType
+static inline TokenType
 keyword_or_identifier(Byte_p start, Byte_p end)
 {
   switch (end - start) {
