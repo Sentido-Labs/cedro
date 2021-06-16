@@ -23,13 +23,6 @@
  *
  * Created: 2020-11-25 22:41
  */
-#define CEDRO_VERSION "1.0"
-/** Versions with the same major number are compatible in that they produce
- * semantically equivalent output: there might be differeces in indentation
- * etc. but will be the same after parsing by the compiler.
- */
-#define CEDRO_PRAGMA "#pragma Cedro 1."
-#define CEDRO_PRAGMA_LEN 16
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,6 +42,13 @@
 #include <sys/resource.h>
 #include <errno.h>
 
+#define CEDRO_VERSION "1.0"
+/** Versions with the same major number are compatible in that they produce
+ * semantically equivalent output: there might be differeces in indentation
+ * etc. but will be the same after parsing by the compiler.
+ */
+#define CEDRO_PRAGMA "#pragma Cedro 1."
+#define CEDRO_PRAGMA_LEN 16
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
 /** Same as `fprintf(stderr, fmt, ...)`
