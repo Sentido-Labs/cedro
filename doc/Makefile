@@ -1,10 +1,10 @@
 NAME=Cedro
-SRC=../cedro.c ../array.h
+SRC=../src/cedro.c ../src/array.h
 LOGO=cedro.png
 CSS=cedro.css
 DIR=api
 
-doc: ../*.c ../*.h Makefile Doxyfile
+doc: $(SRC) Makefile Doxyfile
 	doxygen
 	sustituye --old='([^ ])\\n[ ]{4,}' --new='\1</div>\n<div class="line">' html/
 	for f in $$(find $(DIR) -name "*.html"); do sed --in-place -e 's:\\/\\/://:g' -e 's:\\\\:\\:g' -e 's:\\/\\\*:/*:g' -e 's:\\\*\\/:*/:g' "$${f}"; done

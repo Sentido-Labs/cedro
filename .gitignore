@@ -1,0 +1,11 @@
+*~
+build
+doc/api
+doc/html
+doc/latex
+doc/cppcheck
+bib
+images
+core.*
+Doxyfile
+experiments
