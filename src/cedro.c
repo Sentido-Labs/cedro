@@ -49,6 +49,10 @@
  */
 #define CEDRO_PRAGMA "#pragma Cedro 1."
 #define CEDRO_PRAGMA_LEN 16
+
+typedef size_t SrcIndexType; // Must be enough for the maximum src file size.
+typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
+
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
 /** Same as `fprintf(stderr, fmt, ...)`
@@ -280,8 +284,8 @@ TokenType_STRING[1+T_OTHER] = {
 
 /** Marks a C token in the source code. */
 TYPEDEF_STRUCT(Marker, {
-    size_t start;             /**< Start position, in bytes/chars. */
-    uint32_t len;             /**< Length, in bytes/chars. */
+    SrcIndexType start;       /**< Start position, in bytes/chars. */
+    SrcLenType   len;         /**< Length, in bytes/chars. */
     mut_TokenType token_type; /**< Token type. */
   });
 
