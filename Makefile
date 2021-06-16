@@ -14,13 +14,13 @@ run: build/$(NAME)
 	build/$(NAME) src/$(NAME).c
 .PHONY: run
 
-build/%cc-debug: src/%cc.c src/*.c src/*.h src/macros/*.h Makefile
+build/%cc-debug: src/%cc.c build/cedro-debug
 	mkdir -p build
-	$(CC_STRICT) -o $@ $<
+	build/cedro-debug --insert-line-directives $< | $(CC_STRICT) -I src -x c - -o $@
 
-build/%cc:       src/%cc.c src/*.c src/*.h src/macros/*.h Makefile
+build/%cc:       src/%cc.c build/cedro
 	mkdir -p build
-	$(CC_STRICT) -o $@ $< -O
+	build/cedro       --insert-line-directives $< | $(CC_STRICT) -I src -x c - -o $@ -O
 
 build/%-debug:   src/%.c src/*.c src/*.h src/macros/*.h Makefile
 	mkdir -p build

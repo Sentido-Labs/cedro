@@ -9,11 +9,13 @@
  * Created: 2021-05-17 11:41
  */
 
+#pragma Cedro 1.0
+
 /* _POSIX_C_SOURCE is needed for popen()/pclose(). */
 #define _POSIX_C_SOURCE 200112L
 
 #define USE_CEDRO_AS_LIBRARY
-#include "./cedro.c"
+#include "cedro.c"
 
 static const char* const
 usage_es =
@@ -45,19 +47,20 @@ int main(int argc, char* argv[])
     cc = "cc -x c -";
   }
 
-  Options options = {
-    .apply_macros           = true,
-    .escape_ucn             = false,
-    .discard_comments       = false,
-    .discard_space          = false,
-    .insert_line_directives = true
-  };
+  Options options;
+  options @
+      .apply_macros           = true,
+      .escape_ucn             = false,
+      .discard_comments       = false,
+      .discard_space          = false,
+      .insert_line_directives = true;
 
   char* file_name = NULL;
 
   // The number of arguments is either the same if no .c file name given,
   // or one less when extracting the .c file name.
   char** args = malloc(sizeof(char*) * (size_t)argc);
+  auto free(args);
   size_t i = 0;
   args[i++] = cc;
   for (size_t j = 1; j < argc; ++j) {
@@ -71,7 +74,6 @@ int main(int argc, char* argv[])
     }
     if (str_eq(arg, "-h") or str_eq(arg, "--help")) {
       eprintln(LANG(usage_es, usage_en), args[0]);
-      free(args);
       return 0;
     }
     args[i++] = arg;
@@ -80,7 +82,6 @@ int main(int argc, char* argv[])
 
   if (not file_name) {
     eprintln(LANG("Falta el nombre de fichero.", "Missing file name."));
-    free(args);
     return ENOENT;
   }
 
@@ -91,6 +92,7 @@ int main(int argc, char* argv[])
 
   ++length; // Make space for the zero terminator.
   char* cmd = malloc(length);
+  auto free(cmd);
   cmd[0] = 0;
   // Quadratic performance, but the string is small anyway.
   // Can be optimized by keeping track of the offset for the next write.
@@ -99,12 +101,12 @@ int main(int argc, char* argv[])
     strncat(cmd, args[j], length);
   }
 
-  free(args);
-
-  mut_Marker_array markers;
+  mut_Marker_array markers = {0};
+  auto destruct_Marker_array(&markers);
   init_Marker_array(&markers, 8192);
 
-  mut_Byte_array src;
+  mut_Byte_array src = {0};
+  auto destruct_Byte_array(&src);
   int err = read_file(&src, file_name);
   if (err) {
     print_file_error(err, file_name, &src);
@@ -129,9 +131,6 @@ int main(int argc, char* argv[])
 
     fflush(stdout);
   }
-
-  destruct_Marker_array(&markers);
-  destruct_Byte_array(&src);
 
   return return_code;
 }
