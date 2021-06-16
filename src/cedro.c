@@ -668,7 +668,6 @@ identifier(Byte_p start, Byte_p end)
             }
             u = (u << 4) | value;
           }
-          eprintln("Decoded following character: 0x%X", u);
         }
       }
       if (u >= 0xD800 and u < 0xE000) {
@@ -1933,7 +1932,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
       if (token_end is cursor) { eprintln("error T_SPACE"); break; }
     } else if ((token_end = identifier(cursor, end))) {
       TOKEN1(keyword_or_identifier(cursor, token_end));
-      if (token_end is cursor) eprintln("error T_IDENTIFIER");
+      if (token_end is cursor) { eprintln("error T_IDENTIFIER"); }
     } else if ((token_end = number(cursor, end))) {
       TOKEN1(T_NUMBER);
       if (token_end is cursor) { eprintln("error T_NUMBER"); break; }
@@ -1985,7 +1984,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                 mut_Byte_array text;
                 init_Byte_array(&text, 10);
                 extract_src(label_candidate, label_candidate+1, src, &text);
-                eprintln("Found label: %s", as_c_string(&text));
                 destruct_Byte_array(&text);
               }
             } else {
@@ -2000,8 +1998,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                      line_start->token_type is T_COMMENT) ++line_start;
               if (line_start->token_type is T_CONTROL_FLOW_CASE) {
                 token_type = T_LABEL_COLON;
-              } else {
-                eprintln("---- line_start is %s", TokenType_STRING[line_start->token_type]);
               }
             }
           }
