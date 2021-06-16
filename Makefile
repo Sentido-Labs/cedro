@@ -6,6 +6,7 @@ CC_STRICT=$(CC) -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-co
 all: release
 debug:   build/$(NAME)-debug build/$(NAME)cc-debug
 	if which valgrind; then valgrind --leak-check=yes build/$(NAME)-debug src/$(NAME).c >/dev/null; fi
+	if which valgrind; then valgrind --leak-check=yes build/$(NAME)cc-debug src/$(NAME).c -I src -o /dev/null; fi
 release: build/$(NAME) build/$(NAME)cc
 .PHONY: all debug release
 
