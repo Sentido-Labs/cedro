@@ -100,7 +100,7 @@ g_sufijo(objeto, b);</code></td>
     FillColor(nvgRGBA(255,192,0,255)),
     Fill();</code>
           </td><td>
-<code>nvgBeginPath(contexto_gráfico);
+<br/><code>nvgBeginPath(contexto_gráfico);
 nvgRect(contexto_gráfico, 100,100, 120,30);
 nvgCircle(contexto_gráfico, 120,120, 5);
 nvgPathWinding(contexto_gráfico, NVG_HOLE);
@@ -159,7 +159,7 @@ nvgFill(contexto_gráfico);</code>
       <h3>Obras relacionadas</h3>
       <p>Buscando realizaciones anteriores de esta idea he encontrado
         <a href="https://github.com/eudoxia0/magma">magma</a> (2014),
-        done se llama
+        donde se llama
         <a href="https://github.com/eudoxia0/magma#doto"><code>doto</code></a>.
         Es una macro para el pre-procesador
         <a href="https://github.com/eudoxia0/cmacro">cmacro</a>
@@ -187,7 +187,8 @@ nvgFill(contexto_gráfico);</code>
       <h2>Devolución diferida de recursos:</h2>
       <p>Mueve el código de devolución de una variable al final de su alcance,
         incluídos los puntos de salida
-        <code>break</code>, <code>continue</code>, <code>return</code>.</p>
+        <code>break</code>, <code>continue</code>, <code>goto</code>,
+        <code>return</code>.</p>
       <p>En C, los recursos deben devolverse al sistema explícitamente
         una vez no son necesarios, lo que generalmente ocurre bastante lejos
         de la parte donde se reservaron.
@@ -321,6 +322,57 @@ $ valgrind --leak-check=yes ./repeat
         </tr>
       </table>
 
+      <p>En este ejemplo adaptado de
+        <a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2542.pdf#40">«Proposal for C2x, WG14 ​n2542, Defer Mechanism for C» pág. 40</a>,
+        los recursos devueltos son candados en bucle [«spin locks»]:</p>
+      <table>
+        <tr>
+          <td>
+            <code>/* Adapted from example in n2542.pdf#40 */
+
+<b>#pragma Cedro 1.0</b>
+
+int f1(void) {
+  puts("g called");
+  if (bad1()) { return 1; }
+  spin_lock(&amp;lock1);
+  <b>auto spin_unlock(&amp;lock1);</b>
+  if (bad2()) { return 1; }
+  spin_lock(&amp;lock2);
+  <b>auto spin_unlock(&amp;lock2);</b>
+  if (bad()) { return 1; }
+
+  /* Access data protected by the spinlock then force a panic */
+  completed += 1;
+  unforced(completed);
+
+  return 0;
+}</code>
+          </td>
+          <td>
+            <code>/* Adapted from example in n2542.pdf#40 */
+
+int f1(void) {
+  puts("g called");
+  if (bad1()) { return 1; }
+  spin_lock(&amp;lock1);
+  if (bad2()) { <b>spin_unlock(&amp;lock1);</b> return 1; }
+  spin_lock(&amp;lock2);
+  if (bad()) { <b>spin_unlock(&amp;lock2); spin_unlock(&amp;lock1);</b> return 1; }
+
+  /* Access data protected by the spinlock then force a panic */
+  completed += 1;
+  unforced(completed);
+  <b>spin_unlock(&amp;lock2);</b>
+  <b>spin_unlock(&amp;lock1);</b>
+
+  return 0;
+}
+</code>
+          </td>
+        </tr>
+      </table>
+
       <h3>Obras relacionadas</h3>
       <p>Aparte de la ya mencionada
         «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
@@ -362,10 +414,10 @@ f_##A(B, C); /** Versión especializada de f() para el tipo A. */              \
         dentro de macros, de manera que no se pueden usar
         <code>#if</code>, <code>#include</code>, etc.</p>
       <p>Nota: la directiva debe empezar exactamente con
-        «<code>#define {</code>» / «<code>#define }</code>»,
+        «<code>#define {</code>» o «<code>#define }</code>»,
         ni más ni menos espacio entre
         «<code>#define</code>» y la llave
-        «<code>{</code>» / «<code>}</code>».</p>
+        «<code>{</code>» o «<code>}</code>».</p>
     </section>
 
     <section id="binary-include">
@@ -392,8 +444,8 @@ const uint8_t imagen
       <p>Esta característica es una vieja idea
         y hay varias implementaciones anteriores, por ejemplo
         <a href="https://sourceforge.net/projects/bin2c/">bin2c</a>
-        (<em><a href="http://manpages.ubuntu.com/manpages/bionic/man1/bin2c.1.html">man page</a></en> en inglés)
-        que ya había visto hace años.</p>
+        (<em><a href="http://manpages.ubuntu.com/manpages/bionic/man1/bin2c.1.html">man page</a></em> en inglés)
+        que había visto hace años.</p>
     </section>
   </body>
 </html>

@@ -20,8 +20,7 @@
       <p>To activate it, the source file must contain this line:
         <code>#pragma Cedro 1.0</code><br/>
         Otherwise, the file is copied directly to the output.</p>
-      <code>LANG=en.UTF-8 ./cedro -h
-Usage: cedro [options] file.c [file2.c … ]
+      <code>Usage: cedro [options] file.c [file2.c … ]
   The result goes to stdout, can be used without an intermediate file like this:
  cedro file.c | cc -x c - -o file
   It is what the cedrocc program does:
@@ -29,23 +28,23 @@ Usage: cedro [options] file.c [file2.c … ]
   With cedrocc, the following options are the defaults:
     --discard-comments --insert-line-directives
 
-  --apply-macros     Apply the macros: backstitch, defer, etc. (default)
-  --escape-ucn       Escape non-ASCII in identifiers as UCN.
-  --no-apply-macros  Do not apply the macros.
-  --no-escape-ucn    Do not escape non-ASCII in identifiers. (default)
+  --apply-macros     Applies the macros: backstitch, defer, etc. (default)
+  --escape-ucn       Escapes non-ASCII in identifiers as UCN.
+  --no-apply-macros  Does not apply the macros.
+  --no-escape-ucn    Does not escape non-ASCII in identifiers. (default)
   --discard-comments    Discards the comments.
   --discard-space       Discards all whitespace.
   --no-discard-comments Does not discard comments.   (default)
   --no-discard-space    Does not discard whitespace. (default)
-  --insert-line-directives    Insert #line directives.
-  --no-insert-line-directives Do not insert #line directives. (default)
+  --insert-line-directives    Inserts #line directives.
+  --no-insert-line-directives Does not insert #line directives. (default)
 
   --print-markers    Prints the markers.
   --no-print-markers Does not print the markers. (default)
-  --enable-core-dump    Enable core dump on crash.
-  --no-enable-core-dump Do not enable core dump on crash. (default)
-  --benchmark        Run a performance benchmark.
-  --version          Show version: 1.0
+  --enable-core-dump    Enables core dump on crash.
+  --no-enable-core-dump Does not enable core dump on crash. (default)
+  --benchmark        Runs a performance benchmark.
+  --version          Shows version: 1.0
                      The corresponding “pragma” is: #pragma Cedro 1.0</code>
       <p>The option <code>--escape-ucn</code> encodes Unicode® characters
         outside of the ASCII range, when they appear as part of an identifier,
@@ -101,7 +100,7 @@ g_suffix(object, b);</code></td>
     FillColor(nvgRGBA(255,192,0,255)),
     Fill();</code>
           </td><td>
-<code>nvgBeginPath(graphics_context);
+<br/><code>nvgBeginPath(graphics_context);
 nvgRect(graphics_context, 100,100, 120,30);
 nvgCircle(graphics_context, 120,120, 5);
 nvgPathWinding(graphics_context, NVG_HOLE);
@@ -189,7 +188,8 @@ nvgFill(graphics_context);</code>
       <h2>Deferred resource release:</h2>
       <p>Moves the clean-up code for a variable to the end of its scope
         including the exit points
-        <code>break</code>, <code>continue</code>, <code>return</code>.</p>
+        <code>break</code>, <code>continue</code>, <code>goto</code>,
+        <code>return</code>.</p>
       <p>In C, resources must be released back to the system explicitly
         once they are no longer needed, which usualy happens quite far
         from the place where they were allocated.
@@ -323,6 +323,57 @@ $ valgrind --leak-check=yes ./repeat
         </tr>
       </table>
 
+      <p>In this example adapted from
+        <a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2542.pdf#40">“Proposal for C2x, WG14 ​n2542, Defer Mechanism for C” p. 40</a>,
+        the released resources are spin locks:</p>
+      <table>
+        <tr>
+          <td>
+            <code>/* Adapted from example in n2542.pdf#40 */
+
+<b>#pragma Cedro 1.0</b>
+
+int f1(void) {
+  puts("g called");
+  if (bad1()) { return 1; }
+  spin_lock(&amp;lock1);
+  <b>auto spin_unlock(&amp;lock1);</b>
+  if (bad2()) { return 1; }
+  spin_lock(&amp;lock2);
+  <b>auto spin_unlock(&amp;lock2);</b>
+  if (bad()) { return 1; }
+
+  /* Access data protected by the spinlock then force a panic */
+  completed += 1;
+  unforced(completed);
+
+  return 0;
+}</code>
+          </td>
+          <td>
+            <code>/* Adapted from example in n2542.pdf#40 */
+
+int f1(void) {
+  puts("g called");
+  if (bad1()) { return 1; }
+  spin_lock(&amp;lock1);
+  if (bad2()) { <b>spin_unlock(&amp;lock1);</b> return 1; }
+  spin_lock(&amp;lock2);
+  if (bad()) { <b>spin_unlock(&amp;lock2); spin_unlock(&amp;lock1);</b> return 1; }
+
+  /* Access data protected by the spinlock then force a panic */
+  completed += 1;
+  unforced(completed);
+  <b>spin_unlock(&amp;lock2);</b>
+  <b>spin_unlock(&amp;lock1);</b>
+
+  return 0;
+}
+</code>
+          </td>
+        </tr>
+      </table>
+
       <h3>Related work</h3>
       <p>Apart from the already mentioned
         «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
@@ -364,10 +415,10 @@ f_##A(B, C); /** Specialized version of f() for type A. */                    \
         inside macros, so you can not use
         <code>#if</code>, <code>#include</code>, etc.</p>
       <p>Note: the directive must start exactly with
-        “<code>#define {</code>” / “<code>#define }</code>”,
+        “<code>#define {</code>” or “<code>#define }</code>”,
         with no more or less space between
         “<code>#define</code>” and the brace
-        “<code>{</code>” / “<code>}</code>”.</p>
+        “<code>{</code>” or “<code>}</code>”.</p>
     </section>
 
     <section id="binary-include">
@@ -395,7 +446,7 @@ const uint8_t image
         and there are several implementations, for instance
         <a href="https://sourceforge.net/projects/bin2c/">bin2c</a>
         (<a href="http://manpages.ubuntu.com/manpages/bionic/man1/bin2c.1.html">man page</a>)
-        which I saw years ago.</p>
+        which I had seen years ago.</p>
     </section>
   </body>
 </html>
