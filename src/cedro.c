@@ -136,7 +136,10 @@ eprint(const char * const fmt, ...)
   va_end(args);
 }
 
-/** Same as `fprintf(stderr, fmt, ...), fputc('\n', stderr)`
+/* “backward compatiblity reasons”:
+ * https://www.doxygen.nl/manual/markdown.html#mddox_code_spans
+ */
+/** Same as ``fprintf(stderr, fmt, ...) fputc('\n', stderr)``
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
 #define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
@@ -173,7 +176,7 @@ typedef struct Options {
   bool discard_space;
   /// Skip comments, or include them in the markers array.
   bool discard_comments;
-  /// Insert #line directives in the output, mapping to the original file.
+  /// Insert `#line` directives in the output, mapping to the original file.
   bool insert_line_directives;
 } Options, *Options_p;
 
@@ -1408,11 +1411,9 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
  * it is meant as a raw display of the markers array.
  *  @param[in] markers parsed program.
  *  @param[in] src original source code.
+ *  @param[in] prefix string to be added at the beginning of the line.
  *  @param[in] start index to start with.
  *  @param[in] end   index to end with: if `0`, use the end of the array.
- *  @param[in] cursor       position where cursor_label will be displayed.
- *  @param[in] cursor_label text to show at cursor position. Can be `NULL`.
- *  @param[in] options formatting options.
  */
 static void
 print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
@@ -1517,6 +1518,7 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
  *  @param[in] markers tokens for the current form of the program.
  *  @param[in] src original source code, with any new tokens appended.
  *  @param[in] original_src_len original source code length.
+ *  @param[in] src_file_name file name corresponding to `src`.
  *  @param[in] options formatting options.
  *  @param[in] out FILE pointer where the source code will be written.
  */

@@ -1,5 +1,5 @@
 /* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
-/** \file Array template definition. */
+/** \file */ /* Array template definition. */
 
 /** `DESTRUCT_BLOCK` is a block of code that releases the resources for a
     block of objects of type T, between `mut_T_p cursor` and `T_p end`. \n

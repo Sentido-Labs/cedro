@@ -6,8 +6,9 @@ DIR=api
 
 doc: $(SRC) Makefile Doxyfile
 	doxygen
-	sustituye --old='([^ ])\\n[ ]{4,}' --new='\1</div>\n<div class="line">' html/
-	for f in $$(find $(DIR) -name "*.html"); do sed --in-place -e 's:\\/\\/://:g' -e 's:\\\\:\\:g' -e 's:\\/\\\*:/*:g' -e 's:\\\*\\/:*/:g' "$${f}"; done
+	@for f in $$(find $(DIR) -name "*.html"); do sed --in-place -E -e 's:([^ ])\\n[ ]{4,}:\1</div>\n<div class="line">:g' -e '/&rsquo;<br[ /]*>$$/{N;s:&rsquo;<br[ /]*>\n'"'"':'"'"'\\n'"'"':g}' -e 's:\\/\\/://:g' -e 's:\\\\:\\:g' -e 's:\\/\\\*:/*:g' -e 's:\\\*\\/:*/:g' "$${f}" -e 's#id="titlearea">#id="titlearea" style="position:relative"><a class="img" style="display:inline-block;position:absolute;top:0.5em;right:0.5em;font-size:1rem;" href="http://sentido-labs.com"><img style="width:5em;" src="../sentido-labs-mono.svg"></a>#'; done
+	@echo >>$(DIR)/search/search.css ' @media (prefers-color-scheme: dark) { .SRPage { background:#333; color:#c92; } }'
+.PHONY: doc
 
 Doxyfile:
 	doxygen -g
@@ -27,4 +28,4 @@ Doxyfile:
 	sed --in-place 's:^\(EXPAND_AS_DEFINED\s\+\)=\s*:\1= DEFINE_ARRAY_OF TYPEDEF TYPEDEF_STRUCT:g' Doxyfile
 
 clean:
-	rm -rf html latex tree-sitter/html tree-sitter/latex
+	rm -rf $(DIR) clang cppcheck

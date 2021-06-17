@@ -3,17 +3,19 @@
   <head>
     <meta charset="utf-8"/>
     <title>Extensión del lenguaje de programación C: pre-procesador Cedro</title>
-    <style type="text/css">html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background: #111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color: #070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family: sans-serif; font-weight:normal; color:#c72; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme: light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
+    <style type="text/css">html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme:light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
     <section>
-      <h1><img alt="" src="doc/cedro.png"/> Cedro</h1>
+      <h1 style="position:relative"><a href="https://www.bonsai-nbf.org/collections#America"><img alt="Cedro atlántico azul" src="doc/cedro.png"/></a> Cedro
+        <a style="display:inline-block;position:absolute;top:0.5em;right:0.5em;box-shadow:none;font-size:1rem;" href="http://sentido-labs.com"><img style="width:5em;" src="doc/sentido-labs-mono.svg"></a>
+      </h1>
       <span class="language-selector">Español, <a href="README.en.html">English</a></span>
       <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con cuatro prestaciones:</p>
       <ol>
         <li>El <a href="#backstitch-operator">operador <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>].</li>
-        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos</a> [«<em>defer</em>»]</li>
+        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos</a> [«<em>defer</em>»].</li>
         <li><a href="#block-macros"><em>Macros de bloque</em></a>.</li>
         <li><a href="#binary-include"><em>Inclusión binaria</em></a>.</li>
       </ol>
@@ -145,14 +147,15 @@ nvgFill(contexto_gráfico);</code>
           </td>
           <td>
 <code>typedef enum {
-     TOKEN_ESPACIO, TOKEN_PALABRA, TOKEN_NUMERO
+    TOKEN_ESPACIO, TOKEN_PALABRA, TOKEN_NUMERO
 } TipoDeToken;</code>
           </td>
         </tr>
       </table>
 
       <p>Nota: el símbolo <code>@</code> no se reconoce
-        cuando se escribe <code>\u0040</code>.
+        cuando se escribe <code>\u0040</code>,
+        pero se convierte en <code>@</code> en la salida.
         Esto se puede usar para encapsularlo al encadenar Cedro con otro
         pre-procesador que lo use.</p>
 
@@ -211,7 +214,8 @@ nvgFill(contexto_gráfico);</code>
         modificar el valor de retorno de la función,
         y que Cedro ni siquiera intenta tratar con
         <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code>,
-        <code>exit()</code>, <code>thrd_exit()</code> etc.
+        <code><a href="https://en.cppreference.com/w/c/program/exit">exit()</a></code>,
+        <code><a href="https://en.cppreference.com/w/c/thread/thrd_exit">thrd_exit()</a></code> etc.
         porque sólo podría aplicar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase “<i id="a-defer-mechanism-for-c"><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
       <p>En Cedro, la función de devolución se marca con la
       <a href="https://en.cppreference.com/w/c/language/storage_duration">palabra clave C <b><code>auto</code></b></a>
@@ -366,6 +370,7 @@ int f1(void) {
   /* Access data protected by the spinlock then force a panic */
   completed += 1;
   unforced(completed);
+
   <b>spin_unlock(&amp;lock2);</b>
   <b>spin_unlock(&amp;lock1);</b>
 
