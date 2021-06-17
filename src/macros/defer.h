@@ -31,7 +31,7 @@ move_DeferredAction(mut_DeferredAction_p _)
 static bool
 are_there_pending_deferred_actions(DeferredAction_array_p pending, size_t level)
 {
-  if (not pending->len) return false;
+  if (pending->len is 0) return false;
   DeferredAction_p last = DeferredAction_array_end(pending) - 1;
   return (last->level >= level);
 }
@@ -61,8 +61,10 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
     --actions_cursor;
     if (actions_cursor->level < level) break;
 
-    splice_Marker_array(markers, cursor + inserted_length, 0, NULL, &indent);
-    inserted_length += (size_t)(indent.end_p - indent.start_p);
+    if (inserted_length is_not 0) {
+      splice_Marker_array(markers, cursor + inserted_length, 0, NULL, &indent);
+      inserted_length += (size_t)(indent.end_p - indent.start_p);
+    }
 
     mut_Marker_array_slice action = {
       .start_p = Marker_array_start(&actions_cursor->action),
@@ -169,6 +171,13 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
     } else if (cursor->token_type is T_BLOCK_END) {
       size_t block_level = block_stack.len;
+      if (block_level is 0 or
+          not are_there_pending_deferred_actions(&pending, block_level)) {
+        pop_TokenType_array(&block_stack, NULL);
+        ++cursor;
+        continue;
+      }
+
       Marker_mut_p previous_line = cursor;
       if (previous_line is_not start) --previous_line;
       skip_space_back(start, previous_line);
@@ -189,17 +198,36 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         goto exit_level_and_continue;
       }
 
+      Marker between = indentation(markers, cursor, false, src);
+
       Marker_p insertion_point =
           cursor is_not start and (cursor-1)->token_type is T_SPACE?
           cursor-1: cursor;
-      Marker between = indentation(markers, cursor, false, src);
+      marker_buffer.len = 0;
+
+      if (insertion_point->token_type is T_SPACE) {
+        push_Marker_array(&marker_buffer, *insertion_point);
+        push_Marker_array(&marker_buffer, indent_one_level);
+      }
+      insert_deferred_actions(&pending, block_level,
+                              NULL,
+                              &between, &indent_one_level,
+                              marker_buffer.len, &marker_buffer);
+
+      mut_Marker_array_slice insert = {
+        .start_p = Marker_array_start(&marker_buffer),
+        .end_p   = Marker_array_end(&marker_buffer)
+      };
+      cursor_position = (size_t)(insertion_point - start);
       // Invalidates: markers
-      cursor_position = (size_t)(cursor - start)
-          + insert_deferred_actions(&pending, block_level,
-                                    NULL,
-                                    &between, &indent_one_level,
-                                    (size_t)(insertion_point - start),
-                                    markers);
+      splice_Marker_array(markers,
+                          cursor_position,
+                          0, NULL,
+                          &insert);
+      cursor_position = cursor_position +
+          1 +
+          marker_buffer.len; // Move to end of inserted block.
+
       start  = mut_Marker_array_start(markers);
       end    = mut_Marker_array_end  (markers);
       cursor = get_mut_Marker_array(markers, cursor_position);
@@ -279,12 +307,11 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         // Find minimum block level traversed to reach label.
         label_p = NULL;
         Marker_mut_p m;
+        size_t nesting;
         block_level = block_stack.len;
-        size_t nesting = block_level;
 
         // First forward, because that’s the most usual case:
         m = cursor + 1;
-        block_level = block_stack.len;
         nesting = block_level;
         while (m is_not end and nesting >= function_level) {
           if        (m->token_type is T_BLOCK_START) {
@@ -304,6 +331,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         if (!label_p) {
           // Then backwards:
           m = cursor - 1;
+          nesting = block_level;
           while (m is_not start and nesting >= function_level) {
             if        (m->token_type is T_BLOCK_END) {
               ++nesting;
@@ -347,12 +375,16 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         break;
       }
 
-      mut_Marker between =
-          indentation(markers, line.start_p, true, src);
+      mut_Marker between = indentation(markers, line.start_p, true, src);
 
-      Marker_p insertion_point =
-          cursor is_not start and (cursor-1)->token_type is T_SPACE?
-          cursor-1: cursor;
+      Marker_mut_p insertion_point = cursor;
+      if (cursor is_not start and (cursor-1)->token_type is T_SPACE) {
+        --insertion_point;
+      }
+
+      size_t delete_count;
+
+      marker_buffer.len = 0;
 
       if (line.start_p is_not start and
           ((line.start_p+1)->token_type is T_CONTROL_FLOW_IF ||
@@ -370,29 +402,19 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           ++line.end_p;
         }
         skip_space_forward(line.start_p, line.end_p);
+        insertion_point = line.start_p;
 
-        marker_buffer.len = 0;
         // Invalidates: marker_buffer
         push_Marker_array(&marker_buffer, block_start);
+        push_Marker_array(&marker_buffer, between);
+        push_Marker_array(&marker_buffer, indent_one_level);
         insert_deferred_actions(&pending, block_level,
                                 &line,
                                 &between, &indent_one_level,
                                 marker_buffer.len, &marker_buffer);
         push_Marker_array(&marker_buffer, between);
         push_Marker_array(&marker_buffer, block_end);
-
-        mut_Marker_array_slice insert = {
-          .start_p = Marker_array_start(&marker_buffer),
-          .end_p   = Marker_array_end(&marker_buffer)
-        };
-        // Here, line.start_p = insertion_point.
-        cursor_position = (size_t)(line.start_p - start);
-        // Invalidates: markers
-        splice_Marker_array(markers,
-                            cursor_position,
-                            (size_t)(line.end_p - line.start_p), NULL,
-                            &insert);
-        cursor_position += marker_buffer.len; // Move to end of inserted block.
+        delete_count = (size_t)(line.end_p - line.start_p);
       } else {
         // This is already a block, or we do not need it e.g. `case: …`.
         if (line.start_p->token_type is T_SPACE) {
@@ -405,15 +427,32 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
             between = space;
           }
         }
-        // Invalidates: markers
-        cursor_position = (size_t)(insertion_point - start)
-            + insert_deferred_actions(&pending, block_level,
-                                      NULL,
-                                      &between, NULL,
-                                      (size_t)(insertion_point - start),
-                                      markers)
-            + (size_t)(line.end_p - insertion_point);
+
+        // Invalidates: marker_buffer
+        if (insertion_point->token_type is T_SPACE) {
+          push_Marker_array(&marker_buffer, *insertion_point);
+        }
+        insert_deferred_actions(&pending, block_level,
+                                NULL,
+                                &between, NULL,
+                                marker_buffer.len, &marker_buffer);
+        delete_count = 0;
       }
+
+      mut_Marker_array_slice insert = {
+        .start_p = Marker_array_start(&marker_buffer),
+        .end_p   = Marker_array_end(&marker_buffer)
+      };
+      // Here, line.start_p = insertion_point.
+      cursor_position = (size_t)(insertion_point - start);
+      // Invalidates: markers
+      splice_Marker_array(markers,
+                          cursor_position,
+                          delete_count, NULL,
+                          &insert);
+      cursor_position = cursor_position +
+          (size_t)(line.end_p - line.start_p) +
+          marker_buffer.len - delete_count; // Move to end of inserted block.
 
       start = mut_Marker_array_start(markers);
       end   = mut_Marker_array_end  (markers);
@@ -486,8 +525,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         break;
       }
       marker_buffer.len = 0;
-      // Invalidates: markers
       cursor_position = index_Marker_array(markers, cursor);
+      // Invalidates: markers
       splice_Marker_array(markers,
                           (size_t)(line_start - start),
                           (size_t)(action_end - line_start),
