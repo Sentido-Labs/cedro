@@ -2361,8 +2361,6 @@ int main(int argc, char** argv)
       if (options.apply_macros) {
         Macro_p macro = macros;
         while (macro->name && macro->function) {
-          eprintln(LANG("Ejecutando macro %s:", "Running macro %s:"),
-                   macro->name);
           macro->function(&markers, &src);
           ++macro;
         }
