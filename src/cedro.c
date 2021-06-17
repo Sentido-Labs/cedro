@@ -1380,7 +1380,7 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
   Byte_mut_p match  = NULL;
   Byte_p     end    = Byte_array_end(src);
   size_t text_len = strlen(text);
-  const Byte_p text_end = (Byte_p)text + text_len;
+  Byte_p text_end = (Byte_p)text + text_len;
   const char first_character = text[0];
   while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
     Byte_mut_p p1 = cursor;
