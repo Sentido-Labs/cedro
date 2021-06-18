@@ -1258,6 +1258,7 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
       }
     }
     if (cursor->token_type is_not T_SPACE) {
+      // This happens if the cursor was already at the beginning of the file.
       return indentation;
     }
     indentation = *cursor;
@@ -1866,9 +1867,11 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     if        ((token_end = preprocessor(cursor, end))) {
       if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
         if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
-          mut_Marker inert;
-          init_Marker(&inert, Byte_array_start(src), cursor, src, T_NONE);
-          push_Marker_array(markers, inert);
+          if (cursor is_not Byte_array_start(src)) {
+            mut_Marker inert;
+            init_Marker(&inert, Byte_array_start(src), cursor, src, T_NONE);
+            push_Marker_array(markers, inert);
+          }
           cursor = token_end;
           // Skip LF and empty lines after line.
           while (cursor is_not end and '\n' == *cursor) ++cursor;
@@ -1889,16 +1892,15 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     }
     cursor = token_end;
   }
-  if (markers->len is 0) {
+  if (cursor is end) {
     // No “#pragma Cedro x.y”, so just wrap the whole C code verbatim.
     mut_Marker inert;
     init_Marker(&inert,
                 Byte_array_start(src), Byte_array_end(src), src, T_NONE);
     push_Marker_array(markers, inert);
+
+    return cursor;
   }
-
-
-  // If CEDRO_PRAGMA is not present, markers will be empty.
 
   error.len = 0;
   while (cursor is_not end) {
