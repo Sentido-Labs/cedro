@@ -364,6 +364,7 @@ as_c_string(mut_Byte_array_p _)
 }
 
 typedef FILE* mut_File_p;
+typedef char*  mut_FilePath;
 typedef char*const FilePath;
 /** Read a file into the given buffer. Returns error code, 0 if it succeeds. */
 static int
@@ -388,7 +389,7 @@ read_file(mut_Byte_array_p _, FilePath path)
     memset((mut_Byte_p) _->items + _->len, 0,
            (_->capacity - _->len) * sizeof(_->items[0]));
   }
-  fclose(input); input = NULL;
+  fclose(input);
   return err;
 }
 
