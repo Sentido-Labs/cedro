@@ -1245,25 +1245,6 @@ static Marker
 indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
             Byte_array_p src)
 {
-  /*Byte_p start = Byte_array_start(src);
-  Byte_p end   = Byte_array_end(src);
-  Byte_mut_p start_of_line = slice_for_marker(src, marker).start_p;
-  while (*start_of_line is_not '\n') {
-    if (start_of_line is start) break;
-    --start_of_line;
-    }*/
-  // If *start_of_line is not '\n' here, there is no LF to re-use.
-  // This can only happen at the very fist line of the file,
-  // which should have no indentation anyway.
-  // Handling the hypothetical case where the first line of the file is indented
-  // is not worth the complication.
-  /*Byte_mut_p end_of_indentation = start_of_line + 1;*/
-  // TODO: this no longer makes sense: this is a single token of type T_SPACE.
-  /*while (end_of_indentation is_not end) {
-    if (*end_of_indentation is_not ' ' &&
-        *end_of_indentation is_not '\t') break;
-    ++end_of_indentation;
-  }*/
   mut_Marker indentation = {0};
   Marker_p start = Marker_array_start(markers);
   Marker_mut_p cursor = marker;
@@ -1304,7 +1285,7 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
       }
     }
   }
-  //init_Marker(&indentation, start_of_line, end_of_indentation, src, T_SPACE);
+
   return indentation;
 }
 
