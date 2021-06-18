@@ -9,9 +9,10 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
   mut_Error err = { .position = NULL, .message = NULL };
 
-  Marker comma     = new_marker(src, ",", T_COMMA);
-  Marker semicolon = new_marker(src, ";", T_SEMICOLON);
-  Marker space     = new_marker(src, " ", T_SPACE);
+  Marker comma     = new_marker(src, ",",  T_COMMA);
+  Marker semicolon = new_marker(src, ";",  T_SEMICOLON);
+  Marker space     = new_marker(src, " ",  T_SPACE);
+  Marker newline   = new_marker(src, "\n", T_SPACE);
   mut_Marker_array_slice object;
   mut_Marker_array_slice slice;
   while (cursor is_not end) {
@@ -60,13 +61,19 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                  line_number(src, markers, err.position), err.message);
         err.message = NULL;
       } else {
-        Marker object_indentation =
+        mut_Marker object_indentation =
             indentation(markers, start_of_line, true, src);
+        if (object_indentation.token_type is T_NONE) {
+          // There is no indentation because we are at the first line.
+          object_indentation = newline;
+        }
+
         // Trim space before object.
         skip_space_forward(start_of_line, object.end_p);
         object.start_p = start_of_line;
         // Trim space after object, between it and backstitch operator.
         skip_space_back(object.start_p, object.end_p);
+
         cursor = first_segment_start;
         mut_Marker_mut_p end_of_line = (mut_Marker_mut_p)
             find_line_end(cursor, end, &err);
