@@ -4,8 +4,11 @@
 /** `DESTRUCT_BLOCK` is a block of code that releases the resources for a
     block of objects of type T, between `mut_T_p cursor` and `T_p end`. \n
     For instance:                                                       \n
-    `{ while (cursor != end) destruct_T(cursor++); }`                   \n
-    If the type does not need any clean-up, just use `{}`.
+    `{ while (cursor != end) destruct_`T`(cursor++); }`                 \n
+    If the type does not need any clean-up, just use `{}`.              \n
+    Defines the types:                                                  \n
+    `mut_`T`_array`, `mut_`T`_array_p`, `mut_`T`_array_mut_p`,          \n
+    T`_array`, T`_array_p`, T`_array_mut_p`
 */
 #define DEFINE_ARRAY_OF(T, PADDING, DESTRUCT_BLOCK)                     \
   /** The constant `PADDING_##T##_ARRAY` = `PADDING`                    \
@@ -161,11 +164,20 @@ init_from_constant_##T##_array(mut_##T##_array_p _,                     \
 }                                                                       \
 /** Heap-allocate and initialize a mut_##T##_array.                     \
  */                                                                     \
-static mut_##T##_array_p                                                \
+static mut_##T##_array                                                  \
 new_##T##_array(size_t initial_capacity)                                \
 {                                                                       \
+  mut_##T##_array _;                                                    \
+  init_##T##_array(&_, initial_capacity);                               \
+  return _;                                                             \
+}                                                                       \
+/** Heap-allocate and initialize a mut_##T##_array.                     \
+ */                                                                     \
+static mut_##T##_array_p                                                \
+new_##T##_array_p(size_t initial_capacity)                              \
+{                                                                       \
   mut_##T##_array_p _ = malloc(sizeof(T##_array));                      \
-  init_##T##_array(_, initial_capacity);                                \
+  if (_) init_##T##_array(_, initial_capacity);                         \
   return _;                                                             \
 }                                                                       \
 /** Release any resources allocated for this struct.                 \n \
@@ -202,7 +214,7 @@ free_##T##_array(mut_##T##_array_p _)                                   \
    Example:                                                             \
    \code{.c}                                                            \
    T##_array a; init_##T##_array(&a, 10);\n                             \
-   store_in_another_object(&obj, &move_##T##_array(&a));\n              \
+   store_in_another_object(&obj, move_##T##_array(&a));\n               \
    \/\* No need to destruct a here. It is now obj’s problem. \*\/\n     \
    \/\/ However, it is still safe to call destruct_##T##_array():\n     \
    destruct_##T##_array(&a); \/\/ No effect since we transferred it.    \
