@@ -70,7 +70,17 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
         // Trim space before object.
         skip_space_forward(start_of_line, object.end_p);
-        object.start_p = start_of_line;
+        // Boost precedence to 13.5, before assignment and comma operators:
+        object.start_p = object.end_p;
+        while (object.start_p is_not start_of_line) {
+          --object.start_p;
+          if (object.start_p->token_type is T_OP_14 or
+              object.start_p->token_type is T_COMMA) {
+            ++object.start_p;
+            skip_space_forward(object.start_p, object.end_p);
+            break;
+          }
+        }
         // Trim space after object, between it and backstitch operator.
         skip_space_back(object.start_p, object.end_p);
 
@@ -92,7 +102,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           mut_Marker_array replacement;
           // The factor of 2 here is a heuristic to avoid relocations in general.
           init_Marker_array(&replacement,
-                            2 * (size_t)(end_of_line - start_of_line));
+                            2 * (size_t)(end_of_line - object.start_p));
           mut_Marker_mut_p segment_start = first_segment_start;
           mut_Marker_mut_p segment_end   = segment_start;
           while (segment_end < end_of_line) {
@@ -237,10 +247,10 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           slice.start_p = Marker_array_start(&replacement);
           slice.end_p   = Marker_array_end  (&replacement);
           // Invalidates: markers
-          cursor_position = (size_t)(start_of_line - start);
+          cursor_position = (size_t)(object.start_p - start);
           splice_Marker_array(markers,
                               cursor_position,
-                              (size_t)(end_of_line - start_of_line),
+                              (size_t)(end_of_line - object.start_p),
                               NULL,
                               &slice);
           cursor_position += replacement.len;
