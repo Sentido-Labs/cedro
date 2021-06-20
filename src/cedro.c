@@ -1426,8 +1426,7 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
       markers->len <  10000? "%s% 4lu: ":
       markers->len < 100000? "%s% 5lu: ": "%s% 6lu: ";
 
-  mut_Byte_array token_text;
-  init_Byte_array(&token_text, 80);
+  mut_Byte_array token_text = new_Byte_array(80);
 
   Marker_p markers_start = Marker_array_start(markers);
   Marker_p m_start =
@@ -1976,8 +1975,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                   m->token_type is T_BLOCK_END) {
                 label_candidate->token_type = T_CONTROL_FLOW_LABEL;
                 token_type = T_LABEL_COLON;
-                mut_Byte_array text;
-                init_Byte_array(&text, 10);
+                mut_Byte_array text = new_Byte_array(10);
                 extract_src(label_candidate, label_candidate+1, src, &text);
                 destruct_Byte_array(&text);
               }
@@ -2164,8 +2162,7 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
   time_t start, end;
   time(&start);
 
-  mut_Marker_array markers;
-  init_Marker_array(&markers, 8192);
+  mut_Marker_array markers = new_Marker_array(8192);
 
   for (size_t i = repetitions + 1; i; --i) {
     delete_Marker_array(&markers, 0, markers.len);
@@ -2314,8 +2311,7 @@ int main(int argc, char** argv)
     opt_print_markers     = false;
   }
 
-  mut_Marker_array markers;
-  init_Marker_array(&markers, 8192);
+  mut_Marker_array markers = new_Marker_array(8192);
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];

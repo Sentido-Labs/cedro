@@ -101,9 +101,8 @@ int main(int argc, char* argv[])
     strncat(cmd, args[j], length);
   }
 
-  mut_Marker_array markers = {0};
+  mut_Marker_array markers = new_Marker_array(8192);
   auto destruct_Marker_array(&markers);
-  init_Marker_array(&markers, 8192);
 
   mut_Byte_array src = {0};
   auto destruct_Byte_array(&src);
