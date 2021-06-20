@@ -364,8 +364,8 @@ as_c_string(mut_Byte_array_p _)
 }
 
 typedef FILE* mut_File_p;
-typedef char*  mut_FilePath;
-typedef char*const FilePath;
+typedef char*   mut_FilePath;
+typedef const char* FilePath;
 /** Read a file into the given buffer. Returns error code, 0 if it succeeds. */
 static int
 read_file(mut_Byte_array_p _, FilePath path)
