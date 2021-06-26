@@ -1,7 +1,7 @@
-#define STRINGIZE(x) #x
-#define STR(x) STRINGIZE(x)
-
 /// Simple `defer`-style functionality using the `auto` keyword.
+static void
+macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src);
+
 TYPEDEF_STRUCT(DeferredAction, {
     size_t level;
     mut_Marker_array action;
@@ -171,8 +171,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
     } else if (cursor->token_type is T_BLOCK_END) {
       size_t block_level = block_stack.len;
-      if (block_level is 0 or
-          not are_there_pending_deferred_actions(&pending, block_level)) {
+      if (not are_there_pending_deferred_actions(&pending, block_level)) {
         pop_TokenType_array(&block_stack, NULL);
         ++cursor;
         continue;
