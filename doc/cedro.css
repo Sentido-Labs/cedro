@@ -1,4 +1,12 @@
-#titlearea, #projectname { background-color:#070707; color:#eee; font-family:"OFL Sorts Mill Goudy TT", serif; }
+@font-face {
+    font-family: 'sorts_mill_goudyregular';
+    src: local('OFL Sorts Mill Goudy TT'),
+         url('../fonts/GoudyStM-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+#titlearea, #projectname { background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, 'Times New Roman', serif; }
 #projectname { line-height:0.75em; padding-top:0.5em; }
 div.header { background-color:transparent; background-image:none; text-align:right; }
 div.header div.title { font-size:1.0rem; font-weight:normal; }
