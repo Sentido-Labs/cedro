@@ -181,7 +181,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       if (previous_line is_not start) --previous_line;
       skip_space_back(start, previous_line);
       if (previous_line is_not start) --previous_line;
+
       // If previous line diverts control flow, abort.
+      // The deferred actions will have been already inserted before it.
       previous_line = find_line_start(previous_line, start, &err);
       if (err.message) {
         eprintln("At line %lu: %s",
