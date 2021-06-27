@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8"/>
     <title>C programming language extension: Cedro pre-processor</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { float:right; padding:0.25em; } @media (prefers-color-scheme:light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } @media (prefers-color-scheme:light) { html { background:#ddd; } section { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
     <section>
-      <h1 style="position:relative"><a href="https://www.bonsai-nbf.org/collections#America"><img alt="Atlas blue cedar" src="doc/cedro.png"/></a> Cedro
-        <a style="display:inline-block;position:absolute;top:0.5em;right:0.5em;box-shadow:none;font-size:1rem;" href="http://sentido-labs.com"><img style="width:5em;" src="doc/sentido-labs-mono.svg"></a>
+      <h1 style="text-align:center"><span style="float:left"><a href="https://www.bonsai-nbf.org/collections#America" class="img"><img alt="Atlas blue cedar" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAGFBMVEUAAAAWLxcoYCg5izpCsUNN1U1b9Fp7+3umzZ3RAAAAI2lUWHRBdXRob3IAAAAAAEFsYmVydG8gR29uesOhbGV6IFBhbG9tb8X116oAAAGpSURBVEjH5ZTBdpswEEWBnO4dO+dkawTZxwjsbQwjs66R4ANAow+Ipfn9qq7betUgs+xbcpir0byniaL/UElerOIF9Vl7ORBdinT1IOCVyEnVnJDMxyP1cYudR5D5HJqetuGAjW//oITSveqJ7DGc8G3aGzKOJTUTvcQpGJBmMOgz32Rc9NYgjkWgJS9y6CcFNedZCQorZagMMuRJK9e09vycsRzKhhUlSqyDCKsorXo0NEDBSgWclzCF2ZGsr//nOxZF6zROTuMxMAo+Bxr7UQiUSnLgVbMPCNXGJ9kaPRApIkLddnv8WMXn+beIcwCyvg3jENFYdD+jiUg8ZBLJUUjv4vTmnFGocRLaeBDtnmeboRSisjw/thYt+kghoK3M5+weXK+0kg2HZhvDwXo3kMhcqnHeHGIx+TP1SSifpvco/n7LaXdKZzbQErqxY+uMcYB8+8hqaN0twQlIqB9aLn/OLQXA+6JN+6SlhNUiBICQ3SJEpfwoFt3jTYFHdEE1/F5VzXabOmXw99PXBLw+qN/y2/qa6V/y7wu/JtCdbixyd4wZPfxb+geh0KANiaQN5QAAAABJRU5ErkJggg==" width="64" height="64"/></a> Cedro</span>
+        <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
+        <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><?xml version="1.0" encoding="UTF-8" standalone="no"?><img src="doc/sentido-labs-mono.svg" style="width:5em" width="157" height="33"/></a>
       </h1>
-      <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
-      <p><em>Cedro</em> is a C language extension that works as a pre-processor with four features:</p>
+      <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with four features:</p>
       <ol>
         <li>The <a href="#backstitch-operator"><em>backstitch</em> <code>@</code> operator</a>.</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release</a>.</li>
@@ -209,7 +209,7 @@ nvgFill(graphics_context);</code>
         that fits better the style of C.
         The first difference is that in Go,
         all releases happen when exiting the function,
-        while in Cedro the releases happen when exiting each block,
+        while with Cedro the releases happen when exiting each block,
         like the destructors in C++ do.</p>
       <p>There are more differences, such as for instance that in Go it
         can be used to modify the return value of the function,
@@ -296,7 +296,10 @@ int main(void)
         </tr>
       </table>
 
-      <p>Compiling it with GCC or clang:</p>
+      <p>Compiling it with GCC or clang,
+        on the left running explicitly the compiler,
+        and on the right using <code>cedrocc</code>
+        which has the same effect:</p>
       <table>
         <tr>
 <td><code>$ cedro repeat.c | cc -o repeat -x c -
@@ -382,6 +385,236 @@ int f1(void) {
         </tr>
       </table>
 
+      <p>Andrew Kelley compared resource management between C and his
+        <a href="https://ziglang.org/">Zig programming language</a>
+        in a 2019 presentation titled
+        <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">“The Road to Zig 1.0" at 29:21″</a>,
+        and here I’ve re-created his C example using Cedro to produce
+        the function as he showed it, except that Cedro does not know
+        that the end <code>for</code> loop never returns so it adds
+        unnecessary resource release code after it.</p>
+      <table>
+        <tr>
+          <td>
+            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
+// Example retrofitted from C example by Andrew Kelley:
+// https://www.youtube.com/watch?v=Gv2I7qTux7g&t=1761s
+
+#pragma Cedro 1.0
+
+int main(int argc, char **argv) {
+    struct SoundIo *soundio = soundio_create();
+    if (!soundio) {
+        fprintf(stderr, "out of memory\n");
+        return 1;
+    }
+    <b>auto soundio_destroy(soundio);</b>
+    int err;
+    if ((err = soundio_connect(soundio))) {
+        fprintf(stderr, "unable to connect: %s\n", soundio_strerror(err));
+        return 1;
+    }
+    soundio_flush_events(soundio);
+    int default_output_index = soundio_default_output_device_index(soundio);
+    if (default_output_index < 0) {
+        fprintf(stderr, "No output device\n");
+        return 1;
+    }
+    struct SoundIoDevice *device = soundio_get_output_device(soundio, default_output_index);
+    if (!device) {
+        fprintf(stderr, "out of memory\n");
+        return 1;
+    }
+    <b>auto soundio_device_unref(device);</b>
+    struct SoundIoOutStream *outstream = soundio_outstream_create(device);
+    if (!outstream) {
+        fprintf(stderr, "out of memory\n");
+        return 1;
+    }
+    <b>auto soundio_outstream_destroy(outstream);</b>
+    outstream->format = SoundIoFormatFloat32NE;
+    outstream->write_callback = write_callback;
+    if ((err = soundio_outstream_open(outstream))) {
+        fprintf(stderr, "unable to open device: %s" "\n", soundio_strerror(err));
+        return 1;
+    }
+    if ((err = soundio_outstream_start(outstream))) {
+        fprintf(stderr, "unable to start device: %s\n", soundio_strerror(err));
+        return 1;
+    }
+    for (;;) soundio_wait_events(soundio);
+}</code>
+          </td><td>
+            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
+// Example retrofitted from C example by Andrew Kelley:
+// https://www.youtube.com/watch?v=Gv2I7qTux7g&t=1761s
+
+int main(int argc, char **argv) {
+    struct SoundIo *soundio = soundio_create();
+    if (!soundio) {
+        fprintf(stderr, "out of memory\n");
+        return 1;
+    }
+    int err;
+    if ((err = soundio_connect(soundio))) {
+        fprintf(stderr, "unable to connect: %s\n", soundio_strerror(err));
+        <b>soundio_destroy(soundio);</b>
+        return 1;
+    }
+    soundio_flush_events(soundio);
+    int default_output_index = soundio_default_output_device_index(soundio);
+    if (default_output_index < 0) {
+        fprintf(stderr, "No output device\n");
+        <b>soundio_destroy(soundio);</b>
+        return 1;
+    }
+    struct SoundIoDevice *device = soundio_get_output_device(soundio, default_output_index);
+    if (!device) {
+        fprintf(stderr, "out of memory\n");
+        <b>soundio_destroy(soundio);</b>
+        return 1;
+    }
+    struct SoundIoOutStream *outstream = soundio_outstream_create(device);
+    if (!outstream) {
+        fprintf(stderr, "out of memory\n");
+        <b>soundio_device_unref(device);</b>
+        <b>soundio_destroy(soundio);</b>
+        return 1;
+    }
+    outstream->format = SoundIoFormatFloat32NE;
+    outstream->write_callback = write_callback;
+    if ((err = soundio_outstream_open(outstream))) {
+        fprintf(stderr, "unable to open device: %s" "\n", soundio_strerror(err));
+        <b>soundio_outstream_destroy(outstream);</b>
+        <b>soundio_device_unref(device);</b>
+        <b>soundio_destroy(soundio);</b>
+        return 1;
+    }
+    if ((err = soundio_outstream_start(outstream))) {
+        fprintf(stderr, "unable to start device: %s\n", soundio_strerror(err));
+        <b>soundio_outstream_destroy(outstream);</b>
+        <b>soundio_device_unref(device);</b>
+        <b>soundio_destroy(soundio);</b>
+        return 1;
+    }
+    for (;;) soundio_wait_events(soundio);
+    <b>soundio_outstream_destroy(outstream);</b>
+    <b>soundio_device_unref(device);</b>
+    <b>soundio_destroy(soundio);</b>
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>However, his Zig example had the unfair advantage of
+        returning error values instead of printing error messages
+        which takes more space.
+        The following is a C function that
+        matches the Zig version more closely:</p>
+      <table>
+        <tr>
+          <td>
+            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
+// Example retrofitted from Zig example by Andrew Kelley:
+// https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s
+
+#pragma Cedro 1.0
+
+int main(int argc, char **argv) {
+    struct SoundIo *soundio = soundio_create();
+    if (!soundio) { return SoundIoErrorNoMem; }
+    <b>auto soundio_destroy(soundio);</b>
+
+    int err;
+    if ((err = soundio_connect(soundio))) return err;
+
+    soundio_flush_events(soundio);
+
+    const int default_output_index = soundio_default_output_device_index(soundio);
+    if (default_output_index < 0) return SoundIoErrorNoSuchDevice;
+
+    const struct SoundIoDevice *device = soundio_get_output_device(soundio, default_output_index);
+    if (!device) return SoundIoErrorNoMem;
+    <b>auto soundio_device_unref(device);</b>
+
+    const struct SoundIoOutStream *outstream = soundio_outstream_create(device);
+    if (!outstream) return SoundIoErrorNoMem;
+    <b>auto soundio_outstream_destroy(outstream);</b>
+
+    outstream->format = SoundIoFormatFloat32NE;
+    outstream->write_callback = write_callback;
+
+    if ((err = soundio_outstream_open(outstream))) return err;
+    if ((err = soundio_outstream_start(outstream))) return err;
+
+    while (true) soundio_wait_events(soundio);
+}</code>
+          </td>
+          <td>
+            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
+// Example retrofitted from Zig example by Andrew Kelley:
+// https://www.youtube.com/watch?v=Gv2I7qTux7g&t=1761s
+
+int main(int argc, char **argv) {
+    struct SoundIo *soundio = soundio_create();
+    if (!soundio) { return SoundIoErrorNoMem; }
+
+    int err;
+    if ((err = soundio_connect(soundio))) {
+        <b>soundio_destroy(soundio);</b>
+        return err;
+    }
+
+    soundio_flush_events(soundio);
+
+    const int default_output_index = soundio_default_output_device_index(soundio);
+    if (default_output_index < 0) {
+        <b>soundio_destroy(soundio);</b>
+        return SoundIoErrorNoSuchDevice;
+    }
+
+    const struct SoundIoDevice *device = soundio_get_output_device(soundio, default_output_index);
+    if (!device) {
+        <b>soundio_destroy(soundio);</b>
+        return SoundIoErrorNoMem;
+    }
+
+    const struct SoundIoOutStream *outstream = soundio_outstream_create(device);
+    if (!outstream) {
+        <b>soundio_device_unref(device);</b>
+        <b>soundio_destroy(soundio);</b>
+        return SoundIoErrorNoMem;
+    }
+
+    outstream->format = SoundIoFormatFloat32NE;
+    outstream->write_callback = write_callback;
+
+    if ((err = soundio_outstream_open(outstream))) {
+        <b>soundio_outstream_destroy(outstream);</b>
+        <b>soundio_device_unref(device);</b>
+        <b>soundio_destroy(soundio);</b>
+        return err;
+    }
+    if ((err = soundio_outstream_start(outstream))) {
+        <b>soundio_outstream_destroy(outstream);</b>
+        <b>soundio_device_unref(device);</b>
+        <b>soundio_destroy(soundio);</b>
+        return err;
+    }
+
+    while (true) soundio_wait_events(soundio);
+    <b>soundio_outstream_destroy(outstream);</b>
+    <b>soundio_device_unref(device);</b>
+    <b>soundio_destroy(soundio);</b>
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>The Cedro version is much closer,
+        but his point still stands because the plain C version
+        needs a lot of repeated code and is more fragile.
+        And of course Zig has
+        <a href="https://ziglang.org/learn/overview/">many other great features</a>.</p>
+
       <h3 id="deferred-resource-release-related-work">Related work <a class="anchor" href="#deferred-resource-release-related-work">#…-related-work</a></h3>
       <p>Apart from the already mentioned
         «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
@@ -431,7 +664,7 @@ f_##A(B, C); /** Specialized version of f() for type A. */                    \
 
     <section id="binary-include">
       <h2>Binary inclusion: <a class="anchor" href="#binary-include">#binary-include</a></h2>
-      <p>Inserts a file as a C byte array.</p>
+      <p>Inserts a file as a byte array.</p>
       <code>#include &lt;stdint.h&gt;
 const uint8_t image
 #include {images/cedro-32x32.png}
@@ -452,9 +685,13 @@ const uint8_t image
       <h3 id="binary-include-related-work">Related work <a class="anchor" href="#binary-include-related-work">#…-related-work</a></h3>
       <p>This feature is an old idea
         and there are several implementations, for instance
-        <a href="https://sourceforge.net/projects/bin2c/">bin2c</a>
-        (<a href="http://manpages.ubuntu.com/manpages/bionic/man1/bin2c.1.html">man page</a>)
-        which I had seen years ago.</p>
+        <a href="https://github.com/ConorOG/xxd">xxd</a>
+        (as <code>xxd -i</code>, <a href="http://manpages.ubuntu.com/manpages/bionic/man1/xxd.1.html">man page</a>)
+        which I used many years ago and has it since 1994.</p>
+      <p>More recently,
+        the <a href="https://doc.rust-lang.org/std/macro.include_bytes.html"><code>include_bytes!()</code></a> macro
+        has been very useful to me in my Rust programs,
+        so I added it to Cedro.</p>
     </section>
   </body>
 </html>
