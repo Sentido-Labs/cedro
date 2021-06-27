@@ -55,6 +55,50 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
+static const size_t error_buffer_size = 256;
+static char         error_buffer[256] = {0};
+void error(const char * const fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+  int len = vsnprintf(error_buffer, error_buffer_size, fmt, args);
+  assert(len < error_buffer_size);
+  va_end(args);
+}
+
+/** Decode one Unicode® code point from a UTF-8 byte buffer. */
+static inline uint32_t
+decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
+{
+  const uint8_t* cursor = *cursor_p;
+  uint8_t c = *cursor;
+  uint32_t u = 0;
+  uint32_t len = 0;
+  if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+  else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
+  else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
+  else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+  if (len is 0 or cursor + len > end) {
+    error("UTF-8 DECODE ERROR, BYTE IS 0x%02X.", c);
+    return 0xFFFD;
+  }
+  switch (len) {
+    case 4: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 3: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 2: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 1:      (++cursor);
+  }
+  if (len is 2 and u <    0x80 or
+      len is 3 and u <  0x0800 or
+      len is 4 and u < 0x10000) {
+    error("UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
+    return 0xFFFD;
+  }
+  *cursor_p = cursor;
+
+  return u;
+}
+
 /** Same as `fprintf(stderr, fmt, ...)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
@@ -80,41 +124,17 @@ eprint(const char * const fmt, ...)
       }
       vsnprintf(buffer, needed, fmt, args);
     }
-    char* end = buffer + needed;
-    char* p = buffer;
-    char c;
+    const uint8_t* p   = (const uint8_t*)buffer;
+    const uint8_t* end = p + needed;
+    uint8_t c;
     while ((c = *p)) {
-      uint32_t u = 0;
-      uint32_t len = 0;
-      if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
-      else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
-      else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
-      else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-      if (len is 0 or p + len > end) {
-        fprintf(stderr, "UTF-8 DECODE ERROR AT %lu.\n",
-                (size_t)(p - buffer));
+      uint32_t u = decode_utf8(&p, end);
+      if (error_buffer[0] is_not 0) {
+        fprintf(stderr, "Error at %lu: %s\n",
+                (size_t)(p - (uint8_t*)buffer), error_buffer);
+        error_buffer[0] = 0;
         return;
       }
-      switch (len) {
-        case 4: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-        case 3: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-        case 2: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-        case 1:      (++p);
-      }
-      /* Not a problem in this case:
-      if (len is 2 and u <    0x80 or
-          len is 3 and u <  0x0800 or
-          len is 4 and u < 0x10000) {
-        fprintf(stderr, "UTF-8 DECODE ERROR AT %lu, OVERLONG SEQUENCE.\n",
-                (size_t)(p - buffer));
-        return;
-      }
-      if (u >= 0xD800 and u < 0xE000) {
-        fprintf(stderr, "UTF-8 DECODE ERROR AT %lu, SURROGATE CODE POINT.\n",
-                (size_t)(p - buffer));
-        return;
-      }
-      */
       if ((u & 0xFFFFFF00) is 0) {
         fputc((unsigned char) u, stderr); // Latin-1 / ISO-8859-1 / ISO-8859-15
       } else {
@@ -410,8 +430,6 @@ print_file_error(int err, const char* file_name, Byte_array_p src)
   }
 }
 
-static mut_Byte_array error = { 0 };// 0 in all bytes is a valid initialization.
-
 /** Initialize a marker with the given values. */
 static void
 init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
@@ -430,31 +448,10 @@ static inline Byte_p
 identifier(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
-  mut_Byte c = *cursor;
-  uint32_t u = 0;
-  uint32_t len = 0;
-  if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
-  else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
-  else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
-  else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-  if (len is 0 or cursor + len > end) {
-    error.len = 0;
-    push_fmt(&error, "UTF-8 DECODE ERROR, BYTE IS 0x%02X.", c);
-    return NULL;
-  }
-  switch (len) {
-    case 4: c = *(++cursor); u = (u << 6) | (c & 0x3F);
-    case 3: c = *(++cursor); u = (u << 6) | (c & 0x3F);
-    case 2: c = *(++cursor); u = (u << 6) | (c & 0x3F);
-    case 1:      (++cursor);
-  }
-  if (len is 2 and u <    0x80 or
-      len is 3 and u <  0x0800 or
-      len is 4 and u < 0x10000) {
-    error.len = 0;
-    push_fmt(&error, "UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
-    return NULL;
-  }
+  uint32_t u = decode_utf8(&cursor, end);
+  if (error_buffer[0]) return NULL;
+  mut_Byte c;
+  size_t len;
   if (u is '\\') {
     if (cursor is_not end) {
       switch(*cursor) {
@@ -465,8 +462,7 @@ identifier(Byte_p start, Byte_p end)
           return cursor is start? NULL: cursor;
       }
       if (cursor + len >= end) {
-        error.len = 0;
-        push_fmt(&error, "Incomplete universal character name.");
+        error("Incomplete universal character name.");
         return NULL;
       }
       while (len is_not 0) {
@@ -478,8 +474,7 @@ identifier(Byte_p start, Byte_p end)
             in('a',c,'f')? c-'a'+10:
             0xFF;
         if (value is 0xFF) {
-          error.len = 0;
-          push_fmt(&error, "Malformed universal character name.");
+          error("Malformed universal character name.");
           return NULL;
         }
         u = (u << 4) | value;
@@ -489,8 +484,7 @@ identifier(Byte_p start, Byte_p end)
     }
   }
   if (u >= 0xD800 and u < 0xE000) {
-    error.len = 0;
-    push_fmt(&error, "UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
+    error("UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
     return NULL;
   }
   if (in('a',u,'z') or in('A',u,'Z') or u is '_' or
@@ -622,31 +616,8 @@ identifier(Byte_p start, Byte_p end)
        )) {
     while (cursor < end) {
       Byte_mut_p p = cursor;
-      c = *p;
-      u = 0;
-      len = 0;
-      if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
-      else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
-      else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
-      else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-      if (len is 0 or p + len > end) {
-        error.len = 0;
-        push_fmt(&error, "UTF-8 DECODE ERROR.");
-        return NULL;
-      }
-      switch (len) {
-        case 4: c = *(++p); u = (u << 6) | (c & 0x3F);
-        case 3: c = *(++p); u = (u << 6) | (c & 0x3F);
-        case 2: c = *(++p); u = (u << 6) | (c & 0x3F);
-        case 1:      (++p);
-      }
-      if (len is 2 and u <    0x80 or
-          len is 3 and u <  0x0800 or
-          len is 4 and u < 0x10000) {
-        error.len = 0;
-        push_fmt(&error, "UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
-        return NULL;
-      }
+      u = decode_utf8(&p, end);
+      if (error_buffer[0]) return NULL;
       if (u is '\\') {
         if (p is_not end) {
           switch(*p) {
@@ -657,8 +628,7 @@ identifier(Byte_p start, Byte_p end)
               return p is start? NULL: p;
           }
           if (p + len >= end) {
-            error.len = 0;
-            push_fmt(&error, "Incomplete universal character name.");
+            error("Incomplete universal character name.");
             return NULL;
           }
           while (len is_not 0) {
@@ -670,8 +640,7 @@ identifier(Byte_p start, Byte_p end)
                 in('a',c,'F')? c-'a':
                 0xFF;
             if (value is 0xFF) {
-              error.len = 0;
-              push_fmt(&error, "Malformed universal character name.");
+              error("Malformed universal character name.");
               return NULL;
             }
             u = (u << 4) | value;
@@ -679,8 +648,7 @@ identifier(Byte_p start, Byte_p end)
         }
       }
       if (u >= 0xD800 and u < 0xE000) {
-        error.len = 0;
-        push_fmt(&error, "UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
+        error("UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
         return NULL;
       }
       if (in('a',u,'z') or in('A',u,'Z') or u is '_' or in('0',u,'9')) {
@@ -1634,7 +1602,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
               fputs("\\\n", out);
               line_length = 0;
 
-              len -= (size_t)(eol - text) + 1;
+              len -= (size_t)(eol + 1 - text);
               text = eol + 1;
             }
             fwrite(text, sizeof(src->items[0]), len, out);
@@ -1682,30 +1650,16 @@ unparse(Marker_array_p markers, Byte_array_p src,
       Byte_p end = text + m->len;
       Byte_mut_p p = text;
       while (p is_not end) {
-        mut_Byte c = *p;
-        uint32_t u = 0;
-        uint32_t len = 0;
-        if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
-        else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
-        else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
-        else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-        if (len is 0 or p + len > end) {
-          fprintf(out, "len=%d, p=%p, end=%p\n", len, p, end);
-          fprintf(out, "UTF-8 DECODE ERROR, BYTE IS 0x%02X.\n", c);
+        uint32_t u = decode_utf8(&p, end);
+        if (error_buffer[0]) {
+          fprintf(out, "%s\n", error_buffer);
+          error_buffer[0] = 0;
           return;
         }
-        switch (len) {
-          case 4: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-          case 3: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-          case 2: c = *(++p); if (!c) break; u = (u << 6) | (c & 0x3F);
-          case 1:      (++p);
-        }
-        // No need for UTF-8 overlong encoding error checks here
-        // because they were done already when parsing the file.
         if      ((u & 0xFFFFFF80) is 0 and
                  u is_not 0x0024 and
                  u is_not 0x0040 and
-                 u is_not 0x0060)       fputc(c, out);
+                 u is_not 0x0060)       fputc((unsigned char)u, out);
         else if ((u & 0xFFFF0000) is 0) fprintf(out, "\\u%04X", u);
         else                            fprintf(out, "\\U%08X", u);
       }
@@ -1858,7 +1812,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   // First look for the pragma.
   // We need to do some tokenization to avoid false positives if it appears
   // in a comment or string, for instance.
-  error.len = 0;
   while (cursor is_not end) {
     assert(cursor is_not prev_cursor);
     prev_cursor = cursor;
@@ -1885,9 +1838,9 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = identifier(cursor, end))) {
     } else if ((token_end = number    (cursor, end))) {
     } else      token_end = other     (cursor, end);
-    if (error.len) {
-      eprintln("Error: src[%lu]: %s",
-               cursor-Byte_array_start(src), as_c_string(&error));
+    if (error_buffer[0]) {
+      eprintln("Error: src[%lu]: %s", cursor-Byte_array_start(src), error);
+      error_buffer[0] = 0;
       return cursor;
     }
     cursor = token_end;
@@ -1902,7 +1855,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     return cursor;
   }
 
-  error.len = 0;
   while (cursor is_not end) {
     assert(cursor is_not prev_cursor);
     prev_cursor = cursor;
@@ -2098,16 +2050,16 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           break;
       }
     }
-    if (error.len) {
-      eprintln("Error: src[%lu]: %s",
-               cursor-Byte_array_start(src), as_c_string(&error));
+    if (error_buffer[0]) {
+      eprintln("Error: src[%lu]: %s", cursor-Byte_array_start(src), error);
+      error_buffer[0] = 0;
       return cursor;
     }
     if (token_type is T_NONE) {
       token_end = other(cursor, end);
       if (not token_end) {
         eprintln("Error: src[%lu]: problem extracting other token.",
-                 cursor-Byte_array_start(src), as_c_string(&error));
+                 cursor-Byte_array_start(src), error);
         break;
       }
     }
