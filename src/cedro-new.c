@@ -35,6 +35,7 @@
 
 #include <sys/stat.h> // mkdir(), stat()
 #include <stdio.h> // getline()
+#include <wctype.h> // wint_t, towupper()
 
 const char* const usage_es =
     "Uso: cedro-new [opciones] <nombre>\n"
@@ -62,6 +63,64 @@ Byte template_zip
 #define extract(...)             mz_zip_reader_extract_file_to_heap(__VA_ARGS__)
 #define end(...)                 mz_zip_reader_end(__VA_ARGS__)
 
+static void
+capitalize(mut_Byte_array_p _)
+{
+  Byte_mut_p cursor = Byte_array_start(_);
+  Byte_p        end = Byte_array_end(_);
+  wint_t u = decode_utf8(&cursor, end);
+  if (error_buffer[0]) return;
+  wint_t capital_letter = towupper(u);
+  if (capital_letter is u) {
+    /* `towupper()` only converts characters from the current locale,
+       and some times not even that. Here is a backup for some alphabets: */
+    if      (in(0x00E0,u,0x00FD)) capital_letter &= 0xFFDF;
+    else if        (u is 0x00FF)  capital_letter  = 0x0178;
+    else if (in(0x0101,u,0x024F)) capital_letter -= 1;
+    else if (in(0x03B1,u,0x03C9)) capital_letter &= 0xFFDF;
+    else if (in(0x0430,u,0x045F)) capital_letter &= 0xFFDF;
+    else if (in(0x0461,u,0x0527)) capital_letter -= 1;
+    else if (in(0x0561,u,0x0586)) capital_letter &= 0xFFCF;
+    else if (in(0x1E01,u,0x1EFF)) capital_letter -= 1;
+    else if (in(0x1F00,u,0x1FB3)) capital_letter |= 0x0008;
+  }
+  if (capital_letter is_not u) {
+    mut_Byte utf8[4] = {0};
+    size_t len;
+    if        ((capital_letter & 0xFFFFFF80) is 0) {
+      len = 1;
+      utf8[0] = (Byte)capital_letter;
+    } else if ((capital_letter & 0xFFFFF800) is 0) {
+      len = 2;
+      utf8[1] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
+      utf8[0] = 0xC0 | (Byte)((capital_letter >>  6) & 0x1F);
+    } else if ((capital_letter & 0xFFFF0000) is 0) {
+      len = 3;
+      utf8[2] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
+      utf8[1] = 0x80 | (Byte)((capital_letter >>  6) & 0x3F);
+      utf8[0] = 0xE0 | (Byte)((capital_letter >> 12) & 0x0F);
+    } else if (capital_letter <= 0x0010FFFF) {
+      len = 4;
+      utf8[3] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
+      utf8[2] = 0x80 | (Byte)((capital_letter >>  6) & 0x3F);
+      utf8[1] = 0x80 | (Byte)((capital_letter >> 12) & 0x3F);
+      utf8[0] = 0xE0 | (Byte)((capital_letter >> 24) & 0x0F);
+    } else {
+      error(LANG("Mayúscula no válida: 0x%4X",
+                 "Invalid capital letter: 0x%4X"),
+            capital_letter);
+      return;
+    }
+    Byte_array_slice capital_letter_utf8 = {
+      .start_p = &utf8[0],
+      .end_p   = &utf8[len]
+    };
+    splice_Byte_array(_, 0,
+                      (size_t)(cursor - Byte_array_start(_)), NULL,
+                      &capital_letter_utf8);
+  }
+}
+
 int main(int argc, char* argv[])
 {
   int result = EXIT_SUCCESS;
@@ -85,7 +144,7 @@ int main(int argc, char* argv[])
       }
     } else {
       if (not project_path) {
-        project_path = argv[1];
+        project_path = argv[i];
       } else {
         eprintln(LANG("Sólo se puede especificar un directorio: %s\n%s",
                       "Only one directory can be specified: %s\n%s"),
@@ -144,9 +203,8 @@ int main(int argc, char* argv[])
     push_str(&command_name, answer);
     free(answer);
 
-    &project_name @push_str...
-        (LANG("Projecto: ", "Project: ")),
-        (as_c_string(&command_name));
+    push_str(&project_name, as_c_string(&command_name));
+    capitalize(&project_name);
     answer = NULL;
     eprint(LANG("¿Nombre completo del proyecto? (implícito: %s): ",
                 "Full project name? (default: %s): "),
@@ -162,9 +220,8 @@ int main(int argc, char* argv[])
     push_str(&project_name, answer);
     free(answer);
   } else {
-    &project_name @push_str...
-        (LANG("Projecto: ", "Project: ")),
-        (as_c_string(&command_name));
+    push_str(&project_name, as_c_string(&command_name));
+    capitalize(&project_name);
   }
 
   char user_name [255 + 1];
