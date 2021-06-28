@@ -37,12 +37,18 @@
 #include <stdio.h> // getline()
 
 const char* const usage_es =
-    "Uso: cedro-new <nombre>\n"
-    "  Crea un directorio llamado <nombre>/ con la plantilla."
+    "Uso: cedro-new [opciones] <nombre>\n"
+    "  Crea un directorio llamado <nombre>/ con la plantilla.\n"
+    "  -h, --help        Muestra este mensaje.\n"
+    "  -i, --interactive Pregunta por los nombres de programa y proyecto.\n"
+    "                    Si no, se eligen a partir del nombre del directorio."
     ;
 const char* const usage_en =
-    "Usage: cedro-new <name>\n"
-    "  Creates a directory named <name>/ with the template."
+    "Usage: cedro-new [options] <name>\n"
+    "  Creates a directory named <name>/ with the template.\n"
+    "  -h, --help        Shows this message.\n"
+    "  -i, --interactive Asks for the names for command and project.\n"
+    "                    Otherwise, they will be derived from the directory name."
     ;
 
 Byte template_zip
