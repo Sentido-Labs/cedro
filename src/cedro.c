@@ -66,6 +66,8 @@ void error(const char * const fmt, ...)
   va_end(args);
 }
 
+#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
+
 /** Decode one Unicode® code point from a UTF-8 byte buffer. */
 static inline uint32_t
 decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
@@ -79,7 +81,8 @@ decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
   else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
   else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
   if (len is 0 or cursor + len > end) {
-    error("UTF-8 DECODE ERROR, BYTE IS 0x%02X.", c);
+    error(LANG("Error descodificando UTF-8, octeto es 0x%02X.",
+               "UTF-8 decode error, byte is 0x%02X."), c);
     return 0xFFFD;
   }
   switch (len) {
@@ -91,7 +94,8 @@ decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
   if (len is 2 and u <    0x80 or
       len is 3 and u <  0x0800 or
       len is 4 and u < 0x10000) {
-    error("UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
+    error("Error UTF-8, secuencia sobrelarga.",
+          "UTF-8 error, overlong sequence.");
     return 0xFFFD;
   }
   *cursor_p = cursor;
@@ -119,7 +123,10 @@ eprint(const char * const fmt, ...)
     } else {
       buffer = malloc(needed);
       if (!buffer) {
-        fprintf(stderr, "OUT OF MEMORY ERROR. %lu BYTES NEEDED.\n", needed);
+        fprintf(stderr,
+                LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
+                     "Out of memory error. %lu bytes needed.\n"),
+                needed);
         return;
       }
       vsnprintf(buffer, needed, fmt, args);
@@ -130,7 +137,9 @@ eprint(const char * const fmt, ...)
     while ((c = *p)) {
       uint32_t u = decode_utf8(&p, end);
       if (error_buffer[0] is_not 0) {
-        fprintf(stderr, "Error at %lu: %s\n",
+        fprintf(stderr,
+                LANG("Error en posición %lu: %s\n",
+                     "Error at position %lu: %s\n"),
                 (size_t)(p - (uint8_t*)buffer), error_buffer);
         error_buffer[0] = 0;
         return;
@@ -163,8 +172,6 @@ eprint(const char * const fmt, ...)
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
 #define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
-
-#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
 /** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
  * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
@@ -462,7 +469,8 @@ identifier(Byte_p start, Byte_p end)
           return cursor is start? NULL: cursor;
       }
       if (cursor + len >= end) {
-        error("Incomplete universal character name.");
+        error(LANG("Nombre de carácter universal incompleto.",
+                   "Incomplete universal character name."));
         return NULL;
       }
       while (len is_not 0) {
@@ -474,7 +482,8 @@ identifier(Byte_p start, Byte_p end)
             in('a',c,'f')? c-'a'+10:
             0xFF;
         if (value is 0xFF) {
-          error("Malformed universal character name.");
+          error(LANG("Nombre de carácter universal mal formado.",
+                     "Malformed universal character name."));
           return NULL;
         }
         u = (u << 4) | value;
@@ -484,7 +493,8 @@ identifier(Byte_p start, Byte_p end)
     }
   }
   if (u >= 0xD800 and u < 0xE000) {
-    error("UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
+    error(LANG("Error UTF-8, par subrogado.",
+               "UTF-8 error, surrogate pair."));
     return NULL;
   }
   if (in('a',u,'z') or in('A',u,'Z') or u is '_' or
@@ -648,7 +658,8 @@ identifier(Byte_p start, Byte_p end)
         }
       }
       if (u >= 0xD800 and u < 0xE000) {
-        error("UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
+        error(LANG("Error UTF-8, par subrogado.",
+                   "UTF-8 error, surrogate pair."));
         return NULL;
       }
       if (in('a',u,'z') or in('A',u,'Z') or u is '_' or in('0',u,'9')) {
