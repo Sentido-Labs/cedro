@@ -800,6 +800,7 @@ identifier(Byte_p start, Byte_p end)
 
 /** Match a number.
  * This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+ * See ISO/IEC 9899:TC3 6.4.8 “Preprocessing numbers”.
  * Rejecting that is left to the compiler.
  * Assumes `end` > `start`. */
 static inline Byte_p
@@ -807,31 +808,25 @@ number(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
-  if (c >= '1' and c <= '9') {
+  if (c is '.') { ++cursor; if (cursor is end) return NULL; c = *cursor; }
+  if (in('0',c,'9')) {
     ++cursor;
-    while (cursor < end) {
+    while (cursor is_not end) {
       c = *cursor;
       if (in('0',c,'9') or c is '.') {
         ++cursor;
-      } else if (c is 'u' or c is 'U' or c is 'l' or c is 'L') {
-        ++cursor;
-        if (cursor < end) {
-          c = *cursor;
-          if (c is 'u' or c is 'U' or c is 'l' or c is 'L') ++cursor;
-          else break;
+        continue;
+      } else if (c is 'e' or c is 'E' or c is 'p' or c is 'P') {
+        if (++cursor is end) break;
+        c = *cursor;
+        if (c is '+' or c is '-') {
+          ++cursor;
+          continue;
         }
-      } else if (c is 'e' or c is 'E') {
-        ++cursor;
-        if (cursor < end) {
-          c = *cursor;
-          if (c is '+' or c is '-') ++cursor;
-          while (cursor < end) {
-            c = *cursor;
-            if (in('1',c,'9') or c is '.') ++cursor;
-            else break;
-          }
-        }
-      } else break;
+      }
+      Byte_p identifier_nondigit = identifier(cursor, end);
+      if (not identifier_nondigit) break;
+      cursor = identifier_nondigit;
     }
     return cursor;
   } else {
@@ -1912,50 +1907,55 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           else                        { TOKEN1(T_OP_1);     }
           break;
         case '~': TOKEN1(T_OP_2);        break;
-        case '?': TOKEN1(T_OP_13); break;
+        case '?': TOKEN1(T_OP_13);       break;
         case ':':
-          TOKEN1(T_OP_13); // Default.
-          if (markers->len is_not 0) {
-            // skip_space_back:
-            Marker_p start = Marker_array_start(markers);
-            mut_Marker_mut_p m = mut_Marker_array_end(markers);
-            while (m is_not start and
-                   ((m-1)->token_type is T_SPACE or
-                    (m-1)->token_type is T_COMMENT)
-                   ) --m;
-            --m;
-            if (m->token_type is T_IDENTIFIER) {
-              mut_Marker_p label_candidate = m;
-              // skip_space_back:
-              while (m is_not start and
-                     ((m-1)->token_type is T_SPACE or
-                      (m-1)->token_type is T_COMMENT)
-                     ) --m;
-              --m;
-              if (m->token_type is T_SEMICOLON   or
-                  m->token_type is T_LABEL_COLON or
-                  m->token_type is T_BLOCK_START or
-                  m->token_type is T_BLOCK_END) {
-                label_candidate->token_type = T_CONTROL_FLOW_LABEL;
-                token_type = T_LABEL_COLON;
-                mut_Byte_array text = new_Byte_array(10);
-                extract_src(label_candidate, label_candidate+1, src, &text);
-                destruct_Byte_array(&text);
+          switch (c2) {
+            case '>': TOKEN2(T_INDEX_END); break;
+            default:
+              TOKEN1(T_OP_13); // Default.
+              if (markers->len is_not 0) {
+                // skip_space_back:
+                Marker_p start = Marker_array_start(markers);
+                mut_Marker_mut_p m = mut_Marker_array_end(markers);
+                while (m is_not start and
+                       ((m-1)->token_type is T_SPACE or
+                        (m-1)->token_type is T_COMMENT)
+                       ) --m;
+                --m;
+                if (m->token_type is T_IDENTIFIER) {
+                  mut_Marker_p label_candidate = m;
+                  // skip_space_back:
+                  while (m is_not start and
+                         ((m-1)->token_type is T_SPACE or
+                          (m-1)->token_type is T_COMMENT)
+                         ) --m;
+                  --m;
+                  if (m->token_type is T_SEMICOLON   or
+                      m->token_type is T_LABEL_COLON or
+                      m->token_type is T_BLOCK_START or
+                      m->token_type is T_BLOCK_END) {
+                    label_candidate->token_type = T_CONTROL_FLOW_LABEL;
+                    token_type = T_LABEL_COLON;
+                    mut_Byte_array text = new_Byte_array(10);
+                    extract_src(label_candidate, label_candidate+1, src, &text);
+                    destruct_Byte_array(&text);
+                  }
+                } else {
+                  mut_Error err = {0};
+                  Marker_mut_p line_start = find_line_start(m, start, &err);
+                  if (err.message) {
+                    eprintln(LANG("Error: src[%lu]: %s",
+                                  "Error: src[%lu]: %s"),
+                             cursor-Byte_array_start(src), err.message);
+                    return cursor;
+                  }
+                  while (line_start->token_type is T_SPACE or
+                         line_start->token_type is T_COMMENT) ++line_start;
+                  if (line_start->token_type is T_CONTROL_FLOW_CASE) {
+                    token_type = T_LABEL_COLON;
+                  }
+                }
               }
-            } else {
-              mut_Error err = {0};
-              Marker_mut_p line_start = find_line_start(m, start, &err);
-              if (err.message) {
-                eprintln("Error: src[%lu]: %s",
-                         cursor-Byte_array_start(src), err.message);
-                return cursor;
-              }
-              while (line_start->token_type is T_SPACE or
-                     line_start->token_type is T_COMMENT) ++line_start;
-              if (line_start->token_type is T_CONTROL_FLOW_CASE) {
-                token_type = T_LABEL_COLON;
-              }
-            }
           }
           break;
         case '+':
@@ -1988,8 +1988,11 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           break;
         case '/':
         case '%':
+          /* %: → #, %:%: → ##, but they can only appear inside of
+             preprocessor directives which we pack in one token. */
           switch (c2) {
             case '=': TOKEN2(T_OP_14); break;
+            case '>': TOKEN2(T_BLOCK_END); break;
             default:  TOKEN1(T_OP_3);
           }
           break;
@@ -2026,6 +2029,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
               }
               break;
             case '=': TOKEN2(T_OP_6); break;
+            case '%': TOKEN2(T_BLOCK_START); break;
+            case ':': TOKEN2(T_INDEX_START); break;
             default:  TOKEN1(T_OP_6);
           }
           break;
