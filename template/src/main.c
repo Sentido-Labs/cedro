@@ -4,9 +4,10 @@
 /** \mainpage
  * {Template} 0.1a
  *
- * Just an example of using Cedro together with some utility functions
- * and my customized hash-containers library derived from khash,
+ * Just an example of using Cedro together with some utility functions,
  * that you can use as base for new programs.
+ *
+ * It includes my customized hash table and btree libraries derived from khash.
  *
  *   - [main](main_8c.html)
  *   - [hash-table](hash-table_8h.html)
@@ -14,6 +15,12 @@
  *
  * TODO: put license here, for instance GPL or MIT.
  * You can get help picking one at: https://choosealicense.com/
+ *
+ * The copy of Cedro under `tools/cedro/` has the same licence as Cedro,
+ * but that does not affect your code if you do not include or link it
+ * into your program.
+ * Here it is used only to process the source code, and the result
+ * is of course not a derivative work of Cedro.
  *
  * \author {Author}
  * \copyright {year} {Author}
