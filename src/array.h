@@ -265,7 +265,7 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     as bit copies.                                                      \
     If `deleted` is not `NULL`, the deleted elements are not destroyed  \
     but copied to that array.                                           \
-    The `insert` slice, if given, must belong to a different array. */  \
+    The `insert` slice must belong to a different array or be empty. */ \
 static void                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
@@ -286,7 +286,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
                                                                         \
   size_t insert_len = 0;                                                \
   size_t new_len = _->len - delete;                                     \
-  if (insert.start_p) {                                                 \
+  if (insert.start_p is_not insert.end_p) {                             \
     assert(_->start          > insert.end_p ||                          \
            _->start + _->len < insert.start_p);                         \
     assert(insert.end_p >= insert.start_p);                             \
@@ -307,7 +307,18 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
   }                                                                     \
 }                                                                       \
                                                                         \
-/** Delete `delete` elements from the array at `position`. */           \
+/** Append the given `insert` slice to the array.                       \
+    Same as `splice_##T##_array(_, _->len, 0, NULL, insert)`.           \
+    The `insert` slice, must belong to a different array. */            \
+static void                                                             \
+append_##T##_array(mut_##T##_array_p _, T##_array_slice insert)         \
+{                                                                       \
+  splice_##T##_array(_, _->len, 0, NULL, insert);                       \
+}                                                                       \
+                                                                        \
+/** Delete `delete` elements from the array at `position`.              \
+    Same as `splice_##T##_array(_, position, delete, NULL,              \
+    (T##_array_slice){0})`. */                                          \
 static void                                                             \
 delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \

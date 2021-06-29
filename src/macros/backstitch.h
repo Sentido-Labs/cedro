@@ -179,8 +179,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
             if (insertion_point is segment_start) {
               if (object.start_p is_not object.end_p) {
-                splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    object);
+                append_Marker_array(&replacement, object);
                 if ((segment_start+1)->token_type == T_SPACE) {
                   push_Marker_array(&replacement, space);
                 }
@@ -198,8 +197,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   --slice.end_p;
                   if (slice.end_p->token_type is T_IDENTIFIER) break;
                 }
-                splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    slice);
+                append_Marker_array(&replacement, slice);
                 if (prefix) {
                   push_Marker_array(&replacement, *prefix);
                 } else {
@@ -209,12 +207,10 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 slice.start_p = slice.end_p;
                 slice.end_p   = insertion_point;
               }
-              splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                  slice);
+              append_Marker_array(&replacement, slice);
               // Only insert object if not empty, allow elided object.
               if (object.end_p is_not object.start_p) {
-                splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    object);
+                append_Marker_array(&replacement, object);
                 if (inside_parenthesis) {
                   if (insertion_point->token_type is_not T_TUPLE_END) {
                     push_Marker_array(&replacement, comma);
@@ -227,8 +223,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
             slice.start_p = insertion_point;
             slice.end_p   = segment_end;
-            splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                slice);
+            append_Marker_array(&replacement, slice);
 
             if (segment_end < end_of_line) {
               if (ends_with_semicolon) {
