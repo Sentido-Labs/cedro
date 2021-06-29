@@ -35,6 +35,18 @@
 
 #include <sys/stat.h> // mkdir(), stat()
 #include <stdio.h> // getline()
+bool get_line(mut_Byte_array_p answer, FILE* input)
+{
+  ssize_t len = getline((char**)&answer->start, &answer->capacity, input);
+  if (len is_not -1) {
+    assert(len is_not 0); // getline() includes the newline character.
+    answer->len = (size_t)(len - 1);
+    if (answer->capacity is 0) answer->capacity = answer->len;
+    return true;
+  } else {
+    return false;
+  }
+}
 #include <wctype.h> // wint_t, towupper()
 
 const char* const usage_es =
@@ -184,40 +196,36 @@ int main(int argc, char* argv[])
            strrchr(project_path, '/') + 1: project_path);
 
   if (interactive) {
-    size_t len;
-    char* answer = NULL;
     eprint(LANG("¿Nombre del ejecutable? (implícito: %s): ",
                 "Executable file name? (default: %s): "),
            as_c_string(&command_name));
-    if (getline(&answer, &len, stdin) is -1) {
+    mut_Byte_array answer = {0};
+    auto destruct_Byte_array(&answer);
+    if (not get_line(&answer, stdin)) {
       perror("");
       return result;
     }
-    // getline() includes the newline character.
-    assert(len is_not 0);
-    answer[len - 1] = 0;
-    command_name.len = 0;
-    push_str(&command_name, answer);
-    free(answer);
+    if (answer.len) {
+      command_name.len = 0;
+      append_Byte_array(&command_name, bounds_of_mut_Byte_array(&answer));
+    }
 
     push_str(&project_name, as_c_string(&command_name));
     capitalize(&project_name);
-    answer = NULL;
+
     eprint(LANG("¿Nombre completo del proyecto? (implícito: %s): ",
                 "Full project name? (default: %s): "),
            as_c_string(&project_name));
-    if (getline(&answer, &len, stdin) is -1) {
+    if (not get_line(&answer, stdin)) {
       perror("");
       return result;
     }
-    // getline() includes the newline character.
-    assert(len is_not 0);
-    answer[len - 1] = 0;
-    project_name.len = 0;
-    push_str(&project_name, answer);
-    free(answer);
+    if (answer.len) {
+      project_name.len = 0;
+      append_Byte_array(&project_name, bounds_of_Byte_array(&answer));
+    }
   } else {
-    push_str(&project_name, as_c_string(&command_name));
+    append_Byte_array(&project_name, bounds_of_Byte_array(&command_name));
     capitalize(&project_name);
   }
 
@@ -358,12 +366,12 @@ int main(int argc, char* argv[])
           previous = cursor;
         } else if (cursor + 10 < end and mem_eq(cursor, "{Template}", 10)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
-          fwrite(start_of_Byte_array(&project_name), 1, project_name.len, output);
+          fwrite(project_name.start, 1, project_name.len, output);
           cursor += 10;
           previous = cursor;
         } else if (cursor + 10 < end and mem_eq(cursor, "{template}", 10)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
-          fwrite(start_of_Byte_array(&command_name), 1, command_name.len, output);
+          fwrite(command_name.start, 1, command_name.len, output);
           cursor += 10;
           previous = cursor;
         } else {
