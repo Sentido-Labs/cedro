@@ -66,8 +66,8 @@ Byte template_zip
 static void
 capitalize(mut_Byte_array_p _)
 {
-  Byte_mut_p cursor = Byte_array_start(_);
-  Byte_p        end = Byte_array_end(_);
+  Byte_mut_p cursor = start_of_Byte_array(_);
+  Byte_p        end = end_of_Byte_array(_);
   wint_t u = decode_utf8(&cursor, end);
   if (error_buffer[0]) return;
   wint_t capital_letter = towupper(u);
@@ -116,7 +116,7 @@ capitalize(mut_Byte_array_p _)
       .end_p   = &utf8[len]
     };
     splice_Byte_array(_, 0,
-                      (size_t)(cursor - Byte_array_start(_)), NULL,
+                      (size_t)(cursor - start_of_Byte_array(_)), NULL,
                       &capital_letter_utf8);
   }
 }
@@ -287,8 +287,8 @@ int main(int argc, char* argv[])
     assert(extracted_size is file_stat.m_uncomp_size);
     auto mz_free(extracted_bytes);
 
-    mut_Byte_p start = mut_Byte_array_start(&path);
-    mut_Byte_p end   = mut_Byte_array_end(&path);
+    mut_Byte_p start = start_of_mut_Byte_array(&path);
+    mut_Byte_p end   = end_of_mut_Byte_array(&path);
     mut_Byte_mut_p cursor = start;
     while (cursor is_not end) {
       cursor = memchr(cursor, '/', (size_t)(end - cursor));
@@ -361,12 +361,12 @@ int main(int argc, char* argv[])
           previous = cursor;
         } else if (cursor + 10 < end and mem_eq(cursor, "{Template}", 10)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
-          fwrite(Byte_array_start(&project_name), 1, project_name.len, output);
+          fwrite(start_of_Byte_array(&project_name), 1, project_name.len, output);
           cursor += 10;
           previous = cursor;
         } else if (cursor + 10 < end and mem_eq(cursor, "{template}", 10)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
-          fwrite(Byte_array_start(&command_name), 1, command_name.len, output);
+          fwrite(start_of_Byte_array(&command_name), 1, command_name.len, output);
           cursor += 10;
           previous = cursor;
         } else {

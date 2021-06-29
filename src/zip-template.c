@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
     }
     auto destruct_Byte_array(&buffer);
 
-    if (not add(&zip_archive, file_path, buffer.items, buffer.len, level)) {
+    if (not add(&zip_archive, file_path, buffer.start, buffer.len, level)) {
       eprintln(LANG("Fallo al añadir contenido al archivo zip.",
                     "Failed to add content to the zip archive."));
       result = EIO;
