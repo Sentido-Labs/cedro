@@ -66,6 +66,8 @@ void error(const char * const fmt, ...)
   va_end(args);
 }
 
+#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
+
 /** Decode one Unicode® code point from a UTF-8 byte buffer. */
 static inline uint32_t
 decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
@@ -79,7 +81,8 @@ decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
   else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
   else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
   if (len is 0 or cursor + len > end) {
-    error("UTF-8 DECODE ERROR, BYTE IS 0x%02X.", c);
+    error(LANG("Error descodificando UTF-8, octeto es 0x%02X.",
+               "UTF-8 decode error, byte is 0x%02X."), c);
     return 0xFFFD;
   }
   switch (len) {
@@ -91,7 +94,8 @@ decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
   if (len is 2 and u <    0x80 or
       len is 3 and u <  0x0800 or
       len is 4 and u < 0x10000) {
-    error("UTF-8 DECODE ERROR, OVERLONG SEQUENCE.");
+    error("Error UTF-8, secuencia sobrelarga.",
+          "UTF-8 error, overlong sequence.");
     return 0xFFFD;
   }
   *cursor_p = cursor;
@@ -119,7 +123,10 @@ eprint(const char * const fmt, ...)
     } else {
       buffer = malloc(needed);
       if (!buffer) {
-        fprintf(stderr, "OUT OF MEMORY ERROR. %lu BYTES NEEDED.\n", needed);
+        fprintf(stderr,
+                LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
+                     "Out of memory error. %lu bytes needed.\n"),
+                needed);
         return;
       }
       vsnprintf(buffer, needed, fmt, args);
@@ -130,7 +137,9 @@ eprint(const char * const fmt, ...)
     while ((c = *p)) {
       uint32_t u = decode_utf8(&p, end);
       if (error_buffer[0] is_not 0) {
-        fprintf(stderr, "Error at %lu: %s\n",
+        fprintf(stderr,
+                LANG("Error en posición %lu: %s\n",
+                     "Error at position %lu: %s\n"),
                 (size_t)(p - (uint8_t*)buffer), error_buffer);
         error_buffer[0] = 0;
         return;
@@ -163,8 +172,6 @@ eprint(const char * const fmt, ...)
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
 #define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
-
-#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
 /** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
  * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
@@ -332,11 +339,8 @@ DEFINE_ARRAY_OF(Byte, 8, {});
 static void
 push_str(mut_Byte_array_p _, const char * const str)
 {
-  Byte_array_slice insert = {
-    .start_p = (Byte_p) str,
-    .end_p   = (Byte_p) str + strlen(str)
-  };
-  splice_Byte_array(_, _->len, 0, NULL, &insert);
+  Byte_array_slice insert = { (Byte_p) str, (Byte_p) str + strlen(str) };
+  splice_Byte_array(_, _->len, 0, NULL, insert);
 }
 
 /** Append a formatted C string to the end of the given buffer.
@@ -350,13 +354,12 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 
   ensure_capacity_Byte_array(_, _->len + 80);
   size_t available = _->capacity - _->len;
-  size_t needed = (size_t) vsnprintf((char*) Byte_array_end(_), available - 1,
-                                     fmt, args);
+  size_t needed = (size_t)
+      vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   if (needed > available) {
     ensure_capacity_Byte_array(_, _->len + needed + 1);
     available = _->capacity - _->len;
-    vsnprintf((char*) Byte_array_end(_), available - 1,
-              fmt, args);
+    vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   }
   _->len += needed;
 
@@ -368,7 +371,7 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
  *  It first makes sure there is at least one extra byte after the array
  * contents in memory, by increasing the capacity if needed, and then
  * sets it to `0`.
- *  Returns the pointer `_->items` which now can be used as a C string
+ *  Returns the pointer `_->start` which now can be used as a C string
  * as long as you don’t modify it.
  */
 static const char *
@@ -378,9 +381,9 @@ as_c_string(mut_Byte_array_p _)
     push_Byte_array(_, '\0');
     --_->len;
   } else {
-    *((mut_Byte_p) _->items + _->len) = 0;
+    *((mut_Byte_p) _->start + _->len) = 0;
   }
-  return (const char *) _->items;
+  return (const char *) _->start;
 }
 
 typedef FILE* mut_File_p;
@@ -400,14 +403,14 @@ read_file(mut_Byte_array_p _, FilePath path)
   size_t size = (size_t)ftell(input);
   init_Byte_array(_, size);
   rewind(input);
-  _->len = fread((mut_Byte_p) _->items, sizeof(_->items[0]), size, input);
+  _->len = fread((mut_Byte_p) _->start, sizeof(_->start[0]), size, input);
   if (feof(input)) {
     err = EIO;
   } else if (ferror(input)) {
     err = errno;
   } else {
-    memset((mut_Byte_p) _->items + _->len, 0,
-           (_->capacity - _->len) * sizeof(_->items[0]));
+    memset((mut_Byte_p) _->start + _->len, 0,
+           (_->capacity - _->len) * sizeof(_->start[0]));
   }
   fclose(input);
   return err;
@@ -462,7 +465,8 @@ identifier(Byte_p start, Byte_p end)
           return cursor is start? NULL: cursor;
       }
       if (cursor + len >= end) {
-        error("Incomplete universal character name.");
+        error(LANG("Nombre de carácter universal incompleto.",
+                   "Incomplete universal character name."));
         return NULL;
       }
       while (len is_not 0) {
@@ -474,7 +478,8 @@ identifier(Byte_p start, Byte_p end)
             in('a',c,'f')? c-'a'+10:
             0xFF;
         if (value is 0xFF) {
-          error("Malformed universal character name.");
+          error(LANG("Nombre de carácter universal mal formado.",
+                     "Malformed universal character name."));
           return NULL;
         }
         u = (u << 4) | value;
@@ -484,7 +489,8 @@ identifier(Byte_p start, Byte_p end)
     }
   }
   if (u >= 0xD800 and u < 0xE000) {
-    error("UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
+    error(LANG("Error UTF-8, par subrogado.",
+               "UTF-8 error, surrogate pair."));
     return NULL;
   }
   if (in('a',u,'z') or in('A',u,'Z') or u is '_' or
@@ -648,7 +654,8 @@ identifier(Byte_p start, Byte_p end)
         }
       }
       if (u >= 0xD800 and u < 0xE000) {
-        error("UTF-8 DECODE ERROR, SURROGATE CODE POINT.");
+        error(LANG("Error UTF-8, par subrogado.",
+                   "UTF-8 error, surrogate pair."));
         return NULL;
       }
       if (in('a',u,'z') or in('A',u,'Z') or u is '_' or in('0',u,'9')) {
@@ -789,6 +796,7 @@ identifier(Byte_p start, Byte_p end)
 
 /** Match a number.
  * This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+ * See ISO/IEC 9899:TC3 6.4.8 “Preprocessing numbers”.
  * Rejecting that is left to the compiler.
  * Assumes `end` > `start`. */
 static inline Byte_p
@@ -796,31 +804,25 @@ number(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
-  if (c >= '1' and c <= '9') {
+  if (c is '.') { ++cursor; if (cursor is end) return NULL; c = *cursor; }
+  if (in('0',c,'9')) {
     ++cursor;
-    while (cursor < end) {
+    while (cursor is_not end) {
       c = *cursor;
       if (in('0',c,'9') or c is '.') {
         ++cursor;
-      } else if (c is 'u' or c is 'U' or c is 'l' or c is 'L') {
-        ++cursor;
-        if (cursor < end) {
-          c = *cursor;
-          if (c is 'u' or c is 'U' or c is 'l' or c is 'L') ++cursor;
-          else break;
+        continue;
+      } else if (c is 'e' or c is 'E' or c is 'p' or c is 'P') {
+        if (++cursor is end) break;
+        c = *cursor;
+        if (c is '+' or c is '-') {
+          ++cursor;
+          continue;
         }
-      } else if (c is 'e' or c is 'E') {
-        ++cursor;
-        if (cursor < end) {
-          c = *cursor;
-          if (c is '+' or c is '-') ++cursor;
-          while (cursor < end) {
-            c = *cursor;
-            if (in('1',c,'9') or c is '.') ++cursor;
-            else break;
-          }
-        }
-      } else break;
+      }
+      Byte_p identifier_nondigit = identifier(cursor, end);
+      if (not identifier_nondigit) break;
+      cursor = identifier_nondigit;
     }
     return cursor;
   } else {
@@ -960,7 +962,7 @@ slice_for_marker(Byte_array_p src, Marker_p cursor)
  * extract_src(m, m + 1, src, &string);
  * destruct_Byte_array(&string);
  * ```
- *  If you want string.items to be a zero-terminated C string:
+ *  If you want string.start to be a zero-terminated C string:
  * ```
  * push_Byte_array(&string, '\0');
  * ```
@@ -976,8 +978,8 @@ extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p str
 {
   Marker_mut_p cursor = start;
   while (cursor < end) {
-    Byte_array_slice insert = slice_for_marker(src, cursor);
-    splice_Byte_array(string, string->len, 0, NULL, &insert);
+    splice_Byte_array(string, string->len, 0, NULL,
+                      slice_for_marker(src, cursor));
     ++cursor;
   }
 }
@@ -987,9 +989,7 @@ static inline bool
 src_eq(Marker_p marker, Byte_array_p string, Byte_array_p src)
 {
   if (marker->len is_not string->len) return false;
-  return mem_eq(get_Byte_array(src, marker->start),
-                Byte_array_start(string),
-                string->len);
+  return mem_eq(get_Byte_array(src, marker->start), string->start, string->len);
 }
 
 /** Count appearances of the given byte in a marker. */
@@ -1215,7 +1215,7 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
             Byte_array_p src)
 {
   mut_Marker indentation = {0};
-  Marker_p start = Marker_array_start(markers);
+  Marker_p start = start_of_Marker_array(markers);
   Marker_mut_p cursor = marker;
   if (cursor) {
     mut_Error err = {0};
@@ -1233,7 +1233,7 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
     indentation = *cursor;
     // Prefer space tokens with LF if available, for the case where we have
     // a comment at the end of the previous line.
-    Marker_p end = Marker_array_end(markers);
+    Marker_p end = end_of_Marker_array(markers);
     while (cursor is_not end and
            (cursor->token_type is T_SPACE or cursor->token_type is T_COMMENT)
            ) {
@@ -1249,8 +1249,8 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
     Byte_mut_p b = slice.end_p;
     while (b is_not slice.start_p) {
       if ('\n' == *(--b)) {
-        indentation.start = (size_t)(b - Byte_array_start(src));
-        indentation.len   = (size_t)(slice.end_p - b          );
+        indentation.start = (size_t)(b - start_of_Byte_array(src));
+        indentation.len   = (size_t)(slice.end_p - b);
         break;
       }
     }
@@ -1263,10 +1263,7 @@ indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
 static size_t
 line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
 {
-  return 1 + count_appearances('\n',
-                               Marker_array_start(markers),
-                               position,
-                               src);
+  return 1 + count_appearances('\n', markers->start, position, src);
 }
 
 /** Compute the line number in the original file. */
@@ -1275,7 +1272,7 @@ original_line_number(size_t position, Byte_array_p src)
 {
   size_t line = 1;
   Byte_p end = get_Byte_array(src, position);
-  Byte_mut_p cursor = Byte_array_start(src);
+  Byte_mut_p cursor = start_of_Byte_array(src);
   while (cursor < end) {
     cursor = memchr(cursor, '\n', (size_t)(end - cursor));
     if (not cursor) break;
@@ -1327,9 +1324,9 @@ tabulate_eprint(size_t skip, size_t tabulator)
 static Marker
 new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
 {
-  Byte_mut_p cursor = Byte_array_start(src);
+  Byte_mut_p cursor = start_of_Byte_array(src);
   Byte_mut_p match  = NULL;
-  Byte_p     end    = Byte_array_end(src);
+  Byte_p     end    = end_of_Byte_array(src);
   size_t text_len = strlen(text);
   Byte_p text_end = (Byte_p)text + text_len;
   const char first_character = text[0];
@@ -1345,12 +1342,9 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
   }
   mut_Marker marker;
   if (not match) {
-    match = Byte_array_end(src);
-    Byte_array_slice insert = {
-      .start_p = (Byte_p)text,
-      .end_p   = (Byte_p)text + text_len
-    };
-    splice_Byte_array(src, src->len, 0, NULL, &insert);
+    match = end_of_Byte_array(src);
+    Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
+    splice_Byte_array(src, src->len, 0, NULL, insert);
   }
   init_Marker(&marker, match, match + text_len, src, token_type);
 
@@ -1373,7 +1367,7 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
   size_t indent = 0;
   if (start is_not 0) {
     Marker_p m_end = get_Marker_array(markers, start);
-    for (Marker_mut_p m = Marker_array_start(markers); m is_not m_end; ++m) {
+    for (Marker_mut_p m = start_of_Marker_array(markers); m is_not m_end; ++m) {
       switch (m->token_type) {
         case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
           ++indent;
@@ -1396,12 +1390,12 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
 
   mut_Byte_array token_text = new_Byte_array(80);
 
-  Marker_p markers_start = Marker_array_start(markers);
+  Marker_p markers_start = start_of_Marker_array(markers);
   Marker_p m_start =
       get_Marker_array(markers, start);
   Marker_p m_end   = end?
       get_Marker_array(markers, end):
-      Marker_array_end(markers);
+      end_of_Marker_array(markers);
   const char * token = NULL;
   for (Marker_mut_p m = m_start; m is_not m_end; ++m) {
     token_text.len = 0;
@@ -1449,7 +1443,7 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
  */
 static void
 debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p markers, Byte_array_p src) {
-  size_t i = (size_t)(cursor - Marker_array_start(markers));
+  size_t i = (size_t)(cursor - start_of_Marker_array(markers));
   eprintln("%s:", label);
 
   if (markers->len is 0) return;
@@ -1477,12 +1471,12 @@ unparse(Marker_array_p markers, Byte_array_p src,
         size_t original_src_len, char* src_file_name,
         Options options, FILE* out)
 {
-  Marker_p m_end = Marker_array_end(markers);
+  Marker_p m_end = end_of_Marker_array(markers);
   bool eol_pending = false;
   size_t previous_marker_end        = 0;
   size_t previous_marker_token_type = T_NONE;
   bool line_directive_pending = false;
-  for (Marker_mut_p m = (Marker_mut_p) markers->items; m is_not m_end; ++m) {
+  for (Marker_mut_p m = (Marker_mut_p) markers->start; m is_not m_end; ++m) {
     if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
@@ -1548,14 +1542,14 @@ unparse(Marker_array_p markers, Byte_array_p src,
       if (m->len >= len and strn_eq("#define {", (char*)text, len)) {
         size_t line_length;
         text += len;
-        if (text is_not Byte_array_end(src) && *text == ' ') {
+        if (text is_not end_of_Byte_array(src) && *text == ' ') {
           fputs("#define", out);
           line_length = 7;
         } else {
           fputs("#define ", out);
           line_length = 8;
         }
-        fwrite(text, sizeof(src->items[0]), m->len - len, out);
+        fwrite(text, sizeof(src->start[0]), m->len - len, out);
         line_length += m->len - len;
         for (++m; m is_not m_end; ++m) {
           if (options.discard_comments && m->token_type is T_COMMENT) {
@@ -1567,7 +1561,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
               // Not needed: line_length += strlen("// End #define");
               break;
             }
-            fwrite(text, sizeof(src->items[0]), m->len, out);
+            fwrite(text, sizeof(src->start[0]), m->len, out);
             line_length += m->len;
           } else {
             text = slice_for_marker(src, m).start_p;
@@ -1586,7 +1580,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
             }
             Byte_mut_p eol;
             while ((eol = memchr(text, '\n', len))) {
-              fwrite(text, sizeof(src->items[0]), (size_t)(eol - text), out);
+              fwrite(text, sizeof(src->start[0]), (size_t)(eol - text), out);
               line_length += (size_t)(eol - text);
               if (is_line_comment) {
                 fputs(" */", out);
@@ -1605,7 +1599,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
               len -= (size_t)(eol + 1 - text);
               text = eol + 1;
             }
-            fwrite(text, sizeof(src->items[0]), len, out);
+            fwrite(text, sizeof(src->start[0]), len, out);
             line_length += len;
             if (is_line_comment) {
               fputs(" */", out);
@@ -1633,10 +1627,10 @@ unparse(Marker_array_p markers, Byte_array_p src,
         if (!basename) basename = strrchr(file_name, '\\');
         if (basename) ++basename; else basename = file_name;
         fprintf(out, "[%lu] = { // %s\n0x%2X",
-                bin.len, basename, bin.items[0]);
+                bin.len, basename, bin.start[0]);
         for (size_t i = 1; i is_not bin.len; ++i) {
           fprintf(out,
-                  (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.items[i]);
+                  (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
         }
         fputs("\n}", out);
         destruct_Byte_array(&bin);
@@ -1667,7 +1661,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
           // So far, there is only one token handled this way:
           putc('@', out);
     } else {
-      fwrite(text, sizeof(src->items[0]), m->len, out);
+      fwrite(text, sizeof(src->start[0]), m->len, out);
     }
   }
 }
@@ -1804,8 +1798,8 @@ static Byte_p
 parse(Byte_array_p src, mut_Marker_array_p markers)
 {
   assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
-  Byte_mut_p cursor = Byte_array_start(src);
-  Byte_p     end    = Byte_array_end(src);
+  Byte_mut_p cursor = start_of_Byte_array(src);
+  Byte_p     end    =   end_of_Byte_array(src);
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
 
@@ -1820,9 +1814,9 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     if        ((token_end = preprocessor(cursor, end))) {
       if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
         if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
-          if (cursor is_not Byte_array_start(src)) {
+          if (cursor is_not start_of_Byte_array(src)) {
             mut_Marker inert;
-            init_Marker(&inert, Byte_array_start(src), cursor, src, T_NONE);
+            init_Marker(&inert, start_of_Byte_array(src), cursor, src, T_NONE);
             push_Marker_array(markers, inert);
           }
           cursor = token_end;
@@ -1839,7 +1833,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = number    (cursor, end))) {
     } else      token_end = other     (cursor, end);
     if (error_buffer[0]) {
-      eprintln("Error: src[%lu]: %s", cursor-Byte_array_start(src), error);
+      eprintln("Error: src[%lu]: %s", cursor - src->start, error);
       error_buffer[0] = 0;
       return cursor;
     }
@@ -1849,7 +1843,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     // No “#pragma Cedro x.y”, so just wrap the whole C code verbatim.
     mut_Marker inert;
     init_Marker(&inert,
-                Byte_array_start(src), Byte_array_end(src), src, T_NONE);
+                start_of_Byte_array(src), end_of_Byte_array(src), src, T_NONE);
     push_Marker_array(markers, inert);
 
     return cursor;
@@ -1901,50 +1895,55 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           else                        { TOKEN1(T_OP_1);     }
           break;
         case '~': TOKEN1(T_OP_2);        break;
-        case '?': TOKEN1(T_OP_13); break;
+        case '?': TOKEN1(T_OP_13);       break;
         case ':':
-          TOKEN1(T_OP_13); // Default.
-          if (markers->len is_not 0) {
-            // skip_space_back:
-            Marker_p start = Marker_array_start(markers);
-            mut_Marker_mut_p m = mut_Marker_array_end(markers);
-            while (m is_not start and
-                   ((m-1)->token_type is T_SPACE or
-                    (m-1)->token_type is T_COMMENT)
-                   ) --m;
-            --m;
-            if (m->token_type is T_IDENTIFIER) {
-              mut_Marker_p label_candidate = m;
-              // skip_space_back:
-              while (m is_not start and
-                     ((m-1)->token_type is T_SPACE or
-                      (m-1)->token_type is T_COMMENT)
-                     ) --m;
-              --m;
-              if (m->token_type is T_SEMICOLON   or
-                  m->token_type is T_LABEL_COLON or
-                  m->token_type is T_BLOCK_START or
-                  m->token_type is T_BLOCK_END) {
-                label_candidate->token_type = T_CONTROL_FLOW_LABEL;
-                token_type = T_LABEL_COLON;
-                mut_Byte_array text = new_Byte_array(10);
-                extract_src(label_candidate, label_candidate+1, src, &text);
-                destruct_Byte_array(&text);
+          switch (c2) {
+            case '>': TOKEN2(T_INDEX_END); break;
+            default:
+              TOKEN1(T_OP_13); // Default.
+              if (markers->len is_not 0) {
+                // skip_space_back:
+                Marker_p start     =   start_of_Marker_array(markers);
+                mut_Marker_mut_p m = end_of_mut_Marker_array(markers);
+                while (m is_not start and
+                       ((m-1)->token_type is T_SPACE or
+                        (m-1)->token_type is T_COMMENT)
+                       ) --m;
+                --m;
+                if (m->token_type is T_IDENTIFIER) {
+                  mut_Marker_p label_candidate = m;
+                  // skip_space_back:
+                  while (m is_not start and
+                         ((m-1)->token_type is T_SPACE or
+                          (m-1)->token_type is T_COMMENT)
+                         ) --m;
+                  --m;
+                  if (m->token_type is T_SEMICOLON   or
+                      m->token_type is T_LABEL_COLON or
+                      m->token_type is T_BLOCK_START or
+                      m->token_type is T_BLOCK_END) {
+                    label_candidate->token_type = T_CONTROL_FLOW_LABEL;
+                    token_type = T_LABEL_COLON;
+                    mut_Byte_array text = new_Byte_array(10);
+                    extract_src(label_candidate, label_candidate+1, src, &text);
+                    destruct_Byte_array(&text);
+                  }
+                } else {
+                  mut_Error err = {0};
+                  Marker_mut_p line_start = find_line_start(m, start, &err);
+                  if (err.message) {
+                    eprintln(LANG("Error: src[%lu]: %s",
+                                  "Error: src[%lu]: %s"),
+                             cursor - src->start, err.message);
+                    return cursor;
+                  }
+                  while (line_start->token_type is T_SPACE or
+                         line_start->token_type is T_COMMENT) ++line_start;
+                  if (line_start->token_type is T_CONTROL_FLOW_CASE) {
+                    token_type = T_LABEL_COLON;
+                  }
+                }
               }
-            } else {
-              mut_Error err = {0};
-              Marker_mut_p line_start = find_line_start(m, start, &err);
-              if (err.message) {
-                eprintln("Error: src[%lu]: %s",
-                         cursor-Byte_array_start(src), err.message);
-                return cursor;
-              }
-              while (line_start->token_type is T_SPACE or
-                     line_start->token_type is T_COMMENT) ++line_start;
-              if (line_start->token_type is T_CONTROL_FLOW_CASE) {
-                token_type = T_LABEL_COLON;
-              }
-            }
           }
           break;
         case '+':
@@ -1977,8 +1976,11 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
           break;
         case '/':
         case '%':
+          /* %: → #, %:%: → ##, but they can only appear inside of
+             preprocessor directives which we pack in one token. */
           switch (c2) {
             case '=': TOKEN2(T_OP_14); break;
+            case '>': TOKEN2(T_BLOCK_END); break;
             default:  TOKEN1(T_OP_3);
           }
           break;
@@ -2015,6 +2017,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
               }
               break;
             case '=': TOKEN2(T_OP_6); break;
+            case '%': TOKEN2(T_BLOCK_START); break;
+            case ':': TOKEN2(T_INDEX_START); break;
             default:  TOKEN1(T_OP_6);
           }
           break;
@@ -2051,7 +2055,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
       }
     }
     if (error_buffer[0]) {
-      eprintln("Error: src[%lu]: %s", cursor-Byte_array_start(src), error);
+      eprintln("Error: src[%lu]: %s", cursor - src->start, error);
       error_buffer[0] = 0;
       return cursor;
     }
@@ -2059,7 +2063,7 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
       token_end = other(cursor, end);
       if (not token_end) {
         eprintln("Error: src[%lu]: problem extracting other token.",
-                 cursor-Byte_array_start(src), error);
+                 cursor - src->start, error);
         break;
       }
     }

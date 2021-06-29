@@ -24,7 +24,7 @@ typedef struct T##_array {                                              \
   /** Maximum length before reallocation is needed. */                  \
   size_t capacity;                                                      \
   /** The items stored in this array. */                                \
-  T##_mut_p items;                                                      \
+  T##_mut_p start;                                                      \
 } mut_##T##_array, * const mut_##T##_array_p, * mut_##T##_array_mut_p;  \
 typedef const struct T##_array                                          \
 /*   */ T##_array, * const       T##_array_p, *       T##_array_mut_p;  \
@@ -32,7 +32,7 @@ typedef const struct T##_array                                          \
 /**                                                                     \
    Example:                                                             \
    \code{.c}                                                            \
-   T##_array_slice s = { &items, &items + 10 };                         \
+   T##_array_slice s = { &start, &start + 10 };                         \
    \endcode                                                             \
 */                                                                      \
 typedef struct T##_array_slice {                                        \
@@ -55,8 +55,8 @@ typedef const struct T##_array_slice                                    \
    init_##T##_array(&a, 0);\n                                           \
    T##_mut_array_slice s;\n                                             \
    init_##T##_array_slice(&s, &a, 3, 10);\n                             \
-   assert(&s->start_p == &a->items + 3);\n                              \
-   assert(&s->end_p   == &a->items + 10);                               \
+   assert(&s->start_p == &a->start + 3);\n                              \
+   assert(&s->end_p   == &a->start + 10);                               \
    \endcode                                                             \
 */                                                                      \
 typedef struct T##_array_mut_slice {                                    \
@@ -79,8 +79,8 @@ typedef struct T##_array_mut_slice {                                    \
    init_##T##_array(&a, 0);\n                                           \
    T##_mut_array_slice s;\n                                             \
    init_##T##_array_slice(&s, &a, 3, 10);\n                             \
-   assert(&s->start_p == &a->items + 3);\n                              \
-   assert(&s->end_p   == &a->items + 10);                               \
+   assert(&s->start_p == &a->start + 3);\n                              \
+   assert(&s->end_p   == &a->start + 10);                               \
    \endcode                                                             \
 */                                                                      \
 typedef struct T##_array_mut_slice                                      \
@@ -99,9 +99,9 @@ init_##T##_array_slice(mut_##T##_array_slice_p _,                       \
                        T##_array_p array_p,                             \
                        size_t start, size_t end)                        \
 {                                                                       \
-  _->start_p = array_p->items + start;                                  \
-  if (end) _->end_p = array_p->items + end;                             \
-  else     _->end_p = array_p->items + array_p->len;                    \
+  _->start_p = array_p->start + start;                                  \
+  if (end) _->end_p = array_p->start + end;                             \
+  else     _->end_p = array_p->start + array_p->len;                    \
 }                                                                       \
                                                                         \
 /** Initialize the slice to point at (*array_p)[`start`...`end`].       \
@@ -112,9 +112,9 @@ init_##T##_array_mut_slice(mut_##T##_array_mut_slice_p _,               \
                            mut_##T##_array_mut_p array_p,               \
                            size_t start, size_t end)                    \
 {                                                                       \
-  _->start_p = (mut_##T##_mut_p) array_p->items + start;                \
-  if (end) _->end_p = (mut_##T##_mut_p) array_p->items + end;           \
-  else     _->end_p = (mut_##T##_mut_p) array_p->items + array_p->len;  \
+  _->start_p = (mut_##T##_mut_p) array_p->start + start;                \
+  if (end) _->end_p = (mut_##T##_mut_p) array_p->start + end;           \
+  else     _->end_p = (mut_##T##_mut_p) array_p->start + array_p->len;  \
 }                                                                       \
                                                                         \
 static void                                                             \
@@ -137,7 +137,7 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
 {                                                                       \
   _->len = 0;                                                           \
   _->capacity = initial_capacity + PADDING;                             \
-  _->items = _->capacity? malloc(_->capacity * sizeof(*_->items)): NULL;\
+  _->start = _->capacity? malloc(_->capacity * sizeof(*_->start)): NULL;\
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
@@ -158,7 +158,7 @@ init_from_constant_##T##_array(mut_##T##_array_p _,                     \
 {                                                                       \
   _->len = len;                                                         \
   _->capacity = 0;                                                      \
-  _->items = items;                                                     \
+  _->start = items;                                                     \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
@@ -188,10 +188,10 @@ static void                                                             \
 destruct_##T##_array(mut_##T##_array_p _)                               \
 {                                                                       \
   if (_->capacity is_not 0) {                                           \
-    /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
-    destruct_##T##_block((mut_##T##_p) _->items, _->items + _->len);    \
-    free((mut_##T##_mut_p) (_->items));                                 \
-    *((mut_##T##_mut_p *) &(_->items)) = NULL;                          \
+    /* _->capacity == 0 means that _->start is a non-owned pointer. */  \
+    destruct_##T##_block((mut_##T##_p) _->start, _->start + _->len);    \
+    free((mut_##T##_mut_p) (_->start));                                 \
+    *((mut_##T##_mut_p *) &(_->start)) = NULL;                          \
     _->capacity = 0;                                                    \
   }                                                                     \
   _->len = 0;                                                           \
@@ -226,7 +226,7 @@ move_##T##_array(mut_##T##_array_p _)                                   \
   mut_##T##_array transferred_copy = *_;                                \
   _->len = 0;                                                           \
   _->capacity = 0;                                                      \
-  *((mut_##T##_mut_p *) &(_->items)) = NULL;                            \
+  *((mut_##T##_mut_p *) &(_->start)) = NULL;                            \
   return transferred_copy;                                              \
 }                                                                       \
                                                                         \
@@ -238,14 +238,14 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
   minimum += PADDING;                                                   \
   if (minimum <= _->capacity) return;                                   \
   if (_->capacity is 0) {                                               \
-    /* _->capacity == 0 means that _->items is a non-owned pointer. */  \
+    /* _->capacity == 0 means that _->start is a non-owned pointer. */  \
     _->capacity = minimum + PADDING;                                    \
-    _->items = malloc(_->capacity * sizeof(*_->items));                 \
+    _->start = malloc(_->capacity * sizeof(*_->start));                 \
   } else {                                                              \
     _->capacity = 2*_->capacity + PADDING;                              \
     if (minimum > _->capacity) _->capacity = minimum;                   \
-    _->items = realloc((void*) _->items,                                \
-                       _->capacity * sizeof(*_->items));                \
+    _->start = realloc((void*) _->start,                                \
+                       _->capacity * sizeof(*_->start));                \
   }                                                                     \
 }                                                                       \
                                                                         \
@@ -255,7 +255,7 @@ static void                                                             \
 push_##T##_array(mut_##T##_array_p _, T item)                           \
 {                                                                       \
   ensure_capacity_##T##_array(_, _->len + 1);                           \
-  *((mut_##T##_p) _->items + _->len++) = item;                          \
+  *((mut_##T##_p) _->start + _->len++) = item;                          \
 }                                                                       \
                                                                         \
 /** Splice the given `insert` slice in place of the removed elements,   \
@@ -265,59 +265,70 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     as bit copies.                                                      \
     If `deleted` is not `NULL`, the deleted elements are not destroyed  \
     but copied to that array.                                           \
-    The `insert` slice, if given, must belong to a different array. */  \
+    The `insert` slice must belong to a different array or be empty. */ \
 static void                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
                    mut_##T##_array_p deleted,                           \
-                   T##_array_slice_p insert)                            \
+                   T##_array_slice insert)                              \
 {                                                                       \
   assert(position + delete <= _->len);                                  \
   if (deleted) {                                                        \
     T##_array_slice slice = {                                           \
-      .start_p = (mut_##T##_p) _->items + position,                     \
-      .end_p   = (mut_##T##_p) _->items + position + delete             \
+      .start_p = (mut_##T##_p) _->start + position,                     \
+      .end_p   = (mut_##T##_p) _->start + position + delete             \
     };                                                                  \
-    splice_##T##_array(deleted, deleted->len, 0, NULL, &slice);         \
+    splice_##T##_array(deleted, deleted->len, 0, NULL, slice);          \
   } else {                                                              \
-    destruct_##T##_block((mut_##T##_p) _->items + position,             \
-                         _->items + position + delete);                 \
+    destruct_##T##_block((mut_##T##_p) _->start + position,             \
+                         _->start + position + delete);                 \
   }                                                                     \
                                                                         \
   size_t insert_len = 0;                                                \
   size_t new_len = _->len - delete;                                     \
-  if (insert) {                                                         \
-    assert(_->items          > insert->end_p ||                         \
-           _->items + _->len < insert->start_p);                        \
-    assert(insert->end_p >= insert->start_p);                           \
-    insert_len = (size_t)(insert->end_p - insert->start_p);             \
+  if (insert.start_p is_not insert.end_p) {                             \
+    assert(_->start          > insert.end_p ||                          \
+           _->start + _->len < insert.start_p);                         \
+    assert(insert.end_p >= insert.start_p);                             \
+    insert_len = (size_t)(insert.end_p - insert.start_p);               \
     new_len += insert_len;                                              \
     ensure_capacity_##T##_array(_, new_len);                            \
   }                                                                     \
                                                                         \
   size_t gap_end = position + insert_len;                               \
-  memmove((void*) (_->items + gap_end),                                 \
-          _->items + position + delete,                                 \
-          (_->len - delete - position) * sizeof(*_->items));            \
+  memmove((void*) (_->start + gap_end),                                 \
+          _->start + position + delete,                                 \
+          (_->len - delete - position) * sizeof(*_->start));            \
   _->len = _->len + insert_len - delete;                                \
   if (insert_len) {                                                     \
-    memcpy((void*) (_->items + position),                               \
-           insert->start_p,                                             \
-           insert_len * sizeof(*_->items));                             \
+    memcpy((void*) (_->start + position),                               \
+           insert.start_p,                                              \
+           insert_len * sizeof(*_->start));                             \
   }                                                                     \
 }                                                                       \
                                                                         \
-/** Delete `delete` elements from the array at `position`. */           \
+/** Append the given `insert` slice to the array.                       \
+    Same as `splice_##T##_array(_, _->len, 0, NULL, insert)`.           \
+    The `insert` slice, must belong to a different array. */            \
+static void                                                             \
+append_##T##_array(mut_##T##_array_p _, T##_array_slice insert)         \
+{                                                                       \
+  splice_##T##_array(_, _->len, 0, NULL, insert);                       \
+}                                                                       \
+                                                                        \
+/** Delete `delete` elements from the array at `position`.              \
+    Same as `splice_##T##_array(_, position, delete, NULL,              \
+    (T##_array_slice){0})`. */                                          \
 static void                                                             \
 delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
 {                                                                       \
   assert(position + delete <= _->len);                                  \
-  destruct_##T##_block((mut_##T##_p) _->items + position,               \
-                   _->items + position + delete);                       \
+  destruct_##T##_block((mut_##T##_p) _->start + position,               \
+                   _->start + position + delete);                       \
                                                                         \
-  memmove((void*) (_->items + position),                                \
-          _->items + position + delete,                                 \
-          (_->len - delete - position) * sizeof(*_->items));            \
+  memmove((void*) (_->start + position),                                \
+          _->start + position + delete,                                 \
+          (_->len - delete - position) * sizeof(*_->start));            \
   _->len -= delete;                                                     \
 }                                                                       \
                                                                         \
@@ -329,8 +340,8 @@ static void                                                             \
 pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
 {                                                                       \
   if (not _->len) return;                                               \
-  mut_##T##_p last_p = (mut_##T##_p) _->items + _->len - 1;             \
-  if (item_p) memmove((void*) last_p, item_p, sizeof(*_->items));       \
+  mut_##T##_p last_p = (mut_##T##_p) _->start + _->len - 1;             \
+  if (item_p) memmove((void*) last_p, item_p, sizeof(*_->start));       \
   else        destruct_##T##_block((mut_##T##_p) last_p, last_p + 1);   \
   --_->len;                                                             \
 }                                                                       \
@@ -341,7 +352,7 @@ static T##_p                                                            \
 get_##T##_array(T##_array_p _, size_t position)                         \
 {                                                                       \
   assert(position < _->len);                                            \
-  return _->items + position;                                           \
+  return _->start + position;                                           \
 }                                                                       \
                                                                         \
 /** Return a mutable pointer to the element at `position`.              \
@@ -350,43 +361,57 @@ static mut_##T##_p                                                      \
 get_mut_##T##_array(T##_array_p _, size_t position)                     \
 {                                                                       \
   assert(position < _->len);                                            \
-  return (mut_##T##_p) _->items + position;                             \
+  return (mut_##T##_p) _->start + position;                             \
 }                                                                       \
                                                                         \
-/** Return a pointer to the start of the array (same as `_->items`) */  \
+/** Return a pointer to the start of the array (same as `_->start`) */  \
 static T##_p                                                            \
-T##_array_start(T##_array_p _)                                          \
+start_of_##T##_array(T##_array_p _)                                     \
 {                                                                       \
-  return _->items;                                                      \
+  return _->start;                                                      \
 }                                                                       \
                                                                         \
 /** Return a pointer to the next byte after                             \
     the element at the end of the array. */                             \
 static T##_p                                                            \
-T##_array_end(T##_array_p _)                                            \
+end_of_##T##_array(T##_array_p _)                                       \
 {                                                                       \
-  return _->items + _->len;                                             \
+  return _->start + _->len;                                             \
 }                                                                       \
                                                                         \
-/** Return a pointer to the start of the array (same as `_->items`) */  \
+/** Return a pointer to the start of the array (same as `_->start`) */  \
 static mut_##T##_p                                                      \
-mut_##T##_array_start(mut_##T##_array_p _)                              \
+start_of_mut_##T##_array(mut_##T##_array_p _)                           \
 {                                                                       \
-  return (mut_##T##_p) _->items;                                        \
+  return (mut_##T##_p) _->start;                                        \
 }                                                                       \
                                                                         \
 /** Return a pointer to the next byte after                             \
     the element at the end of the array. */                             \
 static mut_##T##_p                                                      \
-mut_##T##_array_end(mut_##T##_array_p _)                                \
+end_of_mut_##T##_array(mut_##T##_array_p _)                             \
 {                                                                       \
-  return (mut_##T##_p) _->items + _->len;                               \
+  return (mut_##T##_p) _->start + _->len;                               \
+}                                                                       \
+                                                                        \
+/** Return the slice for the whole array. */                            \
+static T##_array_slice                                                  \
+bounds_of_##T##_array(T##_array_p _)                                    \
+{                                                                       \
+  return (T##_array_slice){ _->start, _->start + _->len };              \
+}                                                                       \
+                                                                        \
+/** Return the slice for the whole array. */                            \
+static mut_##T##_array_slice                                            \
+bounds_of_mut_##T##_array(mut_##T##_array_p _)                          \
+{                                                                       \
+  return (mut_##T##_array_slice){ _->start, _->start + _->len };        \
 }                                                                       \
                                                                         \
 /** Return the index for the given pointer. */                          \
 static size_t                                                           \
 index_##T##_array(T##_array_p _, T##_p pointer)                         \
 {                                                                       \
-  return (size_t)(pointer - _->items);                                  \
+  return (size_t)(pointer - _->start);                                  \
 }                                                                       \
 static const size_t PADDING_##T##_ARRAY = PADDING//; commented out to avoid ;;.
