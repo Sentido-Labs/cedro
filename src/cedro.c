@@ -340,7 +340,7 @@ static void
 push_str(mut_Byte_array_p _, const char * const str)
 {
   Byte_array_slice insert = { (Byte_p) str, (Byte_p) str + strlen(str) };
-  splice_Byte_array(_, _->len, 0, NULL, &insert);
+  splice_Byte_array(_, _->len, 0, NULL, insert);
 }
 
 /** Append a formatted C string to the end of the given buffer.
@@ -978,8 +978,8 @@ extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p str
 {
   Marker_mut_p cursor = start;
   while (cursor < end) {
-    Byte_array_slice insert = slice_for_marker(src, cursor);
-    splice_Byte_array(string, string->len, 0, NULL, &insert);
+    splice_Byte_array(string, string->len, 0, NULL,
+                      slice_for_marker(src, cursor));
     ++cursor;
   }
 }
@@ -1344,7 +1344,7 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
   if (not match) {
     match = end_of_Byte_array(src);
     Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
-    splice_Byte_array(src, src->len, 0, NULL, &insert);
+    splice_Byte_array(src, src->len, 0, NULL, insert);
   }
   init_Marker(&marker, match, match + text_len, src, token_type);
 

@@ -111,13 +111,10 @@ capitalize(mut_Byte_array_p _)
             capital_letter);
       return;
     }
-    Byte_array_slice capital_letter_utf8 = {
-      .start_p = &utf8[0],
-      .end_p   = &utf8[len]
-    };
+    Byte_array_slice capital_letter_utf8 = { &utf8[0], &utf8[len] };
     splice_Byte_array(_, 0,
                       (size_t)(cursor - start_of_Byte_array(_)), NULL,
-                      &capital_letter_utf8);
+                      capital_letter_utf8);
   }
 }
 

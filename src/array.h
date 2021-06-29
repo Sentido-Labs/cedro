@@ -270,7 +270,7 @@ static void                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
                    mut_##T##_array_p deleted,                           \
-                   T##_array_slice_p insert)                            \
+                   T##_array_slice insert)                              \
 {                                                                       \
   assert(position + delete <= _->len);                                  \
   if (deleted) {                                                        \
@@ -278,7 +278,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
       .start_p = (mut_##T##_p) _->start + position,                     \
       .end_p   = (mut_##T##_p) _->start + position + delete             \
     };                                                                  \
-    splice_##T##_array(deleted, deleted->len, 0, NULL, &slice);         \
+    splice_##T##_array(deleted, deleted->len, 0, NULL, slice);          \
   } else {                                                              \
     destruct_##T##_block((mut_##T##_p) _->start + position,             \
                          _->start + position + delete);                 \
@@ -286,11 +286,11 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
                                                                         \
   size_t insert_len = 0;                                                \
   size_t new_len = _->len - delete;                                     \
-  if (insert) {                                                         \
-    assert(_->start          > insert->end_p ||                         \
-           _->start + _->len < insert->start_p);                        \
-    assert(insert->end_p >= insert->start_p);                           \
-    insert_len = (size_t)(insert->end_p - insert->start_p);             \
+  if (insert.start_p) {                                                 \
+    assert(_->start          > insert.end_p ||                          \
+           _->start + _->len < insert.start_p);                         \
+    assert(insert.end_p >= insert.start_p);                             \
+    insert_len = (size_t)(insert.end_p - insert.start_p);               \
     new_len += insert_len;                                              \
     ensure_capacity_##T##_array(_, new_len);                            \
   }                                                                     \
@@ -302,7 +302,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
   _->len = _->len + insert_len - delete;                                \
   if (insert_len) {                                                     \
     memcpy((void*) (_->start + position),                               \
-           insert->start_p,                                             \
+           insert.start_p,                                              \
            insert_len * sizeof(*_->start));                             \
   }                                                                     \
 }                                                                       \

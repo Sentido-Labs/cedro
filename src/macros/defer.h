@@ -40,15 +40,11 @@ are_there_pending_deferred_actions(DeferredAction_array_p pending, size_t level)
     Returns the number of tokens inserted. */
 static size_t
 insert_deferred_actions(DeferredAction_array_p pending, size_t level,
-                        Marker_array_slice_p line,
-                        Marker_p indentation, Marker_p extra_indentation,
+                        Marker_array_slice line,
+                        Marker indentation, Marker extra_indentation,
                         size_t cursor, mut_Marker_array_p markers)
 {
-  mut_Marker between[2] = {
-    *indentation,
-    { .start = 0, .len = 0, .token_type = T_NONE }
-  };
-  if (extra_indentation) between[1] = *extra_indentation;
+  mut_Marker between[2] = { indentation, extra_indentation };
 
   size_t inserted_length = 0;
   mut_Marker_array_slice indent = {
@@ -62,20 +58,20 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
     if (actions_cursor->level < level) break;
 
     if (inserted_length is_not 0) {
-      splice_Marker_array(markers, cursor + inserted_length, 0, NULL, &indent);
+      splice_Marker_array(markers, cursor + inserted_length, 0, NULL, indent);
       inserted_length += (size_t)(indent.end_p - indent.start_p);
     }
 
     mut_Marker_array_slice action =
         bounds_of_Marker_array(&actions_cursor->action);
-    splice_Marker_array(markers, cursor + inserted_length, 0, NULL, &action);
+    splice_Marker_array(markers, cursor + inserted_length, 0, NULL, action);
     inserted_length += actions_cursor->action.len;
   }
-  if (line) {
-    splice_Marker_array(markers, cursor + inserted_length, 0, NULL, &indent);
+  if (line.start_p) {
+    splice_Marker_array(markers, cursor + inserted_length, 0, NULL, indent);
     inserted_length += (size_t)(indent.end_p - indent.start_p);
     splice_Marker_array(markers, cursor + inserted_length, 0, NULL, line);
-    inserted_length += (size_t)(line->end_p - line->start_p);
+    inserted_length += (size_t)(line.end_p - line.start_p);
   }
   return inserted_length;
 }
@@ -98,7 +94,7 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
   size_t cut_point = index_DeferredAction_array(pending, actions_cursor);
   // Deleting items does not invalidate pointers in splice_...().
   splice_DeferredAction_array(pending, cut_point, pending->len - cut_point,
-                              NULL, NULL);
+                              NULL, (DeferredAction_array_slice){0});
 }
 
 static void
@@ -209,17 +205,14 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         push_Marker_array(&marker_buffer, indent_one_level);
       }
       insert_deferred_actions(&pending, block_level,
-                              NULL,
-                              &between, &indent_one_level,
+                              (Marker_array_slice){0},
+                              between, indent_one_level,
                               marker_buffer.len, &marker_buffer);
 
-      mut_Marker_array_slice insert = bounds_of_Marker_array(&marker_buffer);
       cursor_position = (size_t)(insertion_point - start);
       // Invalidates: markers
-      splice_Marker_array(markers,
-                          cursor_position,
-                          0, NULL,
-                          &insert);
+      splice_Marker_array(markers, cursor_position, 0, NULL,
+                          bounds_of_Marker_array(&marker_buffer));
       cursor_position = cursor_position +
           1 +
           marker_buffer.len; // Move to end of inserted block.
@@ -405,8 +398,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         push_Marker_array(&marker_buffer, between);
         push_Marker_array(&marker_buffer, indent_one_level);
         insert_deferred_actions(&pending, block_level,
-                                &line,
-                                &between, &indent_one_level,
+                                line,
+                                between, indent_one_level,
                                 marker_buffer.len, &marker_buffer);
         push_Marker_array(&marker_buffer, between);
         push_Marker_array(&marker_buffer, block_end);
@@ -429,20 +422,17 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           push_Marker_array(&marker_buffer, *insertion_point);
         }
         insert_deferred_actions(&pending, block_level,
-                                NULL,
-                                &between, NULL,
+                                (Marker_array_slice){0},
+                                between, (Marker){0},
                                 marker_buffer.len, &marker_buffer);
         delete_count = 0;
       }
 
-      mut_Marker_array_slice insert = bounds_of_Marker_array(&marker_buffer);
       // Here, line.start_p = insertion_point.
       cursor_position = (size_t)(insertion_point - start);
       // Invalidates: markers
-      splice_Marker_array(markers,
-                          cursor_position,
-                          delete_count, NULL,
-                          &insert);
+      splice_Marker_array(markers, cursor_position, delete_count, NULL,
+                          bounds_of_Marker_array(&marker_buffer));
       cursor_position = cursor_position +
           (size_t)(line.end_p - line.start_p) +
           marker_buffer.len - delete_count; // Move to end of inserted block.
@@ -523,14 +513,14 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       splice_Marker_array(markers,
                           (size_t)(line_start - start),
                           (size_t)(action_end - line_start),
-                          &marker_buffer, NULL);
+                          &marker_buffer, (Marker_array_slice){0});
       start  = start_of_mut_Marker_array(markers);
       end    =   end_of_mut_Marker_array(markers);
       cursor = get_mut_Marker_array(markers, cursor_position);
       // Delete indentation and auto keyword:
       splice_Marker_array(&marker_buffer,
                           0, (size_t)(action_start - line_start),
-                          NULL, NULL);
+                          NULL, (Marker_array_slice){0});
       // Copy buffer into pending mut_DeferredAction_array:
       mut_DeferredAction deferred = {
         .level = block_stack.len,

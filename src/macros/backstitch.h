@@ -180,7 +180,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             if (insertion_point is segment_start) {
               if (object.start_p is_not object.end_p) {
                 splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    &object);
+                                    object);
                 if ((segment_start+1)->token_type == T_SPACE) {
                   push_Marker_array(&replacement, space);
                 }
@@ -199,7 +199,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   if (slice.end_p->token_type is T_IDENTIFIER) break;
                 }
                 splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    &slice);
+                                    slice);
                 if (prefix) {
                   push_Marker_array(&replacement, *prefix);
                 } else {
@@ -210,11 +210,11 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 slice.end_p   = insertion_point;
               }
               splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                  &slice);
+                                  slice);
               // Only insert object if not empty, allow elided object.
               if (object.end_p is_not object.start_p) {
                 splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                    &object);
+                                    object);
                 if (inside_parenthesis) {
                   if (insertion_point->token_type is_not T_TUPLE_END) {
                     push_Marker_array(&replacement, comma);
@@ -228,7 +228,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             slice.start_p = insertion_point;
             slice.end_p   = segment_end;
             splice_Marker_array(&replacement, replacement.len, 0, NULL,
-                                &slice);
+                                slice);
 
             if (segment_end < end_of_line) {
               if (ends_with_semicolon) {
@@ -244,20 +244,17 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               segment_end = segment_start;
             }
           }
-          slice.start_p = start_of_Marker_array(&replacement);
-          slice.end_p   =   end_of_Marker_array(&replacement);
           // Invalidates: markers
           cursor_position = (size_t)(object.start_p - start);
           splice_Marker_array(markers,
                               cursor_position,
                               (size_t)(end_of_line - object.start_p),
                               NULL,
-                              &slice);
+                              bounds_of_Marker_array(&replacement));
           cursor_position += replacement.len;
           start = (mut_Marker_p)start_of_Marker_array(markers);
           end   = (mut_Marker_p)  end_of_Marker_array(markers);
           cursor = start + cursor_position;
-          slice.start_p = slice.end_p = NULL;
           destruct_Marker_array(&replacement);
         }
       }
