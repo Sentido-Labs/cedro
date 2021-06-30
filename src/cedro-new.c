@@ -212,6 +212,11 @@ int main(int argc, char* argv[])
 
     push_str(&project_name, as_c_string(&command_name));
     capitalize(&project_name);
+    for (mut_Byte_mut_p cursor = end_of_mut_Byte_array(&project_name);
+         cursor is_not start_of_mut_Byte_array(&project_name); ) {
+      --cursor;
+      if (*cursor is '-' or *cursor is '_') *cursor = ' ';
+    }
 
     eprint(LANG("¿Nombre completo del proyecto? (implícito: %s): ",
                 "Full project name? (default: %s): "),
@@ -227,6 +232,11 @@ int main(int argc, char* argv[])
   } else {
     append_Byte_array(&project_name, bounds_of_Byte_array(&command_name));
     capitalize(&project_name);
+    for (mut_Byte_mut_p cursor = end_of_mut_Byte_array(&project_name);
+         cursor is_not start_of_mut_Byte_array(&project_name); ) {
+      --cursor;
+      if (*cursor is '-' or *cursor is '_') *cursor = ' ';
+    }
   }
 
   char user_name [255 + 1];
