@@ -355,6 +355,7 @@ int main(int argc, char* argv[])
     }
 
     if (str_eq("template/Makefile",   file_stat.m_filename) or
+        str_eq("template/README.md",  file_stat.m_filename) or
         str_eq("template/src/main.c", file_stat.m_filename)) {
       Byte_p start = (Byte_p)extracted_bytes;
       Byte_p end   = (Byte_p)extracted_bytes + extracted_size;
