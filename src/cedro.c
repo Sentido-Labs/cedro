@@ -57,7 +57,8 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 
 static const size_t error_buffer_size = 256;
 static char         error_buffer[256] = {0};
-void error(const char * const fmt, ...)
+static void
+error(const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
@@ -366,11 +367,11 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
   va_end(args);
 }
 
-/** Make it be a valid C string, by adding a `'\0'` character after the last
- * last valid element, without increasing the length.
+/** Make it be a valid C string, by adding a `'\0'` character after the
+ * last valid element, without increasing the `.len` value.
  *  It first makes sure there is at least one extra byte after the array
- * contents in memory, by increasing the capacity if needed, and then
- * sets it to `0`.
+ * contents in memory, by increasing the `.capacity` if needed, and then
+ * sets that byte to `0`.
  *  Returns the pointer `_->start` which now can be used as a C string
  * as long as you don’t modify it.
  */
