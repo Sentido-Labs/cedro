@@ -837,12 +837,15 @@ static inline Byte_p
 string(Byte_p start, Byte_p end)
 {
   if (*start is_not '"') return NULL;
-  Byte_mut_p cursor = start + 1;
-  while (cursor is_not end and *cursor is_not '"') {
-    if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
-    ++cursor;
+  Byte_mut_p cursor = start;
+  while ((cursor = memchr(cursor + 1, '"', (size_t)(end - cursor)))) {
+    if (*(cursor - 1) is_not '\\') {
+      return cursor + 1; // End is past the closing symbol.
+    }
   }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
+  error(LANG("Cadena literal interrumpida.",
+             "Unterminated string literal."));
+  return NULL;
 }
 
 /** Match a character literal.
@@ -851,12 +854,15 @@ static inline Byte_p
 character(Byte_p start, Byte_p end)
 {
   if (*start is_not '\'') return NULL;
-  Byte_mut_p cursor = start + 1;
-  while (cursor is_not end and *cursor is_not '\'') {
-    if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
-    ++cursor;
+  Byte_mut_p cursor = start;
+  while ((cursor = memchr(cursor + 1, '\'', (size_t)(end - cursor)))) {
+    if (*(cursor - 1) is_not '\\') {
+      return cursor + 1; // End is past the closing symbol.
+    }
   }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
+  error(LANG("Carácter literal interrumpido.",
+             "Unterminated character literal."));
+  return NULL;
 }
 
 /** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters.
