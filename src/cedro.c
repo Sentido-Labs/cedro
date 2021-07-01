@@ -38,6 +38,7 @@
 #define str_eq(a, b)        (0 is strcmp(a, b))
 #define strn_eq(a, b, len)  (0 is strncmp(a, b, len))
 
+#define NDEBUG
 #include <assert.h>
 #include <sys/resource.h>
 #include <errno.h>
@@ -54,6 +55,10 @@ typedef size_t SrcIndexType; // Must be enough for the maximum src file size.
 typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#ifdef NDEBUG
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 
 static const size_t error_buffer_size = 256;
 static char         error_buffer[256] = {0};
