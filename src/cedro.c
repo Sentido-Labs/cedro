@@ -74,7 +74,8 @@ error(const char * const fmt, ...)
 
 #define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
-/** Decode one Unicode® code point from a UTF-8 byte buffer. */
+/** Decode one Unicode® code point from a UTF-8 byte buffer.
+    Assumes `end` > `*cursor_p`. */
 static inline uint32_t
 decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
 {
