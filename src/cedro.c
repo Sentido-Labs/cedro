@@ -2127,9 +2127,8 @@ static Macro macros[] = {
 static double
 benchmark(mut_Byte_array_p src_p, Options_p options)
 {
-  const size_t repetitions = 1000;
-  time_t start, end;
-  time(&start);
+  const size_t repetitions = 100;
+  clock_t start = clock();
 
   mut_Marker_array markers = new_Marker_array(8192);
 
@@ -2148,9 +2147,9 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
     fputc('.', stderr);
   }
 
-  time(&end);
+  clock_t end = clock();
   destruct_Marker_array(&markers);
-  return difftime(end, start) / (double) repetitions;
+  return ((double)(end - start))/CLOCKS_PER_SEC / (double) repetitions;
 }
 
 
