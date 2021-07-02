@@ -80,8 +80,14 @@ capitalize(mut_Byte_array_p _)
 {
   Byte_mut_p cursor = start_of_Byte_array(_);
   Byte_p        end = end_of_Byte_array(_);
-  wint_t u = decode_utf8(&cursor, end);
-  if (error_buffer[0]) return;
+  wint_t u = 0;
+  UTF8Error err = UTF8_NO_ERROR;
+  cursor = decode_utf8(cursor, end, &u, &err);
+  if (utf8_error(err)) {
+    eprintln("capitalize(): %s", error_buffer);
+    error_buffer[0] = 0;
+    return;
+  }
   wint_t capital_letter = towupper(u);
   if (capital_letter is u) {
     /* `towupper()` only converts characters from the current locale,

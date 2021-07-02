@@ -74,40 +74,74 @@ error(const char * const fmt, ...)
 
 #define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
-/** Decode one Unicode® code point from a UTF-8 byte buffer.
-    Assumes `end` > `*cursor_p`. */
-static inline uint32_t
-decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
+typedef enum UTF8Error {
+  UTF8_NO_ERROR, UTF8_ERROR, UTF8_ERROR_OVERLONG,
+  UTF8_ERROR_INTERRUPTED_1 = 0x40,
+  UTF8_ERROR_INTERRUPTED_2 = 0x80,
+  UTF8_ERROR_INTERRUPTED_3 = 0xC0
+} UTF8Error, * UTF8Error_p;
+bool utf8_error(UTF8Error err)
 {
-  const uint8_t* cursor = *cursor_p;
+  switch (err) {
+    case UTF8_NO_ERROR: return false;
+    case UTF8_ERROR:
+      error(LANG("Error descodificando UTF-8.",
+                 "UTF-8 decode error."));
+      break;
+    case UTF8_ERROR_OVERLONG:
+      error(LANG("Error UTF-8, secuencia sobrelarga.",
+                 "UTF-8 error, overlong sequence."));
+      break;
+    case UTF8_ERROR_INTERRUPTED_1:
+    case UTF8_ERROR_INTERRUPTED_2:
+    case UTF8_ERROR_INTERRUPTED_3:
+      error(LANG("Error UTF-8, secuencia interrumpida.",
+                 "UTF-8 error, interrupted sequence."));
+      break;
+    default:
+      error(LANG("Error UTF-8 inesperado: 0x%02X",
+                 "UTF-8 error, unexpected: 0x%02X"),
+            err);
+  }
+
+  return true;
+}
+// If you want to assume that the input is valid UTF-8, you can do this
+// to disable UTF-8 decoding error checking and get a notable boost
+// with optimizing compilers.
+//#define utf8_error(_) false
+
+/** Decode one Unicode® code point from a UTF-8 byte buffer.
+    Assumes `end` > `cursor`. */
+static inline const uint8_t*
+decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8Error_p err_p)
+{
   uint8_t c = *cursor;
-  uint32_t u = 0;
-  uint32_t len = 0;
-  if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+  uint32_t u;
+  uint8_t len = 0;
+  if      (0x00 == (c & 0x80)) { *codepoint = (uint32_t)(c); return cursor+1; }
+  //if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
   else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
   else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
   else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
   if (len is 0 or cursor + len > end) {
-    error(LANG("Error descodificando UTF-8, octeto es 0x%02X.",
-               "UTF-8 decode error, byte is 0x%02X."), c);
-    return 0xFFFD;
+    *err_p = UTF8_ERROR;
+    return cursor;
   }
   switch (len) {
-    case 4: c = *(++cursor); u = (u << 6) | (c & 0x3F);
-    case 3: c = *(++cursor); u = (u << 6) | (c & 0x3F);
-    case 2: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 4: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
+    case 3: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
+    case 2: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
     case 1:      (++cursor);
   }
   if (len is 2 and u <    0x80 or
       len is 3 and u <  0x0800 or
       len is 4 and u < 0x10000) {
-    error("Error UTF-8, secuencia sobrelarga.",
-          "UTF-8 error, overlong sequence.");
-    return 0xFFFD;
+    *err_p = UTF8_ERROR_OVERLONG;
   }
-  *cursor_p = cursor;
+  *codepoint = u;
 
-  return u;
+  return cursor;
 }
 
 /** Same as `fprintf(stderr, fmt, ...)`
@@ -140,10 +174,11 @@ eprint(const char * const fmt, ...)
     }
     const uint8_t* p   = (const uint8_t*)buffer;
     const uint8_t* end = p + needed;
-    uint8_t c;
-    while ((c = *p)) {
-      uint32_t u = decode_utf8(&p, end);
-      if (error_buffer[0] is_not 0) {
+    for (;;) {
+      uint32_t u = 0;
+      UTF8Error err = UTF8_NO_ERROR;
+      p = decode_utf8(p, end, &u, &err);
+      if (utf8_error(err)) {
         fprintf(stderr,
                 LANG("Error en posición %lu: %s\n",
                      "Error at position %lu: %s\n"),
@@ -151,6 +186,7 @@ eprint(const char * const fmt, ...)
         error_buffer[0] = 0;
         return;
       }
+      if (not u) break;
       if ((u & 0xFFFFFF00) is 0) {
         fputc((unsigned char) u, stderr); // Latin-1 / ISO-8859-1 / ISO-8859-15
       } else {
@@ -458,8 +494,10 @@ static inline Byte_p
 identifier(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
-  uint32_t u = decode_utf8(&cursor, end);
-  if (error_buffer[0]) return NULL;
+  uint32_t u = 0;
+  UTF8Error err = UTF8_NO_ERROR;
+  cursor = decode_utf8(cursor, end, &u, &err);
+  if (utf8_error(err)) return NULL;
   mut_Byte c;
   size_t len;
   if (u is '\\') {
@@ -628,9 +666,8 @@ identifier(Byte_p start, Byte_p end)
           in(0x3021,u,0x3029)
        )) {
     while (cursor < end) {
-      Byte_mut_p p = cursor;
-      u = decode_utf8(&p, end);
-      if (error_buffer[0]) return NULL;
+      Byte_mut_p p = decode_utf8(cursor, end, &u, &err);
+      if (utf8_error(err)) return NULL;
       if (u is '\\') {
         if (p is_not end) {
           switch(*p) {
@@ -1657,8 +1694,10 @@ unparse(Marker_array_p markers, Byte_array_p src,
       Byte_p end = text + m->len;
       Byte_mut_p p = text;
       while (p is_not end) {
-        uint32_t u = decode_utf8(&p, end);
-        if (error_buffer[0]) {
+        uint32_t u = 0;
+        UTF8Error err = UTF8_NO_ERROR;
+        p = decode_utf8(p, end, &u, &err);
+        if (utf8_error(err)) {
           fprintf(out, "%s\n", error_buffer);
           error_buffer[0] = 0;
           return;
