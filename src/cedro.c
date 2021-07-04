@@ -80,6 +80,7 @@ typedef enum UTF8Error {
   UTF8_ERROR_INTERRUPTED_2 = 0x80,
   UTF8_ERROR_INTERRUPTED_3 = 0xC0
 } UTF8Error, * UTF8Error_p;
+/** Store the error message corresponding to the error code `err`. */
 bool utf8_error(UTF8Error err)
 {
   switch (err) {
@@ -112,7 +113,12 @@ bool utf8_error(UTF8Error err)
 //#define utf8_error(_) false
 
 /** Decode one Unicode® code point from a UTF-8 byte buffer.
-    Assumes `end` > `cursor`. */
+ *  Assumes `end` > `cursor`.
+ * @param[in] cursor current byte.
+ * @param[in] end byte buffer end.
+ * @param[out] codepoint decoded 21-bit code point.
+ * @param[out] err_p error code variable.
+ */
 static inline const uint8_t*
 decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8Error_p err_p)
 {
@@ -387,8 +393,8 @@ push_str(mut_Byte_array_p _, const char * const str)
 }
 
 /** Append a formatted C string to the end of the given buffer.
- *  It’s the same as printf(...), only the result is stored instead
- * of printed to stdout. */
+ *  It’s similar to `sprintf(...)`, only the result is stored in a byte buffer
+ * that grows automatically if needed to hold the complete result. */
 static void
 push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 {
@@ -489,7 +495,7 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
 /* Lexer definitions. */
 
 /** Match an identifier.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 identifier(Byte_p start, Byte_p end)
 {
@@ -839,10 +845,10 @@ identifier(Byte_p start, Byte_p end)
 }
 
 /** Match a number.
- * This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
- * See ISO/IEC 9899:TC3 6.4.8 “Preprocessing numbers”.
- * Rejecting that is left to the compiler.
- * Assumes `end` > `start`. */
+ *  This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+ *  See ISO/IEC 9899:TC3 6.4.8 “Preprocessing numbers”.
+ *  Rejecting that is left to the compiler.
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 number(Byte_p start, Byte_p end)
 {
@@ -875,7 +881,7 @@ number(Byte_p start, Byte_p end)
 }
 
 /** Match a string literal.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 string(Byte_p start, Byte_p end)
 {
@@ -892,7 +898,7 @@ string(Byte_p start, Byte_p end)
 }
 
 /** Match a character literal.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 character(Byte_p start, Byte_p end)
 {
@@ -909,7 +915,7 @@ character(Byte_p start, Byte_p end)
 }
 
 /** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 space(Byte_p start, Byte_p end)
 {
@@ -934,7 +940,7 @@ exit:
 }
 
 /** Match a comment block.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 comment(Byte_p start, Byte_p end)
 {
@@ -959,7 +965,7 @@ comment(Byte_p start, Byte_p end)
 }
 
 /** Match a pre-processor directive.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 preprocessor(Byte_p start, Byte_p end)
 {
@@ -975,7 +981,7 @@ preprocessor(Byte_p start, Byte_p end)
 
 /** Fallback match, just read one UTF-8 Unicode® Code Point
  * as one token of type `T_OTHER`.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 other(Byte_p start, Byte_p end)
 {
@@ -988,8 +994,7 @@ other(Byte_p start, Byte_p end)
 }
 
 
-/** Get new slice for the given marker.
- */
+/** Get new slice for the given marker. */
 static Byte_array_slice
 slice_for_marker(Byte_array_p src, Marker_p cursor)
 {
@@ -1003,7 +1008,7 @@ slice_for_marker(Byte_array_p src, Marker_p cursor)
 
 /** Copy the characters between `start` and `end` into the given Byte array,
  * appending them to the end of that Byte array.
- * If you want to replace any previous content,
+ *  If you want to replace any previous content,
  * do `string.len = 0;` before calling this function.
  *
  *  To extract the text for `Marker_p m` from `Byte_p src`:
@@ -1018,10 +1023,10 @@ slice_for_marker(Byte_array_p src, Marker_p cursor)
  * ```
  *  or use `as_c_string(mut_Byte_array_p _)`.
  *
- *  @param[in] start marker pointer.
- *  @param[in] end marker pointer.
- *  @param[in] src byte buffer with the source code.
- *  @param[out] string Byte buffer to receive the bytes copied from the segment.
+ * @param[in] start marker pointer.
+ * @param[in] end marker pointer.
+ * @param[in] src byte buffer with the source code.
+ * @param[out] string Byte buffer to receive the bytes copied from the segment.
  */
 static void
 extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p string)
@@ -1062,7 +1067,7 @@ count_appearances(Byte byte, Marker_p start, Marker_p end, Byte_array_p src)
 }
 
 /** Check whether a given byte appears in a marker.
- * It is faster than `count_appearances(byte, marker, marker+1, src) != 0`.
+ *  It is faster than `count_appearances(byte, marker, marker+1, src) != 0`.
  */
 static inline bool
 has_byte(Byte byte, Marker_p marker, Byte_array_p src)
@@ -1078,10 +1083,10 @@ has_byte(Byte byte, Marker_p marker, Byte_array_p src)
 /** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
 #define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
 
-/** starting at `cursor`, which should point to an
+/** Find matching fence starting at `cursor`, which should point to an
  * opening fence `{`, `[` or `(`, advance until the corresponding
  * closing fence `}`, `]` or `)` is found, then return that address.
- *  If the fences are not closed, the return value is `ènd`
+ *  If the fences are not closed, the return value is `end`
  * and an error message is stored in `err`.
  */
 static inline Marker_p
@@ -1257,16 +1262,21 @@ found:
   return end_of_block;
 }
 
-/** Extract the indentation of the line for the character at `index`,
+/** Extract the indentation of the line for the marker at `cursor`,
  * including the preceding `LF` character if it exists.
+ * @param[in] markers array of markers.
+ * @param[in] cursor position.
+ * @param[in] already_at_line_start whether the cursor is already at the
+ *            start of the line, to avoid searching for it if not needed.
+ * @param[in] src source code.
  */
 static Marker
-indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
+indentation(Marker_array_p markers, Marker_mut_p cursor,
+            bool already_at_line_start,
             Byte_array_p src)
 {
   mut_Marker indentation = {0};
   Marker_p start = start_of_Marker_array(markers);
-  Marker_mut_p cursor = marker;
   if (cursor) {
     mut_Error err = {0};
     if (not already_at_line_start) {
@@ -1514,7 +1524,7 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
  *  @param[in] original_src_len original source code length.
  *  @param[in] src_file_name file name corresponding to `src`.
  *  @param[in] options formatting options.
- *  @param[in] out FILE pointer where the source code will be written.
+ *  @param[out] out FILE pointer where the source code will be written.
  */
 static void
 unparse(Marker_array_p markers, Byte_array_p src,
@@ -1845,6 +1855,12 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  *
  *  Remember to empty the `markers` array before calling this function
  * if you are re-parsing from scratch.
+ *
+ *  Example:
+ * ```
+ * mut_Marker_array markers = new_Marker_array(8192);
+ * parse(&src, &markers);
+ * ```
  */
 static Byte_p
 parse(Byte_array_p src, mut_Marker_array_p markers)
