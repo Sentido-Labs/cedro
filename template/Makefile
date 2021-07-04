@@ -8,6 +8,7 @@ CFLAGS=-g -I lib/build -I lib -std=c99 -fmax-errors=4 -pedantic-errors -Wall -We
 CEDRO=tools/cedro/cedro
 CEDROCC=$(CEDRO)cc
 
+# Some library files need to be processed with Cedro before compiling:
 LIBRARIES=lib/build/hash-table.h
 
 all: release
