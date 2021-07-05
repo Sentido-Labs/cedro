@@ -173,7 +173,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 
       Marker_mut_p previous_line = cursor;
       if (previous_line is_not start) --previous_line;
-      skip_space_back(start, previous_line);
+      previous_line = skip_space_back(start, previous_line);
       if (previous_line is_not start) --previous_line;
 
       // If previous line diverts control flow, abort.
@@ -185,7 +185,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         err.message = NULL;
         goto free_all_and_return;
       }
-      skip_space_forward(previous_line, end);
+      previous_line = skip_space_forward(previous_line, end);
       if (previous_line->token_type is T_CONTROL_FLOW_BREAK    or
           previous_line->token_type is T_CONTROL_FLOW_CONTINUE or
           previous_line->token_type is T_CONTROL_FLOW_GOTO     or
@@ -283,8 +283,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
         }
 
-        Marker_mut_p label_p = cursor + 1;
-        skip_space_forward(label_p, end);
+        Marker_mut_p label_p = skip_space_forward(cursor + 1, end);
         if (label_p is end or label_p->token_type is_not T_IDENTIFIER) {
           eprintln("At line %lu: goto without label.",
                    line_number(src, markers, cursor));
@@ -390,7 +389,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         if (line.end_p is_not end and line.end_p->token_type is T_SEMICOLON) {
           ++line.end_p;
         }
-        skip_space_forward(line.start_p, line.end_p);
+        line.start_p = skip_space_forward(line.start_p, line.end_p);
         insertion_point = line.start_p;
 
         // Invalidates: marker_buffer
@@ -443,14 +442,12 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
     } else if (cursor->token_type is T_TYPE_QUALIFIER_AUTO) {
       // Add a new action at the current level.
       // First skip the auto keyword and whitespace:
-      skip_space_forward(action_start, end);
-      Marker_mut_p action_start = cursor + 1;
+      Marker_mut_p action_start = skip_space_forward(cursor + 1, end);
       // Now find the end of the statement:
       Marker_mut_p action_end = action_start;
       if (action_end->token_type is T_CONTROL_FLOW_IF or
           action_end->token_type is T_CONTROL_FLOW_LOOP) {
-        ++action_end;
-        skip_space_forward(action_end, end);
+        action_end = skip_space_forward(action_end + 1, end);
         size_t nesting = 0;
         while (action_end is_not end) {
           if (T_TUPLE_START == action_end->token_type) {
@@ -470,7 +467,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
           ++action_end;
         }
-        skip_space_forward(action_end, end);
+        action_end = skip_space_forward(action_end, end);
         if (action_end is_not end and
             T_BLOCK_START is action_end->token_type) {
           // Find the end of the block.

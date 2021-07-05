@@ -1078,10 +1078,22 @@ has_byte(Byte byte, Marker_p marker, Byte_array_p src)
 }
 
 /** Skip forward all `T_SPACE` and `T_COMMENT` markers. */
-#define skip_space_forward(start, end) while (start is_not end and (start->token_type is T_SPACE or start->token_type is T_COMMENT)) ++start
+static inline Marker_p
+skip_space_forward(Marker_mut_p start, Marker_p end) {
+  while (start is_not end and
+         (start->token_type is T_SPACE or start->token_type is T_COMMENT)
+         ) ++start;
+  return start;
+}
 
 /** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
-#define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
+static inline Marker_p
+skip_space_back(Marker_p start, Marker_mut_p end) {
+  while (end is_not start and
+         ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)
+         ) --end;
+  return end;
+}
 
 /** Find matching fence starting at `cursor`, which should point to an
  * opening fence `{`, `[` or `(`, advance until the corresponding

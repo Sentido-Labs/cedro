@@ -20,7 +20,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       Marker_mut_p first_segment_start = cursor + 1;
       object.end_p = cursor; // Object ends before the “@”.
       // Trim space before first segment, or affix declarator.
-      skip_space_forward(first_segment_start, end);
+      first_segment_start = skip_space_forward(first_segment_start, end);
       if (first_segment_start is end) {
         eprintln("Syntax error in line %lu: unfinished backstitch operator.",
                  line_number(src, markers, first_segment_start));
@@ -28,8 +28,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
       Marker_mut_p prefix = NULL, suffix = NULL;
       if (first_segment_start->token_type is T_ELLIPSIS) {
-        ++first_segment_start;
-        skip_space_forward(first_segment_start, end);
+        first_segment_start = skip_space_forward(first_segment_start + 1, end);
         if (first_segment_start is end) {
           eprintln("Syntax error in line %lu: unfinished affix declarator.",
                    line_number(src, markers, first_segment_start));
@@ -42,15 +41,14 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           return;
         }
         suffix = first_segment_start++;
-        skip_space_forward(first_segment_start, end);
+        first_segment_start = skip_space_forward(first_segment_start, end);
       } else if (first_segment_start->token_type is T_IDENTIFIER) {
-        skip_space_forward(m, end);
         Marker_mut_p m = first_segment_start + 1;
+        m = skip_space_forward(m, end);
         if (m is_not end) {
           if (m->token_type is T_ELLIPSIS) {
             prefix = first_segment_start;
-            first_segment_start = m + 1;
-            skip_space_forward(first_segment_start, end);
+            first_segment_start = skip_space_forward(m + 1, end);
           }
         }
       }
@@ -69,24 +67,24 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         }
 
         // Trim space before object.
-        skip_space_forward(start_of_line, object.end_p);
+        start_of_line = skip_space_forward(start_of_line, object.end_p);
         // Boost precedence to 13.5, before assignment and comma operators:
         object.start_p = object.end_p;
         while (object.start_p is_not start_of_line) {
           --object.start_p;
           if (object.start_p->token_type is T_OP_14 or
               object.start_p->token_type is T_COMMA) {
-            ++object.start_p;
-            skip_space_forward(object.start_p, object.end_p);
+            object.start_p = skip_space_forward(object.start_p + 1,
+                                                object.end_p);
             break;
           }
         }
         // Trim space after object, between it and backstitch operator.
-        skip_space_back(object.start_p, object.end_p);
+        object.end_p = skip_space_back(object.start_p, object.end_p);
 
         cursor = first_segment_start;
         Marker_mut_p end_of_line = find_line_end(cursor, end, &err);
-        skip_space_back(cursor, end_of_line);
+        end_of_line = skip_space_back(cursor, end_of_line);
         cursor = end_of_line;
         if (err.message) {
           eprintln("Error: %lu: %s",
@@ -132,7 +130,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               return;
             }
             // Trim space after segment.
-            skip_space_back(segment_start, segment_end);
+            segment_end = skip_space_back(segment_start, segment_end);
 
             if (segment_end is segment_start) {
               eprintln("Warning: %ld: empty backstitch segment.",
@@ -234,7 +232,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               }
               segment_start = segment_end + 1;// One token: “,”
               // Trim space before next segment.
-              skip_space_forward(segment_start, end_of_line);
+              segment_start = skip_space_forward(segment_start, end_of_line);
               segment_end = segment_start;
             }
           }
