@@ -443,8 +443,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
     } else if (cursor->token_type is T_TYPE_QUALIFIER_AUTO) {
       // Add a new action at the current level.
       // First skip the auto keyword and whitespace:
-      mut_Marker_mut_p action_start = cursor + 1;
       skip_space_forward(action_start, end);
+      Marker_mut_p action_start = cursor + 1;
       // Now find the end of the statement:
       Marker_mut_p action_end = action_start;
       if (action_end->token_type is T_CONTROL_FLOW_IF or

@@ -2,9 +2,9 @@
 static void
 macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
-  mut_Marker_mut_p start  = (mut_Marker_p) start_of_Marker_array(markers);
-  mut_Marker_mut_p cursor = start;
-  mut_Marker_mut_p end    = (mut_Marker_p) end_of_Marker_array(markers);
+  Marker_mut_p start  = start_of_Marker_array(markers);
+  Marker_mut_p cursor = start;
+  Marker_mut_p end    = end_of_Marker_array(markers);
   size_t cursor_position;
 
   mut_Error err = { .position = NULL, .message = NULL };
@@ -17,7 +17,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   mut_Marker_array_slice slice;
   while (cursor is_not end) {
     if (cursor->token_type is T_BACKSTITCH) {
-      mut_Marker_mut_p first_segment_start = cursor + 1;
+      Marker_mut_p first_segment_start = cursor + 1;
       object.end_p = cursor; // Object ends before the “@”.
       // Trim space before first segment, or affix declarator.
       skip_space_forward(first_segment_start, end);
@@ -44,8 +44,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         suffix = first_segment_start++;
         skip_space_forward(first_segment_start, end);
       } else if (first_segment_start->token_type is T_IDENTIFIER) {
-        mut_Marker_mut_p m = first_segment_start + 1;
         skip_space_forward(m, end);
+        Marker_mut_p m = first_segment_start + 1;
         if (m is_not end) {
           if (m->token_type is T_ELLIPSIS) {
             prefix = first_segment_start;
@@ -85,8 +85,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         skip_space_back(object.start_p, object.end_p);
 
         cursor = first_segment_start;
-        mut_Marker_mut_p end_of_line = (mut_Marker_mut_p)
-            find_line_end(cursor, end, &err);
+        Marker_mut_p end_of_line = find_line_end(cursor, end, &err);
         skip_space_back(cursor, end_of_line);
         cursor = end_of_line;
         if (err.message) {
@@ -103,8 +102,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           // The factor of 2 here is a heuristic to avoid relocations in general.
           init_Marker_array(&replacement,
                             2 * (size_t)(end_of_line - object.start_p));
-          mut_Marker_mut_p segment_start = first_segment_start;
-          mut_Marker_mut_p segment_end   = segment_start;
+          Marker_mut_p segment_start = first_segment_start;
+          Marker_mut_p segment_end   = segment_start;
           while (segment_end < end_of_line) {
             // Look for segment end.
             while (segment_end < end_of_line) {
@@ -142,7 +141,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               continue;
             }
 
-            mut_Marker_mut_p insertion_point = segment_start;
+            Marker_mut_p insertion_point = segment_start;
             bool inside_parenthesis = false;
             bool is_function_call   = true;
             if (segment_start->token_type is T_INDEX_START ||
