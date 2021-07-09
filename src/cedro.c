@@ -1629,7 +1629,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
           } else if (m->token_type is T_PREPROCESSOR) {
             text = slice_for_marker(src, m).start_p;
             if (m->len >= 9 and strn_eq("#define }", (char*)text, 9)) {
-              puts("// End #define");
+              fputs("// End #define", out);
               // Not needed: line_length += strlen("// End #define");
               break;
             }
