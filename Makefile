@@ -2,10 +2,11 @@ NAME=cedro
 
 CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
 
-all: release
+default: release
+all: release debug
 debug:   bin/$(NAME)-debug bin/$(NAME)cc-debug bin/$(NAME)-new-debug
 release: bin/$(NAME)       bin/$(NAME)cc       bin/$(NAME)-new
-.PHONY: all debug release
+.PHONY: default all debug release
 
 bin/cedro-debug: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
@@ -25,7 +26,7 @@ bin/cedrocc:       src/cedrocc.c Makefile bin/cedro
 	bin/cedro --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@ -O
 	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME)cc src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
 
-bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc-debug
+bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc
 	@mkdir -p bin
 	bin/cedrocc $< -I src $(CFLAGS) -o $@
 bin/cedro-new:       src/cedro-new.c template.zip Makefile bin/cedrocc
