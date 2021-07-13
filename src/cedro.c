@@ -492,6 +492,41 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
   _->token_type = token_type;
 }
 
+/** Build a new marker for the given string,
+ * pointing to its first appearance in `src`.
+ *  If not found, append the text to `src`
+ * and return a marker poiting there.
+ */
+static Marker
+new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
+{
+  Byte_mut_p cursor = start_of_Byte_array(src);
+  Byte_mut_p match  = NULL;
+  Byte_p     end    = end_of_Byte_array(src);
+  size_t text_len = strlen(text);
+  Byte_p text_end = (Byte_p)text + text_len;
+  const char first_character = text[0];
+  while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
+    Byte_mut_p p1 = cursor;
+    Byte_mut_p p2 = (Byte_p) text;
+    while (p2 is_not text_end && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
+    if (p2 is text_end) {
+      match = cursor;
+      break;
+    }
+    ++cursor;
+  }
+  mut_Marker marker;
+  if (not match) {
+    match = end_of_Byte_array(src);
+    Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
+    splice_Byte_array(src, src->len, 0, NULL, insert);
+  }
+  init_Marker(&marker, match, match + text_len, src, token_type);
+
+  return marker;
+}
+
 /* Lexer definitions. */
 
 /** Match an identifier.
@@ -1386,41 +1421,6 @@ tabulate_eprint(size_t skip, size_t tabulator)
 {
   if (skip > tabulator) skip = tabulator;
   while (skip++ is_not tabulator) eprint(" ");
-}
-
-/** Build a new marker for the given string,
- * pointing to its first appearance in `src`.
- *  If not found, append the text to `src`
- * and return a marker poiting there.
- */
-static Marker
-new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
-{
-  Byte_mut_p cursor = start_of_Byte_array(src);
-  Byte_mut_p match  = NULL;
-  Byte_p     end    = end_of_Byte_array(src);
-  size_t text_len = strlen(text);
-  Byte_p text_end = (Byte_p)text + text_len;
-  const char first_character = text[0];
-  while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
-    Byte_mut_p p1 = cursor;
-    Byte_mut_p p2 = (Byte_p) text;
-    while (p2 is_not text_end && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
-    if (p2 is text_end) {
-      match = cursor;
-      break;
-    }
-    ++cursor;
-  }
-  mut_Marker marker;
-  if (not match) {
-    match = end_of_Byte_array(src);
-    Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
-    splice_Byte_array(src, src->len, 0, NULL, insert);
-  }
-  init_Marker(&marker, match, match + text_len, src, token_type);
-
-  return marker;
 }
 
 /** Print a human-legible dump of the markers array to stderr.
