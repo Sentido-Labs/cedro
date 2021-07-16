@@ -922,8 +922,10 @@ string(Byte_p start, Byte_p end)
 {
   if (*start is_not '"') return NULL;
   Byte_mut_p cursor = start;
-  while ((cursor = memchr(cursor + 1, '"', (size_t)(end - cursor)))) {
-    if (*(cursor - 1) is_not '\\') {
+  while ((cursor = memchr(cursor + 1, '"', (size_t)(end - (cursor + 1))))) {
+    Byte_mut_p p = cursor;
+    while (*--p is '\\') --p;
+    if ((p - cursor) & 1) {
       return cursor + 1; // End is past the closing symbol.
     }
   }
@@ -939,8 +941,10 @@ character(Byte_p start, Byte_p end)
 {
   if (*start is_not '\'') return NULL;
   Byte_mut_p cursor = start;
-  while ((cursor = memchr(cursor + 1, '\'', (size_t)(end - cursor)))) {
-    if (*(cursor - 1) is_not '\\') {
+  while ((cursor = memchr(cursor + 1, '\'', (size_t)(end - (cursor + 1))))) {
+    Byte_mut_p p = cursor;
+    while (*--p is '\\') --p;
+    if ((p - cursor) & 1) {
       return cursor + 1; // End is past the closing symbol.
     }
   }
