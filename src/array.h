@@ -51,11 +51,11 @@ typedef const struct T##_array_slice                                    \
                                                                         \
    Example:                                                             \
    \code{.c}                                                            \
-   T##_mut_array a;\n                                                   \
-   init_##T##_array(&a, 0);\n                                           \
-   T##_mut_array_slice s;\n                                             \
-   init_##T##_array_slice(&s, &a, 3, 10);\n                             \
-   assert(&s->start_p == &a->start + 3);\n                              \
+   T##_mut_array a;                                                  \n \
+   init_##T##_array(&a, 0);                                          \n \
+   T##_mut_array_slice s;                                            \n \
+   init_##T##_array_slice(&s, &a, 3, 10);                            \n \
+   assert(&s->start_p == &a->start + 3);                             \n \
    assert(&s->end_p   == &a->start + 10);                               \
    \endcode                                                             \
 */                                                                      \
@@ -75,11 +75,11 @@ typedef struct T##_array_mut_slice {                                    \
                                                                         \
    Example:                                                             \
    \code{.c}                                                            \
-   T##_mut_array a;\n                                                   \
-   init_##T##_array(&a, 0);\n                                           \
+   T##_mut_array a;                                                  \n \
+   init_##T##_array(&a, 0);                                          \n \
    T##_mut_array_slice s;\n                                             \
-   init_##T##_array_slice(&s, &a, 3, 10);\n                             \
-   assert(&s->start_p == &a->start + 3);\n                              \
+   init_##T##_array_slice(&s, &a, 3, 10);                            \n \
+   assert(&s->start_p == &a->start + 3);                             \n \
    assert(&s->end_p   == &a->start + 10);                               \
    \endcode                                                             \
 */                                                                      \
@@ -126,10 +126,10 @@ destruct_##T##_block(mut_##T##_mut_p cursor, T##_p end)                 \
 /** Initialize the array at the given pointer.                       \n \
     For local variables, use it like this:                           \n \
     \code{.c}                                                           \
-    mut_##T##_array things;\n                                           \
-    init_##T##_array(&things, 100); ///< We expect around 100 items.\n  \
-    {...}\n                                                             \
-    destruct_##T##_array(&things);\n                                    \
+    mut_##T##_array things;                                          \n \
+    init_##T##_array(&things, 100); // We expect around 100 items.   \n \
+    {...}                                                            \n \
+    destruct_##T##_array(&things);                                   \n \
     \endcode                                                            \
  */                                                                     \
 static void                                                             \
@@ -145,11 +145,15 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
     constant C array.                                                \n \
     Can be used for copy-on-write strings:                           \n \
     \code{.c}                                                           \
-    mut_char_array text;\n                                              \
-    init_from_constant_char_array(&text, "abce", 4);\n                  \
-    push_char_array(&text, 'f');\n                                      \
-    {...}\n                                                             \
-    destruct_char_array(&text);\n                                       \
+    mut_char_array text;                                             \n \
+    init_from_constant_char_array(&text, "abce", 4);                 \n \
+    // No heap allocation yet.                                       \n \
+    push_char_array(&text, 'f');                                     \n \
+    // Allocated heap space for "abcdef".                            \n \
+    {...}                                                            \n \
+    // It is safe to call `destruct_char_array()` also if you remove \n \
+    // the call to `push_char_array()` above.                        \n \
+    destruct_char_array(&text);                                      \n \
     \endcode                                                            \
  */                                                                     \
 static void                                                             \
@@ -159,10 +163,15 @@ init_from_constant_##T##_array(mut_##T##_array_p _,                     \
   _->len = len;                                                         \
   _->capacity = 0;                                                      \
   _->start = items;                                                     \
-  /* Used malloc() here instead of calloc() because we need realloc()   \
-     later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
-/** Heap-allocate and initialize a mut_##T##_array.                     \
+/** Stack-allocate and initialize a mut_##T##_array.                    \
+    The items are still heap-allocated.                                 \
+    \code{.c}                                                           \
+    // We expect around 100 items.                                   \n \
+    mut_##T##_array things = new_##T##_array(&things, 100);          \n \
+    {...}                                                            \n \
+    destruct_##T##_array(&things);                                   \n \
+    \endcode                                                            \
  */                                                                     \
 static mut_##T##_array                                                  \
 new_##T##_array(size_t initial_capacity)                                \
@@ -172,6 +181,8 @@ new_##T##_array(size_t initial_capacity)                                \
   return _;                                                             \
 }                                                                       \
 /** Heap-allocate and initialize a mut_##T##_array.                     \
+ * This is the one that works more similarly to `new` in C++ or Java,   \
+ * returning a pointer to the heap.                                     \
  */                                                                     \
 static mut_##T##_array_p                                                \
 new_##T##_array_p(size_t initial_capacity)                              \
@@ -213,10 +224,10 @@ free_##T##_array(mut_##T##_array_p _)                                   \
     releasing those resources.                                       \n \
    Example:                                                             \
    \code{.c}                                                            \
-   T##_array a; init_##T##_array(&a, 10);\n                             \
-   store_in_another_object(&obj, move_##T##_array(&a));\n               \
-   \/\* No need to destruct a here. It is now obj’s problem. \*\/\n     \
-   \/\/ However, it is still safe to call destruct_##T##_array():\n     \
+   T##_array a; init_##T##_array(&a, 10);                            \n \
+   store_in_another_object(&obj, move_##T##_array(&a));              \n \
+   \/\* No need to destruct a here. It is now obj’s problem. \*\/    \n \
+   \/\/ However, it is still safe to call destruct_##T##_array():    \n \
    destruct_##T##_array(&a); \/\/ No effect since we transferred it.    \
    \endcode                                                             \
  */                                                                     \
