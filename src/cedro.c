@@ -1333,7 +1333,9 @@ indentation(Marker_array_p markers, Marker_mut_p cursor,
     if (not already_at_line_start) {
       cursor = find_line_start(cursor, start, &err);
       if (err.message) {
-        eprintln("Error: %s", err.message);
+        eprintln(LANG("Error: %s",
+                      "Error: %s"),
+                 err.message);
         return indentation;
       }
     }
@@ -1917,7 +1919,10 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = number    (cursor, end))) {
     } else      token_end = other     (cursor, end);
     if (error_buffer[0]) {
-      eprintln("Error: src[%lu]: %s", cursor - src->start, error);
+      eprintln(LANG("Errorx: %lu: %s",
+                    "Errorx: %lu: %s"),
+               original_line_number((size_t)(cursor - src->start), src),
+               error_buffer);
       error_buffer[0] = 0;
       return cursor;
     }
@@ -2016,9 +2021,11 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                   mut_Error err = {0};
                   Marker_mut_p line_start = find_line_start(m, start, &err);
                   if (err.message) {
-                    eprintln(LANG("Error: src[%lu]: %s",
-                                  "Error: src[%lu]: %s"),
-                             cursor - src->start, err.message);
+                    eprintln(LANG("Error: %lu: %s",
+                                  "Error: %lu: %s"),
+                             original_line_number((size_t)(cursor - src->start),
+                                                  src),
+                             err.message);
                     return cursor;
                   }
                   while (line_start->token_type is T_SPACE or
@@ -2139,15 +2146,19 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
       }
     }
     if (error_buffer[0]) {
-      eprintln("Error: src[%lu]: %s", cursor - src->start, error);
+      eprintln(LANG("Error: %lu: %s",
+                    "Error: %lu: %s"),
+               original_line_number((size_t)(cursor - src->start), src),
+               error_buffer);
       error_buffer[0] = 0;
       return cursor;
     }
     if (token_type is T_NONE) {
       token_end = other(cursor, end);
       if (not token_end) {
-        eprintln("Error: src[%lu]: problem extracting other token.",
-                 cursor - src->start, error);
+        eprintln(LANG("Error: %lu: problema al extraer otro pedazo.",
+                      "Error: %lu: problem extracting other token."),
+                 original_line_number((size_t)(cursor - src->start), src));
         break;
       }
     }
