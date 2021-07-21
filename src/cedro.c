@@ -1945,6 +1945,14 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     mut_TokenType token_type = T_NONE;
     Byte_mut_p token_end = NULL;
     if        ((token_end = preprocessor(cursor, end))) {
+      if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
+        if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
+          eprintln("Warning: %lu: duplicated Cedro #pragma.\n"
+                   "  This might cause some code to be misinterpreted,\n"
+                   "  for instance if it uses `auto` in its standard meaning.",
+                   original_line_number((size_t)(cursor - src->start), src));
+        }
+      }
       TOKEN1(T_PREPROCESSOR);
       if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
     } else if ((token_end = string(cursor, end))) {
