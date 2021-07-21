@@ -125,7 +125,8 @@ int main(int argc, char* argv[])
     fflush(stdout);
 
     FILE* cc_stdin = popen(cmd, "w");
-    unparse(&markers, &src, original_src_len, file_name, options, cc_stdin);
+    unparse(bounds_of_Marker_array(&markers),
+            &src, original_src_len, file_name, options, cc_stdin);
     return_code = pclose(cc_stdin);
 
     fflush(stdout);

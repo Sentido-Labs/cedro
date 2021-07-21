@@ -1545,16 +1545,16 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
  *  @param[out] out FILE pointer where the source code will be written.
  */
 static void
-unparse(Marker_array_p markers, Byte_array_p src,
-        size_t original_src_len, char* src_file_name,
+unparse(Marker_array_slice markers,
+        Byte_array_p src, size_t original_src_len, char* src_file_name,
         Options options, FILE* out)
 {
-  Marker_p m_end = end_of_Marker_array(markers);
+  Marker_p m_end = markers.end_p;
   bool eol_pending = false;
   size_t previous_marker_end        = 0;
   size_t previous_marker_token_type = T_NONE;
   bool line_directive_pending = false;
-  for (Marker_mut_p m = (Marker_mut_p) markers->start; m is_not m_end; ++m) {
+  for (Marker_mut_p m = (Marker_mut_p) markers.start_p; m is_not m_end; ++m) {
     if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
@@ -2399,7 +2399,8 @@ int main(int argc, char** argv)
       if (opt_print_markers) {
         print_markers(&markers, &src, "", 0, 0);
       } else {
-        unparse(&markers, &src, original_src_len, arg, options, out);
+        unparse(bounds_of_Marker_array(&markers),
+                &src, original_src_len, arg, options, out);
       }
     }
 
