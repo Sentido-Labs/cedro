@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
     }
     if (answer.len) {
       command_name.len = 0;
-      append_Byte_array(&command_name, bounds_of_mut_Byte_array(&answer));
+      append_Byte_array(&command_name, bounds_of_Byte_array(&answer));
     }
 
     push_str(&project_name, as_c_string(&command_name));

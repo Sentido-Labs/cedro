@@ -47,7 +47,7 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
   mut_Marker between[2] = { indentation, extra_indentation };
 
   size_t inserted_length = 0;
-  mut_Marker_array_slice indent = {
+  Marker_array_slice indent = {
     .start_p = &between[0],
     .end_p   = &between[between[1].len? 2: 1]
   };
@@ -62,9 +62,8 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
       inserted_length += (size_t)(indent.end_p - indent.start_p);
     }
 
-    mut_Marker_array_slice action =
-        bounds_of_Marker_array(&actions_cursor->action);
-    splice_Marker_array(markers, cursor + inserted_length, 0, NULL, action);
+    splice_Marker_array(markers, cursor + inserted_length, 0, NULL,
+                        bounds_of_Marker_array(&actions_cursor->action));
     inserted_length += actions_cursor->action.len;
   }
   if (line.start_p) {
@@ -214,8 +213,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       splice_Marker_array(markers, cursor_position, 0, NULL,
                           bounds_of_Marker_array(&marker_buffer));
       cursor_position = cursor_position +
-          1 +
-          marker_buffer.len; // Move to end of inserted block.
+          marker_buffer.len /* Move to end of inserted block. */ +
+          1                 /* Move to next marker.           */;
 
       start  = start_of_mut_Marker_array(markers);
       end    =   end_of_mut_Marker_array(markers);
@@ -347,7 +346,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         continue;
       }
 
-      mut_Marker_array_slice line = { .start_p = NULL, .end_p = NULL };
+      Marker_array_mut_slice line = { .start_p = NULL, .end_p = NULL };
       line.start_p = find_line_start(cursor, start, &err);
       if (err.message) {
         eprintln("At line %lu: %s",

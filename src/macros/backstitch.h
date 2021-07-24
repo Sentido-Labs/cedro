@@ -13,8 +13,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker semicolon = new_marker(src, ";",  T_SEMICOLON);
   Marker space     = new_marker(src, " ",  T_SPACE);
   Marker newline   = new_marker(src, "\n", T_SPACE);
-  mut_Marker_array_slice object;
-  mut_Marker_array_slice slice;
+  Marker_array_mut_slice object;
+  Marker_array_mut_slice slice;
   while (cursor is_not end) {
     if (cursor->token_type is T_BACKSTITCH) {
       Marker_mut_p first_segment_start = cursor + 1;
@@ -244,8 +244,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                               NULL,
                               bounds_of_Marker_array(&replacement));
           cursor_position += replacement.len;
-          start = (mut_Marker_p)start_of_Marker_array(markers);
-          end   = (mut_Marker_p)  end_of_Marker_array(markers);
+          start = start_of_Marker_array(markers);
+          end   =   end_of_Marker_array(markers);
           cursor = start + cursor_position;
           destruct_Marker_array(&replacement);
         }

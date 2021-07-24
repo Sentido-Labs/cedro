@@ -430,7 +430,7 @@ as_c_string(mut_Byte_array_p _)
     push_Byte_array(_, '\0');
     --_->len;
   } else {
-    *((mut_Byte_p) _->start + _->len) = 0;
+    *(_->start + _->len) = 0;
   }
   return (const char *) _->start;
 }
@@ -452,13 +452,13 @@ read_file(mut_Byte_array_p _, FilePath path)
   size_t size = (size_t)ftell(input);
   init_Byte_array(_, size);
   rewind(input);
-  _->len = fread((mut_Byte_p) _->start, sizeof(_->start[0]), size, input);
+  _->len = fread(_->start, sizeof(_->start[0]), size, input);
   if (feof(input)) {
     err = EIO;
   } else if (ferror(input)) {
     err = errno;
   } else {
-    memset((mut_Byte_p) _->start + _->len, 0,
+    memset(_->start + _->len, 0,
            (_->capacity - _->len) * sizeof(_->start[0]));
   }
   fclose(input);
@@ -502,7 +502,7 @@ new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
 {
   Byte_mut_p cursor = start_of_Byte_array(src);
   Byte_mut_p match  = NULL;
-  Byte_p     end    = end_of_Byte_array(src);
+  Byte_p     end    =   end_of_Byte_array(src);
   size_t text_len = strlen(text);
   Byte_p text_end = (Byte_p)text + text_len;
   const char first_character = text[0];
@@ -1039,8 +1039,8 @@ slice_for_marker(Byte_array_p src, Marker_p cursor)
 {
   Byte_array_slice slice = {
     // get_mut_Byte_array() is not valid at the end.
-    .start_p = get_mut_Byte_array(src, cursor->start),
-    .end_p   = get_mut_Byte_array(src, cursor->start) + cursor->len
+    .start_p = get_Byte_array(src, cursor->start),
+    .end_p   = get_Byte_array(src, cursor->start) + cursor->len
   };
   return slice;
 }
@@ -1496,7 +1496,7 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
         indent_eprint(indent * 2);
         eprint("“");
         for (size_t i = 0; i is_not token_text.len; ++i) {
-          Byte c = *get_Byte_array(&token_text, i);
+          Byte c = *get_mut_Byte_array(&token_text, i);
           switch (c) {
             case '\n': eprint("\\n"); ++len; break;
             case '\r': eprint("\\r"); ++len; break;
@@ -1554,7 +1554,7 @@ unparse(Marker_array_slice markers,
   size_t previous_marker_end        = 0;
   size_t previous_marker_token_type = T_NONE;
   bool line_directive_pending = false;
-  for (Marker_mut_p m = (Marker_mut_p) markers.start_p; m is_not m_end; ++m) {
+  for (Marker_mut_p m = markers.start_p; m is_not m_end; ++m) {
     if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
