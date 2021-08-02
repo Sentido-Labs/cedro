@@ -36,6 +36,13 @@ are_there_pending_deferred_actions(DeferredAction_array_p pending, size_t level)
   return (last->level >= level);
 }
 
+static Marker newline_marker = {0};
+static bool
+is_newline_marker(Marker m)
+{
+  return m.len is 0 and m.token_type is T_NONE;
+}
+
 /** Insert actions backwards up to and including the given level.
     Returns the number of tokens inserted. */
 static size_t
@@ -48,8 +55,8 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
 
   size_t inserted_length = 0;
   Marker_array_slice indent = {
-    .start_p = &between[0],
-    .end_p   = &between[between[1].len? 2: 1]
+    &between[0],
+    &between[between[1].len? 2: 1]
   };
   DeferredAction_p     actions_start  = start_of_DeferredAction_array(pending);
   DeferredAction_mut_p actions_cursor = end_of_DeferredAction_array(pending);
@@ -59,18 +66,32 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
 
     if (inserted_length is_not 0) {
       splice_Marker_array(markers, cursor + inserted_length, 0, NULL, indent);
-      inserted_length += (size_t)(indent.end_p - indent.start_p);
+      inserted_length += len_Marker_array_slice(indent);
     }
 
-    splice_Marker_array(markers, cursor + inserted_length, 0, NULL,
-                        bounds_of_Marker_array(&actions_cursor->action));
-    inserted_length += actions_cursor->action.len;
+    Marker_array_mut_slice action =
+        bounds_of_Marker_array(&actions_cursor->action);
+
+    mut_Marker_array action_indented = {0};
+    init_Marker_array(&action_indented, actions_cursor->action.len + 10);
+    for (Marker_mut_p p = action.start_p; p is_not action.end_p; ++p) {
+      if (is_newline_marker(*p)) {
+        append_Marker_array(&action_indented, indent);
+      } else {
+        push_Marker_array(&action_indented, *p);
+      }
+    }
+    action = bounds_of_Marker_array(&action_indented);
+    splice_Marker_array(markers, cursor + inserted_length, 0, NULL, action);
+    destruct_Marker_array(&action_indented);
+
+    inserted_length += len_Marker_array_slice(action);
   }
   if (line.start_p) {
     splice_Marker_array(markers, cursor + inserted_length, 0, NULL, indent);
-    inserted_length += (size_t)(indent.end_p - indent.start_p);
+    inserted_length += len_Marker_array_slice(indent);
     splice_Marker_array(markers, cursor + inserted_length, 0, NULL, line);
-    inserted_length += (size_t)(line.end_p - line.start_p);
+    inserted_length += len_Marker_array_slice(line);
   }
   return inserted_length;
 }
@@ -129,10 +150,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           ++nesting;
         } else if (T_TUPLE_START is statement->token_type) {
           if (not nesting) {
-            eprintln("At line %lu: %s",
-                     line_number(src, markers, statement),
-                     "Too many opening parenthesis.");
-            goto free_all_and_return;
+            // C99 struct initializer: (type name){ ... }
+            break;
           }
           --nesting;
         } else if (not nesting and
@@ -401,7 +420,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
                                 marker_buffer.len, &marker_buffer);
         push_Marker_array(&marker_buffer, between);
         push_Marker_array(&marker_buffer, block_end);
-        delete_count = (size_t)(line.end_p - line.start_p);
+        delete_count = len_Marker_array_slice(line);
       } else {
         // This is already a block, or we do not need it e.g. `case: …`.
         if (line.start_p->token_type is T_SPACE) {
@@ -432,7 +451,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       splice_Marker_array(markers, cursor_position, delete_count, NULL,
                           bounds_of_Marker_array(&marker_buffer));
       cursor_position = cursor_position +
-          (size_t)(line.end_p - line.start_p) +
+          len_Marker_array_slice(line) +
           marker_buffer.len - delete_count; // Move to end of inserted block.
 
       start = start_of_mut_Marker_array(markers);
@@ -467,15 +486,11 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           ++action_end;
         }
         action_end = skip_space_forward(action_end, end);
-        if (action_end is_not end and
-            T_BLOCK_START is action_end->token_type) {
-          // Find the end of the block.
-          action_end = find_matching_fence(action_end, end, &err);
-        } else {
-          // This must be a semicolon-terminated line.
-          action_end = find_line_end(action_end, end, &err);
-          if (action_end is_not end) ++action_end;
-        }
+      }
+      if (action_end is_not end and
+          T_BLOCK_START is action_end->token_type) {
+        // Find the end of the block.
+        action_end = find_matching_fence(action_end, end, &err);
       } else {
         // This must be a semicolon-terminated line.
         action_end = find_line_end(action_end, end, &err);
@@ -495,8 +510,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         break;
       }
 
-      mut_Marker_p line_start = (mut_Marker_p)
-          find_line_start(cursor, start, &err);
+      Marker_p line_start = find_line_start(cursor, start, &err);
       if (err.message) {
         eprintln("At line %lu: %s",
                  line_number(src, markers, err.position), err.message);
@@ -505,18 +519,59 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
       marker_buffer.len = 0;
       cursor_position = index_Marker_array(markers, cursor);
-      // Invalidates: markers
+      // Cut deferred action from markers into marker_buffer.
+      // Invalidates: markers, marker_buffer
       splice_Marker_array(markers,
                           (size_t)(line_start - start),
-                          (size_t)(action_end - line_start),
-                          &marker_buffer, (Marker_array_slice){0});
+                          (size_t)(action_end - line_start), &marker_buffer,
+                          (Marker_array_slice){0});
       start  = start_of_mut_Marker_array(markers);
       end    =   end_of_mut_Marker_array(markers);
       cursor = get_mut_Marker_array(markers, cursor_position);
+      size_t indentation = 0;
+      for (Marker_mut_p m = cursor; m is_not line_start; ) {
+        --m;
+        if (m->token_type is T_SPACE) {
+          Byte_array_mut_slice s = slice_for_marker(src, m);
+          Byte_mut_p c = s.end_p;
+          while (c is_not s.start_p and (*--c is_not '\n')) ++indentation;
+          if (c is_not s.start_p) break;
+        }
+      }
       // Delete indentation and auto keyword:
       splice_Marker_array(&marker_buffer,
-                          0, (size_t)(action_start - line_start),
-                          NULL, (Marker_array_slice){0});
+                          0, (size_t)(action_start - line_start), NULL,
+                          (Marker_array_slice){0});
+
+      if (indentation is_not 0) {
+        // If the deferred code spans multiple lines,
+        // strip the initial indentation in each of them.
+        for (mut_Marker_mut_p m = start_of_mut_Marker_array(&marker_buffer);
+             m is_not end_of_mut_Marker_array(&marker_buffer); ++m) {
+          if (m->token_type is T_SPACE) {
+            Byte_array_mut_slice s = slice_for_marker(src, m);
+            while (s.end_p is_not s.start_p) {
+              if (*--s.end_p is '\n') { ++s.end_p; break; }
+            }
+            if (s.end_p is_not s.start_p) {
+              if (len_Byte_array_slice(s) + indentation <= m->len) {
+                m->len   -= len_Byte_array_slice(s) + indentation;
+                m->start += len_Byte_array_slice(s) + indentation;
+                cursor_position = index_Marker_array(&marker_buffer, m);
+                // Invalidates: marker_buffer
+                splice_Marker_array(&marker_buffer, cursor_position,
+                                    0, NULL,
+                                    (Marker_array_slice){
+                                      &newline_marker,
+                                      &newline_marker + 1
+                                    });
+                m = get_mut_Marker_array(&marker_buffer, cursor_position);
+              }
+            }
+          }
+        }
+      }
+
       // Copy buffer into pending mut_DeferredAction_array:
       mut_DeferredAction deferred = {
         .level = block_stack.len,
