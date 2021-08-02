@@ -1442,6 +1442,8 @@ static void
 print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
               size_t start, size_t end)
 {
+  if (end < start) end = start;
+
   size_t indent = 0;
   if (start is_not 0) {
     Marker_p m_end = get_Marker_array(markers, start);
@@ -1529,11 +1531,11 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
                 i > radius      ? i - radius: 0,
                 i < markers->len? i         : markers->len - 1);
   print_markers(markers, src, "* ",
-                i   < markers->len? i  : markers->len - 1,
-                i+1 < markers->len? i+1: markers->len - 1);
+                i < markers->len? i  : markers->len - 1,
+                i < markers->len? i+1: markers->len);
   print_markers(markers, src, "  ",
-                i+1 < markers->len         ? i+1         : markers->len - 1,
-                i+1 + radius < markers->len? i+1 + radius: markers->len - 1);
+                i+1 < markers->len          ? i+1         : markers->len - 1,
+                i+1 + radius <= markers->len? i+1 + radius: markers->len - 1);
 }
 
 /** Format the markers back into source code form.
