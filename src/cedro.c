@@ -924,7 +924,7 @@ string(Byte_p start, Byte_p end)
   Byte_mut_p cursor = start;
   while ((cursor = memchr(cursor + 1, '"', (size_t)(end - (cursor + 1))))) {
     Byte_mut_p p = cursor;
-    while (*--p is '\\') --p;
+    while (*--p is '\\');
     if ((p - cursor) & 1) {
       return cursor + 1; // End is past the closing symbol.
     }
@@ -943,7 +943,7 @@ character(Byte_p start, Byte_p end)
   Byte_mut_p cursor = start;
   while ((cursor = memchr(cursor + 1, '\'', (size_t)(end - (cursor + 1))))) {
     Byte_mut_p p = cursor;
-    while (*--p is '\\') --p;
+    while (*--p is '\\');
     if ((p - cursor) & 1) {
       return cursor + 1; // End is past the closing symbol.
     }
