@@ -91,11 +91,22 @@ init_##T##_array_slice(T##_array_mut_slice_p _,                         \
                        size_t start, size_t end)                        \
 {                                                                       \
   _->start_p = array_p->start + start;                                  \
-  if (end) _->end_p = array_p->start + end;                             \
-  else     _->end_p = array_p->start + array_p->len;                    \
+  _->end_p   = array_p->start + end;                                    \
+}                                                                       \
+/** Stack-allocate and initialize a `mut_##T##_array_slice`.            \
+    `end` can be 0, in which case the slice extends to                  \
+    the end of `array_p`. */                                            \
+static T##_array_mut_slice                                              \
+new_##T##_array_slice(mut_##T##_array_mut_p array_p,                    \
+                          size_t start, size_t end)                     \
+{                                                                       \
+  return (T##_array_mut_slice){                                         \
+    .start_p = (mut_##T##_mut_p) array_p->start + start,                \
+    .end_p   = (mut_##T##_mut_p) array_p->start + end                   \
+  };                                                                    \
 }                                                                       \
                                                                         \
-/** Initialize the slice to point at (*array_p)[`start`...`end`].       \
+/** Initialize the slice to point at `(*array_p)[`start`...`end`]`.     \
     `end` can be 0, in which case the slice extends to                  \
     the end of `array_p`. */                                            \
 static void                                                             \
@@ -106,6 +117,20 @@ init_mut_##T##_array_slice(mut_##T##_array_mut_slice_p _,               \
   _->start_p = (mut_##T##_mut_p) array_p->start + start;                \
   if (end) _->end_p = (mut_##T##_mut_p) array_p->start + end;           \
   else     _->end_p = (mut_##T##_mut_p) array_p->start + array_p->len;  \
+}                                                                       \
+/** Stack-allocate and initialize a `mut_##T##_array_slice`.            \
+    `end` can be 0, in which case the slice extends to                  \
+    the end of `array_p`. */                                            \
+static mut_##T##_array_mut_slice                                        \
+new_mut_##T##_array_slice(mut_##T##_array_mut_p array_p,                \
+                          size_t start, size_t end)                     \
+{                                                                       \
+  mut_##T##_array_mut_slice _ = {                                       \
+    .start_p = (mut_##T##_mut_p) array_p->start + start                 \
+  };                                                                    \
+  if (end) _.end_p = (mut_##T##_mut_p) array_p->start + end;            \
+  else     _.end_p = (mut_##T##_mut_p) array_p->start + array_p->len;   \
+  return _;                                                             \
 }                                                                       \
                                                                         \
 static size_t                                                           \
@@ -139,7 +164,7 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
-/** Stack-allocate and initialize a mut_##T##_array.                    \
+/** Stack-allocate and initialize a `mut_##T##_array`.                  \
     The items are still heap-allocated.                                 \
     \code{.c}                                                           \
     // We expect around 100 items.                                   \n \
@@ -316,6 +341,17 @@ delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
           _->start + position + delete,                                 \
           (_->len - delete - position) * sizeof(*_->start));            \
   _->len -= delete;                                                     \
+}                                                                       \
+                                                                        \
+/** Truncate the array to the given length, if it is longer.            \
+    Same as `delete_##T##_array(_, len, _->len - len)`, which is        \
+    the same as `splice_##T##_array(_, len, _->len - len, NULL,         \
+    (T##_array_slice){0})`. */                                          \
+static void                                                             \
+truncate_##T##_array(mut_##T##_array_p _, size_t len)                   \
+{                                                                       \
+  assert(len < _->len);                                                 \
+  delete_##T##_array(_, len, _->len - len);                             \
 }                                                                       \
                                                                         \
 /** Remove the element at the end/top of the array,                     \

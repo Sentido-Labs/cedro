@@ -81,7 +81,8 @@ typedef enum UTF8Error {
   UTF8_ERROR_INTERRUPTED_3 = 0xC0
 } UTF8Error, * UTF8Error_p;
 /** Store the error message corresponding to the error code `err`. */
-bool utf8_error(UTF8Error err)
+static bool
+utf8_error(UTF8Error err)
 {
   switch (err) {
     case UTF8_NO_ERROR: return false;
@@ -1548,9 +1549,10 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
  */
 static void
 unparse(Marker_array_slice markers,
-        Byte_array_p src, size_t original_src_len, char* src_file_name,
+        Byte_array_p src, size_t original_src_len, const char* src_file_name,
         Options options, FILE* out)
 {
+  assert(markers.end_p >= markers.start_p);
   Marker_p m_end = markers.end_p;
   bool eol_pending = false;
   size_t previous_marker_end        = 0;
