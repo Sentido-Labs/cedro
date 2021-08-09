@@ -18,48 +18,53 @@
       when searching for fixed-length sequences in the array,           \
       although you have to set them to `0` or other appropriate value.  \
    */                                                                   \
-typedef struct T##_array {                                              \
+typedef struct mut_##T##_array {                                        \
   /** Current length, the number of valid elements. */                  \
   size_t len;                                                           \
   /** Maximum length before reallocation is needed. */                  \
   size_t capacity;                                                      \
   /** The items stored in this array. */                                \
-  T##_mut_p start;                                                      \
+  mut_##T##_mut_p start;                                                \
 } mut_##T##_array, * const mut_##T##_array_p, * mut_##T##_array_mut_p;  \
-typedef const struct T##_array                                          \
-/*   */ T##_array, * const       T##_array_p, *       T##_array_mut_p;  \
+typedef const struct mut_##T##_array                                    \
+T##_array, * const T##_array_p, * T##_array_mut_p;                      \
                                                                         \
 /**                                                                     \
+   A mutable slice of an array where the elements are <b>const</b>ants. \
+                                                                        \
    Example:                                                             \
    \code{.c}                                                            \
    T##_array_slice s = { &start, &start + 10 };                         \
    \endcode                                                             \
 */                                                                      \
-typedef struct T##_array_slice {                                        \
+typedef struct T##_array_mut_slice {                                    \
   /** Start address. */                                                 \
   T##_mut_p start_p;                                                    \
   /** End addres. */                                                    \
   T##_mut_p end_p;                                                      \
-} mut_##T##_array_slice, * const mut_##T##_array_slice_p,               \
-  /**/                   *       mut_##T##_array_slice_mut_p;           \
-typedef const struct T##_array_slice                                    \
+} T##_array_mut_slice, * const T##_array_mut_slice_p,                   \
+  /**/                 *       T##_array_mut_slice_mut_p;               \
+/**                                                                     \
+   A slice of an array where the elements are <b>mut</b>able.           \
+*/                                                                      \
+typedef const struct T##_array_mut_slice                                \
 /*   */ T##_array_slice, * const T##_array_slice_p,                     \
   /**/                   *       T##_array_slice_mut_p;                 \
                                                                         \
 /**                                                                     \
-   A slice of an array where the elements are <b>mut</b>able.           \
+   A mutable slice of an array where the elements are <b>mut</b>able.   \
                                                                         \
    Example:                                                             \
    \code{.c}                                                            \
-   T##_mut_array a;\n                                                   \
-   init_##T##_array(&a, 0);\n                                           \
-   T##_mut_array_slice s;\n                                             \
-   init_##T##_array_slice(&s, &a, 3, 10);\n                             \
-   assert(&s->start_p == &a->start + 3);\n                              \
+   T##_mut_array a;                                                  \n \
+   init_##T##_array(&a, 0);                                          \n \
+   T##_mut_array_slice s;                                            \n \
+   init_##T##_array_slice(&s, &a, 3, 10);                            \n \
+   assert(&s->start_p == &a->start + 3);                             \n \
    assert(&s->end_p   == &a->start + 10);                               \
    \endcode                                                             \
 */                                                                      \
-typedef struct T##_array_mut_slice {                                    \
+typedef struct mut_##T##_array_mut_slice {                              \
   /** Start address. */                                                 \
   mut_##T##_mut_p start_p;                                              \
   /** End addres. */                                                    \
@@ -71,50 +76,68 @@ typedef struct T##_array_mut_slice {                                    \
   /* Mutable pointer to mutable slice of mutable read-only array.*/     \
   *       mut_##T##_array_mut_slice_mut_p;                              \
 /**                                                                     \
-   A slice of an array where the elements are <b>const</b>ants.         \
-                                                                        \
-   Example:                                                             \
-   \code{.c}                                                            \
-   T##_mut_array a;\n                                                   \
-   init_##T##_array(&a, 0);\n                                           \
-   T##_mut_array_slice s;\n                                             \
-   init_##T##_array_slice(&s, &a, 3, 10);\n                             \
-   assert(&s->start_p == &a->start + 3);\n                              \
-   assert(&s->end_p   == &a->start + 10);                               \
-   \endcode                                                             \
+   A slice of an array where the elements are <b>mut</b>able.           \
 */                                                                      \
-typedef struct T##_array_mut_slice                                      \
-/* Slice of a mutable array whose items are read-only.                  \
- */             T##_array_mut_slice,                                    \
-  /* Pointer to mutable slice of a mutable array of read-only items. */ \
-  * const       T##_array_mut_slice_p,                                  \
-  /* Mutable pointer to mutable slice of mutable read-only array.*/     \
-  *             T##_array_mut_slice_mut_p;                              \
+typedef const struct mut_##T##_array_mut_slice                          \
+/*   */ mut_##T##_array_slice, * const mut_##T##_array_slice_p,         \
+  /**/                         *       mut_##T##_array_slice_mut_p;     \
                                                                         \
 /** Initialize the slice to point at (*array_p)[`start`...`end`].       \
     `end` can be 0, in which case the slice extends to                  \
     the end of `array_p`. */                                            \
 static void                                                             \
-init_##T##_array_slice(mut_##T##_array_slice_p _,                       \
+init_##T##_array_slice(T##_array_mut_slice_p _,                         \
                        T##_array_p array_p,                             \
                        size_t start, size_t end)                        \
 {                                                                       \
   _->start_p = array_p->start + start;                                  \
-  if (end) _->end_p = array_p->start + end;                             \
-  else     _->end_p = array_p->start + array_p->len;                    \
+  _->end_p   = array_p->start + end;                                    \
+}                                                                       \
+/** Stack-allocate and initialize a `mut_##T##_array_slice`.            \
+    `end` can be 0, in which case the slice extends to                  \
+    the end of `array_p`. */                                            \
+static T##_array_mut_slice                                              \
+new_##T##_array_slice(mut_##T##_array_mut_p array_p,                    \
+                          size_t start, size_t end)                     \
+{                                                                       \
+  return (T##_array_mut_slice){                                         \
+    .start_p = (mut_##T##_mut_p) array_p->start + start,                \
+    .end_p   = (mut_##T##_mut_p) array_p->start + end                   \
+  };                                                                    \
 }                                                                       \
                                                                         \
-/** Initialize the slice to point at (*array_p)[`start`...`end`].       \
+/** Initialize the slice to point at `(*array_p)[`start`...`end`]`.     \
     `end` can be 0, in which case the slice extends to                  \
     the end of `array_p`. */                                            \
 static void                                                             \
-init_##T##_array_mut_slice(mut_##T##_array_mut_slice_p _,               \
+init_mut_##T##_array_slice(mut_##T##_array_mut_slice_p _,               \
                            mut_##T##_array_mut_p array_p,               \
                            size_t start, size_t end)                    \
 {                                                                       \
   _->start_p = (mut_##T##_mut_p) array_p->start + start;                \
   if (end) _->end_p = (mut_##T##_mut_p) array_p->start + end;           \
   else     _->end_p = (mut_##T##_mut_p) array_p->start + array_p->len;  \
+}                                                                       \
+/** Stack-allocate and initialize a `mut_##T##_array_slice`.            \
+    `end` can be 0, in which case the slice extends to                  \
+    the end of `array_p`. */                                            \
+static mut_##T##_array_mut_slice                                        \
+new_mut_##T##_array_slice(mut_##T##_array_mut_p array_p,                \
+                          size_t start, size_t end)                     \
+{                                                                       \
+  mut_##T##_array_mut_slice _ = {                                       \
+    .start_p = (mut_##T##_mut_p) array_p->start + start                 \
+  };                                                                    \
+  if (end) _.end_p = (mut_##T##_mut_p) array_p->start + end;            \
+  else     _.end_p = (mut_##T##_mut_p) array_p->start + array_p->len;   \
+  return _;                                                             \
+}                                                                       \
+                                                                        \
+static size_t                                                           \
+len_##T##_array_slice(T##_array_mut_slice _)                            \
+{                                                                       \
+  assert(_.end_p > _.start_p);                                          \
+  return (size_t)(_.end_p - _.start_p);                                 \
 }                                                                       \
                                                                         \
 static void                                                             \
@@ -126,10 +149,10 @@ destruct_##T##_block(mut_##T##_mut_p cursor, T##_p end)                 \
 /** Initialize the array at the given pointer.                       \n \
     For local variables, use it like this:                           \n \
     \code{.c}                                                           \
-    mut_##T##_array things;\n                                           \
-    init_##T##_array(&things, 100); ///< We expect around 100 items.\n  \
-    {...}\n                                                             \
-    destruct_##T##_array(&things);\n                                    \
+    mut_##T##_array things;                                          \n \
+    init_##T##_array(&things, 100); // We expect around 100 items.   \n \
+    {...}                                                            \n \
+    destruct_##T##_array(&things);                                   \n \
     \endcode                                                            \
  */                                                                     \
 static void                                                             \
@@ -141,28 +164,14 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
 }                                                                       \
-/** Initialize the array at the given pointer, as a view into a         \
-    constant C array.                                                \n \
-    Can be used for copy-on-write strings:                           \n \
+/** Stack-allocate and initialize a `mut_##T##_array`.                  \
+    The items are still heap-allocated.                                 \
     \code{.c}                                                           \
-    mut_char_array text;\n                                              \
-    init_from_constant_char_array(&text, "abce", 4);\n                  \
-    push_char_array(&text, 'f');\n                                      \
-    {...}\n                                                             \
-    destruct_char_array(&text);\n                                       \
+    // We expect around 100 items.                                   \n \
+    mut_##T##_array things = new_##T##_array(&things, 100);          \n \
+    {...}                                                            \n \
+    destruct_##T##_array(&things);                                   \n \
     \endcode                                                            \
- */                                                                     \
-static void                                                             \
-init_from_constant_##T##_array(mut_##T##_array_p _,                     \
-                               T* items, size_t len)                    \
-{                                                                       \
-  _->len = len;                                                         \
-  _->capacity = 0;                                                      \
-  _->start = items;                                                     \
-  /* Used malloc() here instead of calloc() because we need realloc()   \
-     later anyway, so better keep the exact same behaviour. */          \
-}                                                                       \
-/** Heap-allocate and initialize a mut_##T##_array.                     \
  */                                                                     \
 static mut_##T##_array                                                  \
 new_##T##_array(size_t initial_capacity)                                \
@@ -172,6 +181,8 @@ new_##T##_array(size_t initial_capacity)                                \
   return _;                                                             \
 }                                                                       \
 /** Heap-allocate and initialize a mut_##T##_array.                     \
+ * This is the one that works more similarly to `new` in C++ or Java,   \
+ * returning a pointer to the heap.                                     \
  */                                                                     \
 static mut_##T##_array_p                                                \
 new_##T##_array_p(size_t initial_capacity)                              \
@@ -213,10 +224,10 @@ free_##T##_array(mut_##T##_array_p _)                                   \
     releasing those resources.                                       \n \
    Example:                                                             \
    \code{.c}                                                            \
-   T##_array a; init_##T##_array(&a, 10);\n                             \
-   store_in_another_object(&obj, move_##T##_array(&a));\n               \
-   \/\* No need to destruct a here. It is now obj’s problem. \*\/\n     \
-   \/\/ However, it is still safe to call destruct_##T##_array():\n     \
+   T##_array a; init_##T##_array(&a, 10);                            \n \
+   store_in_another_object(&obj, move_##T##_array(&a));              \n \
+   \/\* No need to destruct a here. It is now obj’s problem. \*\/    \n \
+   \/\/ However, it is still safe to call destruct_##T##_array():    \n \
    destruct_##T##_array(&a); \/\/ No effect since we transferred it.    \
    \endcode                                                             \
  */                                                                     \
@@ -332,6 +343,17 @@ delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
   _->len -= delete;                                                     \
 }                                                                       \
                                                                         \
+/** Truncate the array to the given length, if it is longer.            \
+    Same as `delete_##T##_array(_, len, _->len - len)`, which is        \
+    the same as `splice_##T##_array(_, len, _->len - len, NULL,         \
+    (T##_array_slice){0})`. */                                          \
+static void                                                             \
+truncate_##T##_array(mut_##T##_array_p _, size_t len)                   \
+{                                                                       \
+  assert(len < _->len);                                                 \
+  delete_##T##_array(_, len, _->len - len);                             \
+}                                                                       \
+                                                                        \
 /** Remove the element at the end/top of the array,                     \
     copying its bits into `*item_p` unless `item_p` is `0`,             \
     in which case destruct_##T##_block()                                \
@@ -358,7 +380,7 @@ get_##T##_array(T##_array_p _, size_t position)                         \
 /** Return a mutable pointer to the element at `position`.              \
     Panics if the index is out of range. */                             \
 static mut_##T##_p                                                      \
-get_mut_##T##_array(T##_array_p _, size_t position)                     \
+get_mut_##T##_array(mut_##T##_array_p _, size_t position)               \
 {                                                                       \
   assert(position < _->len);                                            \
   return (mut_##T##_p) _->start + position;                             \
@@ -371,12 +393,18 @@ start_of_##T##_array(T##_array_p _)                                     \
   return _->start;                                                      \
 }                                                                       \
                                                                         \
-/** Return a pointer to the next byte after                             \
-    the element at the end of the array. */                             \
+/** Return a pointer to the next byte after the last element. */        \
 static T##_p                                                            \
 end_of_##T##_array(T##_array_p _)                                       \
 {                                                                       \
   return _->start + _->len;                                             \
+}                                                                       \
+                                                                        \
+/** Return the slice for the whole array of const objects. */           \
+static T##_array_slice                                                  \
+bounds_of_##T##_array(T##_array_p _)                                    \
+{                                                                       \
+  return (T##_array_slice){ _->start, _->start + _->len };              \
 }                                                                       \
                                                                         \
 /** Return a pointer to the start of the array (same as `_->start`) */  \
@@ -386,22 +414,14 @@ start_of_mut_##T##_array(mut_##T##_array_p _)                           \
   return (mut_##T##_p) _->start;                                        \
 }                                                                       \
                                                                         \
-/** Return a pointer to the next byte after                             \
-    the element at the end of the array. */                             \
+/** Return a pointer to the next byte after the last element. */        \
 static mut_##T##_p                                                      \
 end_of_mut_##T##_array(mut_##T##_array_p _)                             \
 {                                                                       \
   return (mut_##T##_p) _->start + _->len;                               \
 }                                                                       \
                                                                         \
-/** Return the slice for the whole array. */                            \
-static T##_array_slice                                                  \
-bounds_of_##T##_array(T##_array_p _)                                    \
-{                                                                       \
-  return (T##_array_slice){ _->start, _->start + _->len };              \
-}                                                                       \
-                                                                        \
-/** Return the slice for the whole array. */                            \
+/** Return the slice for the whole array of mutable objects. */         \
 static mut_##T##_array_slice                                            \
 bounds_of_mut_##T##_array(mut_##T##_array_p _)                          \
 {                                                                       \

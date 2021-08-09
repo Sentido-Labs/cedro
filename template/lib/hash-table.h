@@ -40,7 +40,7 @@ DEFINE_HASH_TABLE_INT(char, MapIntChar)
 int main() {
     int ret, is_missing;
     khiter_t i;
-    MapIntChar *h = init_MapIntChar();
+    MapIntChar *h = new_MapIntChar();
     i = put_MapIntChar(h, 5, &is_missing);
     h->vals[i] = 10;
     i = get_MapIntChar(h, 10);
@@ -210,7 +210,8 @@ static const double __ac_HASH_UPPER = 0.77;
 #define }
 
 #define { __KHASH_PROTOTYPES(name, khkey_t, khval_t)
-    extern name##_t *init_##name(void);
+    extern name##_t *new_##name(void);
+    extern void     init_##name(name##_t *h);
     extern void  destroy_##name(name##_t *h);
     extern void destruct_##name(name##_t h);
     extern void    clear_##name(name##_t *h);
@@ -228,11 +229,19 @@ static const double __ac_HASH_UPPER = 0.77;
 #define }
 
 #define { __KHASH_IMPL(name, SCOPE, khkey_t, khval_t, kh_is_map,
-                       __hash_func, __hash_equal)
+                     __hash_func, __hash_equal)
     typedef khint_t khiter_t;
 
-    SCOPE name##_t *init_##name(void) {
+    SCOPE name##_t *new_##name(void)
+    {
         return (name##_t*)kcalloc(1, sizeof(name##_t));
+    }
+    SCOPE void init_##name(name##_t *h)
+    {
+        h->n_buckets = h->size = h->n_occupied = h->upper_bound = 0;
+        h->flags = 0;
+        h->keys = 0;
+        h->vals = 0;
     }
     SCOPE void destroy_##name(name##_t *h)
     {
@@ -447,11 +456,13 @@ static const double __ac_HASH_UPPER = 0.77;
 #define { KHASH_DECLARE(name, khkey_t, khval_t)
     __KHASH_TYPE(name, khkey_t, khval_t)
     __KHASH_PROTOTYPES(name, khkey_t, khval_t)
+    typedef name##_t * name##_p
 #define }
 
 #define { KHASH_INIT2(name, SCOPE, khkey_t, khval_t, kh_is_map, __hash_func, __hash_equal)
     __KHASH_TYPE(name, khkey_t, khval_t)
     __KHASH_IMPL(name, SCOPE, khkey_t, khval_t, kh_is_map, __hash_func, __hash_equal)
+    typedef name##_t * name##_p
 #define }
 
 #define { KHASH_INIT(name, khkey_t, khval_t, kh_is_map, __hash_func, __hash_equal)

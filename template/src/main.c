@@ -7,14 +7,19 @@
  * Just an example of using Cedro together with some utility functions,
  * that you can use as base for new programs.
  *
- * It includes my customized hash table and btree libraries derived from khash.
+ * It includes my customized hash table library derived from
+ * [khash](http://attractivechaos.github.io/klib/#About),
+ * and also Josh Baker’s [btree.c](https://github.com/tidwall/btree.c).
  *
  *   - [main](main_8c.html)
  *   - [hash-table](hash-table_8h.html)
- *   - [btree](btree_8h.html)
+ *   - [btree](btree_8c.html)
  *
  * TODO: put license here, for instance GPL or MIT.
  * You can get help picking one at: https://choosealicense.com/
+ *
+ * The logo ([doc/logo.png](logo.png)) is just a placeholder I made myself.
+ * Please replace it with your own.
  *
  * The copy of Cedro under `tools/cedro/` has the same licence as Cedro,
  * but that does not affect your code if you do not include or link it
@@ -32,15 +37,29 @@
 #include <stdbool.h>
 #include <string.h>
 #define SIZE_ERROR (size_t)(-1)
+#define str_eq(a, b)     (0 == strcmp(a, b))
+#define strn_eq(a, b, n) (0 == strncmp(a, b, n))
 #include <stdarg.h>
 #include <errno.h>
+
+#pragma Cedro 1.0
 
 // Custom hash table from khash with a slightly different API:
 #include <hash-table.h>
 
-#pragma Cedro 1.0
+#include <btree.c-0.2.1/btree.h>
 
-DEFINE_HASH_TABLE_STR(unsigned int, StringCount)
+DEFINE_HASH_TABLE_STR(unsigned int, StringCount);
+struct string_count {
+    char* arg;
+    size_t count;
+};
+static int
+string_count_cmp(const void* a, const void* b, void* udata)
+{
+    return strcmp(((const struct string_count*) a)->arg,
+                  ((const struct string_count*) b)->arg);
+}
 
 #define LANG(es, en) (strncmp(getenv("LANG"), "es", 2) == 0? es: en)
 const char* const usage_es =
@@ -70,6 +89,19 @@ println(const char * const fmt, ...)
     va_end(args);
 }
 
+bool
+string_count_print(const void* a, void* udata)
+{
+    const struct string_count *_ = a;
+    eprintln(_->count == 1?
+             LANG("«%s» aparece %d vez.",
+                  "“%s” appears %d time."):
+             LANG("«%s» aparece %d veces.",
+                  "“%s” appears %d times."),
+             _->arg, _->count);
+    return true;
+}
+
 int
 main(int argc, char** argv)
 {
@@ -97,6 +129,10 @@ main(int argc, char** argv)
     StringCount_t arg_count = {0};
     auto destruct_StringCount(arg_count);
 
+    struct btree* btree = btree_new(sizeof(struct string_count), 0,
+                                    string_count_cmp, NULL);
+    auto btree_free(btree);
+
     char* end;
     for (int i = 1; i < argc; ++i) {
         char* arg = argv[i];
@@ -114,6 +150,14 @@ main(int argc, char** argv)
         }
         ++count;
         arg_count.vals[iterator] = count;
+
+        // Now store in the tree, in a similar way:
+        count = 0;
+        struct string_count* string_count_p =
+                btree_get(btree, &(struct string_count){ .arg = arg });
+        if (string_count_p) count = string_count_p->count;
+        ++count;
+        btree_set(btree, &(struct string_count){ .arg = arg, .count = count });
 
         long value = strtol(arg, &end, 10);
         if (!errno && end == arg + strlen(arg)) {
@@ -141,6 +185,8 @@ main(int argc, char** argv)
         }
     }
 
+    eprintln(LANG("\nCuentas al usar la tabla «hash»:",
+                  "\nCounts using the hash table:"));
     for (unsigned int i = 0; i < end_StringCount(&arg_count); ++i) {
         if (exists_StringCount(&arg_count, i)) {
             const char* key = arg_count.keys[i];
@@ -153,6 +199,12 @@ main(int argc, char** argv)
                      key, value);
         }
     }
+
+    eprintln(LANG("\nCuentas al usar el árbol «btree»:",
+                  "\nCounts using the btree:"));
+    btree_ascend(btree,
+                 &(struct string_count){ .arg = "" },
+                 string_count_print, NULL);
 
     return 0;
 }

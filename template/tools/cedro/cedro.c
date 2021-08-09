@@ -38,6 +38,7 @@
 #define str_eq(a, b)        (0 is strcmp(a, b))
 #define strn_eq(a, b, len)  (0 is strncmp(a, b, len))
 
+#define NDEBUG
 #include <assert.h>
 #include <sys/resource.h>
 #include <errno.h>
@@ -54,10 +55,15 @@ typedef size_t SrcIndexType; // Must be enough for the maximum src file size.
 typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#ifdef NDEBUG
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 
 static const size_t error_buffer_size = 256;
 static char         error_buffer[256] = {0};
-void error(const char * const fmt, ...)
+static void
+error(const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
@@ -68,39 +74,81 @@ void error(const char * const fmt, ...)
 
 #define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
-/** Decode one Unicode® code point from a UTF-8 byte buffer. */
-static inline uint32_t
-decode_utf8(const uint8_t** cursor_p, const uint8_t* end)
+typedef enum UTF8Error {
+  UTF8_NO_ERROR, UTF8_ERROR, UTF8_ERROR_OVERLONG,
+  UTF8_ERROR_INTERRUPTED_1 = 0x40,
+  UTF8_ERROR_INTERRUPTED_2 = 0x80,
+  UTF8_ERROR_INTERRUPTED_3 = 0xC0
+} UTF8Error, * UTF8Error_p;
+/** Store the error message corresponding to the error code `err`. */
+static bool
+utf8_error(UTF8Error err)
 {
-  const uint8_t* cursor = *cursor_p;
+  switch (err) {
+    case UTF8_NO_ERROR: return false;
+    case UTF8_ERROR:
+      error(LANG("Error descodificando UTF-8.",
+                 "UTF-8 decode error."));
+      break;
+    case UTF8_ERROR_OVERLONG:
+      error(LANG("Error UTF-8, secuencia sobrelarga.",
+                 "UTF-8 error, overlong sequence."));
+      break;
+    case UTF8_ERROR_INTERRUPTED_1:
+    case UTF8_ERROR_INTERRUPTED_2:
+    case UTF8_ERROR_INTERRUPTED_3:
+      error(LANG("Error UTF-8, secuencia interrumpida.",
+                 "UTF-8 error, interrupted sequence."));
+      break;
+    default:
+      error(LANG("Error UTF-8 inesperado: 0x%02X",
+                 "UTF-8 error, unexpected: 0x%02X"),
+            err);
+  }
+
+  return true;
+}
+// If you want to assume that the input is valid UTF-8, you can do this
+// to disable UTF-8 decoding error checking and get a notable boost
+// with optimizing compilers.
+//#define utf8_error(_) false
+
+/** Decode one Unicode® code point from a UTF-8 byte buffer.
+ *  Assumes `end` > `cursor`.
+ * @param[in] cursor current byte.
+ * @param[in] end byte buffer end.
+ * @param[out] codepoint decoded 21-bit code point.
+ * @param[out] err_p error code variable.
+ */
+static inline const uint8_t*
+decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8Error_p err_p)
+{
   uint8_t c = *cursor;
-  uint32_t u = 0;
-  uint32_t len = 0;
-  if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+  uint32_t u;
+  uint8_t len = 0;
+  if      (0x00 == (c & 0x80)) { *codepoint = (uint32_t)(c); return cursor+1; }
+  //if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
   else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
   else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
   else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
   if (len is 0 or cursor + len > end) {
-    error(LANG("Error descodificando UTF-8, octeto es 0x%02X.",
-               "UTF-8 decode error, byte is 0x%02X."), c);
-    return 0xFFFD;
+    *err_p = UTF8_ERROR;
+    return cursor;
   }
   switch (len) {
-    case 4: c = *(++cursor); u = (u << 6) | (c & 0x3F);
-    case 3: c = *(++cursor); u = (u << 6) | (c & 0x3F);
-    case 2: c = *(++cursor); u = (u << 6) | (c & 0x3F);
+    case 4: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
+    case 3: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
+    case 2: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
     case 1:      (++cursor);
   }
   if (len is 2 and u <    0x80 or
       len is 3 and u <  0x0800 or
       len is 4 and u < 0x10000) {
-    error("Error UTF-8, secuencia sobrelarga.",
-          "UTF-8 error, overlong sequence.");
-    return 0xFFFD;
+    *err_p = UTF8_ERROR_OVERLONG;
   }
-  *cursor_p = cursor;
+  *codepoint = u;
 
-  return u;
+  return cursor;
 }
 
 /** Same as `fprintf(stderr, fmt, ...)`
@@ -133,10 +181,11 @@ eprint(const char * const fmt, ...)
     }
     const uint8_t* p   = (const uint8_t*)buffer;
     const uint8_t* end = p + needed;
-    uint8_t c;
-    while ((c = *p)) {
-      uint32_t u = decode_utf8(&p, end);
-      if (error_buffer[0] is_not 0) {
+    for (;;) {
+      uint32_t u = 0;
+      UTF8Error err = UTF8_NO_ERROR;
+      p = decode_utf8(p, end, &u, &err);
+      if (utf8_error(err)) {
         fprintf(stderr,
                 LANG("Error en posición %lu: %s\n",
                      "Error at position %lu: %s\n"),
@@ -144,6 +193,7 @@ eprint(const char * const fmt, ...)
         error_buffer[0] = 0;
         return;
       }
+      if (not u) break;
       if ((u & 0xFFFFFF00) is 0) {
         fputc((unsigned char) u, stderr); // Latin-1 / ISO-8859-1 / ISO-8859-15
       } else {
@@ -344,8 +394,8 @@ push_str(mut_Byte_array_p _, const char * const str)
 }
 
 /** Append a formatted C string to the end of the given buffer.
- *  It’s the same as printf(...), only the result is stored instead
- * of printed to stdout. */
+ *  It’s similar to `sprintf(...)`, only the result is stored in a byte buffer
+ * that grows automatically if needed to hold the complete result. */
 static void
 push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 {
@@ -366,11 +416,11 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
   va_end(args);
 }
 
-/** Make it be a valid C string, by adding a `'\0'` character after the last
- * last valid element, without increasing the length.
+/** Make it be a valid C string, by adding a `'\0'` character after the
+ * last valid element, without increasing the `.len` value.
  *  It first makes sure there is at least one extra byte after the array
- * contents in memory, by increasing the capacity if needed, and then
- * sets it to `0`.
+ * contents in memory, by increasing the `.capacity` if needed, and then
+ * sets that byte to `0`.
  *  Returns the pointer `_->start` which now can be used as a C string
  * as long as you don’t modify it.
  */
@@ -381,7 +431,7 @@ as_c_string(mut_Byte_array_p _)
     push_Byte_array(_, '\0');
     --_->len;
   } else {
-    *((mut_Byte_p) _->start + _->len) = 0;
+    *(_->start + _->len) = 0;
   }
   return (const char *) _->start;
 }
@@ -403,13 +453,13 @@ read_file(mut_Byte_array_p _, FilePath path)
   size_t size = (size_t)ftell(input);
   init_Byte_array(_, size);
   rewind(input);
-  _->len = fread((mut_Byte_p) _->start, sizeof(_->start[0]), size, input);
+  _->len = fread(_->start, sizeof(_->start[0]), size, input);
   if (feof(input)) {
     err = EIO;
   } else if (ferror(input)) {
     err = errno;
   } else {
-    memset((mut_Byte_p) _->start + _->len, 0,
+    memset(_->start + _->len, 0,
            (_->capacity - _->len) * sizeof(_->start[0]));
   }
   fclose(input);
@@ -443,16 +493,53 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
   _->token_type = token_type;
 }
 
+/** Build a new marker for the given string,
+ * pointing to its first appearance in `src`.
+ *  If not found, append the text to `src`
+ * and return a marker poiting there.
+ */
+static Marker
+new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
+{
+  Byte_mut_p cursor = start_of_Byte_array(src);
+  Byte_mut_p match  = NULL;
+  Byte_p     end    =   end_of_Byte_array(src);
+  size_t text_len = strlen(text);
+  Byte_p text_end = (Byte_p)text + text_len;
+  const char first_character = text[0];
+  while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
+    Byte_mut_p p1 = cursor;
+    Byte_mut_p p2 = (Byte_p) text;
+    while (p2 is_not text_end && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
+    if (p2 is text_end) {
+      match = cursor;
+      break;
+    }
+    ++cursor;
+  }
+  mut_Marker marker;
+  if (not match) {
+    match = end_of_Byte_array(src);
+    Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
+    splice_Byte_array(src, src->len, 0, NULL, insert);
+  }
+  init_Marker(&marker, match, match + text_len, src, token_type);
+
+  return marker;
+}
+
 /* Lexer definitions. */
 
 /** Match an identifier.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 identifier(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
-  uint32_t u = decode_utf8(&cursor, end);
-  if (error_buffer[0]) return NULL;
+  uint32_t u = 0;
+  UTF8Error err = UTF8_NO_ERROR;
+  cursor = decode_utf8(cursor, end, &u, &err);
+  if (utf8_error(err)) return NULL;
   mut_Byte c;
   size_t len;
   if (u is '\\') {
@@ -621,9 +708,8 @@ identifier(Byte_p start, Byte_p end)
           in(0x3021,u,0x3029)
        )) {
     while (cursor < end) {
-      Byte_mut_p p = cursor;
-      u = decode_utf8(&p, end);
-      if (error_buffer[0]) return NULL;
+      Byte_mut_p p = decode_utf8(cursor, end, &u, &err);
+      if (utf8_error(err)) return NULL;
       if (u is '\\') {
         if (p is_not end) {
           switch(*p) {
@@ -795,10 +881,10 @@ identifier(Byte_p start, Byte_p end)
 }
 
 /** Match a number.
- * This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
- * See ISO/IEC 9899:TC3 6.4.8 “Preprocessing numbers”.
- * Rejecting that is left to the compiler.
- * Assumes `end` > `start`. */
+ *  This matches invalid numbers like 3.4.6, 09, and 3e23.48.34e+11.
+ *  See ISO/IEC 9899:TC3 6.4.8 “Preprocessing numbers”.
+ *  Rejecting that is left to the compiler.
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 number(Byte_p start, Byte_p end)
 {
@@ -831,35 +917,45 @@ number(Byte_p start, Byte_p end)
 }
 
 /** Match a string literal.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 string(Byte_p start, Byte_p end)
 {
   if (*start is_not '"') return NULL;
-  Byte_mut_p cursor = start + 1;
-  while (cursor is_not end and *cursor is_not '"') {
-    if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
-    ++cursor;
+  Byte_mut_p cursor = start;
+  while ((cursor = memchr(cursor + 1, '"', (size_t)(end - (cursor + 1))))) {
+    Byte_mut_p p = cursor;
+    while (*--p is '\\');
+    if ((p - cursor) & 1) {
+      return cursor + 1; // End is past the closing symbol.
+    }
   }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
+  error(LANG("Cadena literal interrumpida.",
+             "Unterminated string literal."));
+  return NULL;
 }
 
 /** Match a character literal.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 character(Byte_p start, Byte_p end)
 {
   if (*start is_not '\'') return NULL;
-  Byte_mut_p cursor = start + 1;
-  while (cursor is_not end and *cursor is_not '\'') {
-    if (*cursor is '\\' && cursor + 1 is_not end) ++cursor;
-    ++cursor;
+  Byte_mut_p cursor = start;
+  while ((cursor = memchr(cursor + 1, '\'', (size_t)(end - (cursor + 1))))) {
+    Byte_mut_p p = cursor;
+    while (*--p is '\\');
+    if ((p - cursor) & 1) {
+      return cursor + 1; // End is past the closing symbol.
+    }
   }
-  return (cursor is end)? NULL: cursor + 1;// End is past the closing symbol.
+  error(LANG("Carácter literal interrumpido.",
+             "Unterminated character literal."));
+  return NULL;
 }
 
 /** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 space(Byte_p start, Byte_p end)
 {
@@ -884,7 +980,7 @@ exit:
 }
 
 /** Match a comment block.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 comment(Byte_p start, Byte_p end)
 {
@@ -909,7 +1005,7 @@ comment(Byte_p start, Byte_p end)
 }
 
 /** Match a pre-processor directive.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 preprocessor(Byte_p start, Byte_p end)
 {
@@ -925,7 +1021,7 @@ preprocessor(Byte_p start, Byte_p end)
 
 /** Fallback match, just read one UTF-8 Unicode® Code Point
  * as one token of type `T_OTHER`.
- * Assumes `end` > `start`. */
+ *  Assumes `end` > `start`. */
 static inline Byte_p
 other(Byte_p start, Byte_p end)
 {
@@ -938,22 +1034,21 @@ other(Byte_p start, Byte_p end)
 }
 
 
-/** Get new slice for the given marker.
- */
+/** Get new slice for the given marker. */
 static Byte_array_slice
 slice_for_marker(Byte_array_p src, Marker_p cursor)
 {
   Byte_array_slice slice = {
     // get_mut_Byte_array() is not valid at the end.
-    .start_p = get_mut_Byte_array(src, cursor->start),
-    .end_p   = get_mut_Byte_array(src, cursor->start) + cursor->len
+    .start_p = get_Byte_array(src, cursor->start),
+    .end_p   = get_Byte_array(src, cursor->start) + cursor->len
   };
   return slice;
 }
 
 /** Copy the characters between `start` and `end` into the given Byte array,
  * appending them to the end of that Byte array.
- * If you want to replace any previous content,
+ *  If you want to replace any previous content,
  * do `string.len = 0;` before calling this function.
  *
  *  To extract the text for `Marker_p m` from `Byte_p src`:
@@ -968,10 +1063,10 @@ slice_for_marker(Byte_array_p src, Marker_p cursor)
  * ```
  *  or use `as_c_string(mut_Byte_array_p _)`.
  *
- *  @param[in] start marker pointer.
- *  @param[in] end marker pointer.
- *  @param[in] src byte buffer with the source code.
- *  @param[out] string Byte buffer to receive the bytes copied from the segment.
+ * @param[in] start marker pointer.
+ * @param[in] end marker pointer.
+ * @param[in] src byte buffer with the source code.
+ * @param[out] string Byte buffer to receive the bytes copied from the segment.
  */
 static void
 extract_src(Marker_p start, Marker_p end, Byte_array_p src, mut_Byte_array_p string)
@@ -1012,7 +1107,7 @@ count_appearances(Byte byte, Marker_p start, Marker_p end, Byte_array_p src)
 }
 
 /** Check whether a given byte appears in a marker.
- * It is faster than `count_appearances(byte, marker, marker+1, src) != 0`.
+ *  It is faster than `count_appearances(byte, marker, marker+1, src) != 0`.
  */
 static inline bool
 has_byte(Byte byte, Marker_p marker, Byte_array_p src)
@@ -1023,15 +1118,27 @@ has_byte(Byte byte, Marker_p marker, Byte_array_p src)
 }
 
 /** Skip forward all `T_SPACE` and `T_COMMENT` markers. */
-#define skip_space_forward(start, end) while (start is_not end and (start->token_type is T_SPACE or start->token_type is T_COMMENT)) ++start
+static inline Marker_p
+skip_space_forward(Marker_mut_p start, Marker_p end) {
+  while (start is_not end and
+         (start->token_type is T_SPACE or start->token_type is T_COMMENT)
+         ) ++start;
+  return start;
+}
 
 /** Skip backward all `T_SPACE` and `T_COMMENT` markers. */
-#define skip_space_back(start, end) while (end is_not start and ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)) --end
+static inline Marker_p
+skip_space_back(Marker_p start, Marker_mut_p end) {
+  while (end is_not start and
+         ((end-1)->token_type is T_SPACE or (end-1)->token_type is T_COMMENT)
+         ) --end;
+  return end;
+}
 
-/** starting at `cursor`, which should point to an
+/** Find matching fence starting at `cursor`, which should point to an
  * opening fence `{`, `[` or `(`, advance until the corresponding
  * closing fence `}`, `]` or `)` is found, then return that address.
- *  If the fences are not closed, the return value is `ènd`
+ *  If the fences are not closed, the return value is `end`
  * and an error message is stored in `err`.
  */
 static inline Marker_p
@@ -1207,22 +1314,29 @@ found:
   return end_of_block;
 }
 
-/** Extract the indentation of the line for the character at `index`,
+/** Extract the indentation of the line for the marker at `cursor`,
  * including the preceding `LF` character if it exists.
+ * @param[in] markers array of markers.
+ * @param[in] cursor position.
+ * @param[in] already_at_line_start whether the cursor is already at the
+ *            start of the line, to avoid searching for it if not needed.
+ * @param[in] src source code.
  */
 static Marker
-indentation(Marker_array_p markers, Marker_p marker, bool already_at_line_start,
+indentation(Marker_array_p markers, Marker_mut_p cursor,
+            bool already_at_line_start,
             Byte_array_p src)
 {
   mut_Marker indentation = {0};
   Marker_p start = start_of_Marker_array(markers);
-  Marker_mut_p cursor = marker;
   if (cursor) {
     mut_Error err = {0};
     if (not already_at_line_start) {
       cursor = find_line_start(cursor, start, &err);
       if (err.message) {
-        eprintln("Error: %s", err.message);
+        eprintln(LANG("Error: %s",
+                      "Error: %s"),
+                 err.message);
         return indentation;
       }
     }
@@ -1316,41 +1430,6 @@ tabulate_eprint(size_t skip, size_t tabulator)
   while (skip++ is_not tabulator) eprint(" ");
 }
 
-/** Build a new marker for the given string,
- * pointing to its first appearance in `src`.
- *  If not found, append the text to `src`
- * and return a marker poiting there.
- */
-static Marker
-new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
-{
-  Byte_mut_p cursor = start_of_Byte_array(src);
-  Byte_mut_p match  = NULL;
-  Byte_p     end    = end_of_Byte_array(src);
-  size_t text_len = strlen(text);
-  Byte_p text_end = (Byte_p)text + text_len;
-  const char first_character = text[0];
-  while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
-    Byte_mut_p p1 = cursor;
-    Byte_mut_p p2 = (Byte_p) text;
-    while (p2 is_not text_end && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
-    if (p2 is text_end) {
-      match = cursor;
-      break;
-    }
-    ++cursor;
-  }
-  mut_Marker marker;
-  if (not match) {
-    match = end_of_Byte_array(src);
-    Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
-    splice_Byte_array(src, src->len, 0, NULL, insert);
-  }
-  init_Marker(&marker, match, match + text_len, src, token_type);
-
-  return marker;
-}
-
 /** Print a human-legible dump of the markers array to stderr.
  * Ignores the options about showing spaces/comments:
  * it is meant as a raw display of the markers array.
@@ -1364,6 +1443,8 @@ static void
 print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
               size_t start, size_t end)
 {
+  if (end < start) end = start;
+
   size_t indent = 0;
   if (start is_not 0) {
     Marker_p m_end = get_Marker_array(markers, start);
@@ -1418,7 +1499,7 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
         indent_eprint(indent * 2);
         eprint("“");
         for (size_t i = 0; i is_not token_text.len; ++i) {
-          Byte c = *get_Byte_array(&token_text, i);
+          Byte c = *get_mut_Byte_array(&token_text, i);
           switch (c) {
             case '\n': eprint("\\n"); ++len; break;
             case '\r': eprint("\\r"); ++len; break;
@@ -1451,11 +1532,11 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
                 i > radius      ? i - radius: 0,
                 i < markers->len? i         : markers->len - 1);
   print_markers(markers, src, "* ",
-                i   < markers->len? i  : markers->len - 1,
-                i+1 < markers->len? i+1: markers->len - 1);
+                i < markers->len? i  : markers->len - 1,
+                i < markers->len? i+1: markers->len);
   print_markers(markers, src, "  ",
-                i+1 < markers->len         ? i+1         : markers->len - 1,
-                i+1 + radius < markers->len? i+1 + radius: markers->len - 1);
+                i+1 < markers->len          ? i+1         : markers->len - 1,
+                i+1 + radius <= markers->len? i+1 + radius: markers->len - 1);
 }
 
 /** Format the markers back into source code form.
@@ -1464,19 +1545,20 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
  *  @param[in] original_src_len original source code length.
  *  @param[in] src_file_name file name corresponding to `src`.
  *  @param[in] options formatting options.
- *  @param[in] out FILE pointer where the source code will be written.
+ *  @param[out] out FILE pointer where the source code will be written.
  */
 static void
-unparse(Marker_array_p markers, Byte_array_p src,
-        size_t original_src_len, char* src_file_name,
+unparse(Marker_array_slice markers,
+        Byte_array_p src, size_t original_src_len, const char* src_file_name,
         Options options, FILE* out)
 {
-  Marker_p m_end = end_of_Marker_array(markers);
+  assert(markers.end_p >= markers.start_p);
+  Marker_p m_end = markers.end_p;
   bool eol_pending = false;
   size_t previous_marker_end        = 0;
   size_t previous_marker_token_type = T_NONE;
   bool line_directive_pending = false;
-  for (Marker_mut_p m = (Marker_mut_p) markers->start; m is_not m_end; ++m) {
+  for (Marker_mut_p m = markers.start_p; m is_not m_end; ++m) {
     if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
@@ -1557,7 +1639,7 @@ unparse(Marker_array_p markers, Byte_array_p src,
           } else if (m->token_type is T_PREPROCESSOR) {
             text = slice_for_marker(src, m).start_p;
             if (m->len >= 9 and strn_eq("#define }", (char*)text, 9)) {
-              puts("// End #define");
+              fputs("// End #define", out);
               // Not needed: line_length += strlen("// End #define");
               break;
             }
@@ -1644,8 +1726,10 @@ unparse(Marker_array_p markers, Byte_array_p src,
       Byte_p end = text + m->len;
       Byte_mut_p p = text;
       while (p is_not end) {
-        uint32_t u = decode_utf8(&p, end);
-        if (error_buffer[0]) {
+        uint32_t u = 0;
+        UTF8Error err = UTF8_NO_ERROR;
+        p = decode_utf8(p, end, &u, &err);
+        if (utf8_error(err)) {
           fprintf(out, "%s\n", error_buffer);
           error_buffer[0] = 0;
           return;
@@ -1793,6 +1877,12 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  *
  *  Remember to empty the `markers` array before calling this function
  * if you are re-parsing from scratch.
+ *
+ *  Example:
+ * ```
+ * mut_Marker_array markers = new_Marker_array(8192);
+ * parse(&src, &markers);
+ * ```
  */
 static Byte_p
 parse(Byte_array_p src, mut_Marker_array_p markers)
@@ -1833,7 +1923,10 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = number    (cursor, end))) {
     } else      token_end = other     (cursor, end);
     if (error_buffer[0]) {
-      eprintln("Error: src[%lu]: %s", cursor - src->start, error);
+      eprintln(LANG("Errorx: %lu: %s",
+                    "Errorx: %lu: %s"),
+               original_line_number((size_t)(cursor - src->start), src),
+               error_buffer);
       error_buffer[0] = 0;
       return cursor;
     }
@@ -1856,6 +1949,14 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     mut_TokenType token_type = T_NONE;
     Byte_mut_p token_end = NULL;
     if        ((token_end = preprocessor(cursor, end))) {
+      if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
+        if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
+          eprintln("Warning: %lu: duplicated Cedro #pragma.\n"
+                   "  This might cause some code to be misinterpreted,\n"
+                   "  for instance if it uses `auto` in its standard meaning.",
+                   original_line_number((size_t)(cursor - src->start), src));
+        }
+      }
       TOKEN1(T_PREPROCESSOR);
       if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
     } else if ((token_end = string(cursor, end))) {
@@ -1932,9 +2033,11 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                   mut_Error err = {0};
                   Marker_mut_p line_start = find_line_start(m, start, &err);
                   if (err.message) {
-                    eprintln(LANG("Error: src[%lu]: %s",
-                                  "Error: src[%lu]: %s"),
-                             cursor - src->start, err.message);
+                    eprintln(LANG("Error: %lu: %s",
+                                  "Error: %lu: %s"),
+                             original_line_number((size_t)(cursor - src->start),
+                                                  src),
+                             err.message);
                     return cursor;
                   }
                   while (line_start->token_type is T_SPACE or
@@ -2055,15 +2158,19 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
       }
     }
     if (error_buffer[0]) {
-      eprintln("Error: src[%lu]: %s", cursor - src->start, error);
+      eprintln(LANG("Error: %lu: %s",
+                    "Error: %lu: %s"),
+               original_line_number((size_t)(cursor - src->start), src),
+               error_buffer);
       error_buffer[0] = 0;
       return cursor;
     }
     if (token_type is T_NONE) {
       token_end = other(cursor, end);
       if (not token_end) {
-        eprintln("Error: src[%lu]: problem extracting other token.",
-                 cursor - src->start, error);
+        eprintln(LANG("Error: %lu: problema al extraer otro pedazo.",
+                      "Error: %lu: problem extracting other token."),
+                 original_line_number((size_t)(cursor - src->start), src));
         break;
       }
     }
@@ -2114,9 +2221,8 @@ static Macro macros[] = {
 static double
 benchmark(mut_Byte_array_p src_p, Options_p options)
 {
-  const size_t repetitions = 1000;
-  time_t start, end;
-  time(&start);
+  const size_t repetitions = 100;
+  clock_t start = clock();
 
   mut_Marker_array markers = new_Marker_array(8192);
 
@@ -2135,9 +2241,9 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
     fputc('.', stderr);
   }
 
-  time(&end);
+  clock_t end = clock();
   destruct_Marker_array(&markers);
-  return difftime(end, start) / (double) repetitions;
+  return ((double)(end - start))/CLOCKS_PER_SEC / (double) repetitions;
 }
 
 
@@ -2305,7 +2411,8 @@ int main(int argc, char** argv)
       if (opt_print_markers) {
         print_markers(&markers, &src, "", 0, 0);
       } else {
-        unparse(&markers, &src, original_src_len, arg, options, out);
+        unparse(bounds_of_Marker_array(&markers),
+                &src, original_src_len, arg, options, out);
       }
     }
 
