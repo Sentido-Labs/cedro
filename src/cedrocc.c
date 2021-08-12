@@ -201,7 +201,9 @@ include(const char* file_name,
         FILE* cc_stdin)
 {
   if (level > 10) {
-    eprintln("Error: too much include recursion at: %s", file_name);
+    eprintln(LANG("Error: demasiada recursión de «include» en: %s",
+                  "Error: too much include recursion at: %s"),
+             file_name);
     return EINVAL;
   }
 
@@ -352,14 +354,18 @@ int main(int argc, char* argv[])
     } else if (strn_eq(arg, "-I", 2) /* Ignore -isystem, -idirafter */) {
       char* path = arg[2]? arg + 2: (j + 1 < argc)? argv[j + 1]: "";
       if (path[0] is '\0' or path[0] is '-') {
-        eprintln("Missing value for %s option.", arg);
+        eprintln(LANG("Falta el valor para la opción %s.",
+                      "Missing value for %s option."),
+                 arg);
         return EINVAL;
       }
       append_path(&include_paths, path, strlen(path));
     } else if (str_eq(arg, "-iquote")) {
       char* path = (j + 1 < argc)? argv[j + 1]: "";
       if (path[0] is '\0' or path[0] is '-') {
-        eprintln("Missing value for %s option.", arg);
+        eprintln(LANG("Falta el valor para la opción %s.",
+                      "Missing value for %s option."),
+                 arg);
         return EINVAL;
       }
       append_path(&include_paths_quote, path, strlen(path));

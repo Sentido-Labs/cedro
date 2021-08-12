@@ -1924,8 +1924,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = number    (cursor, end))) {
     } else      token_end = other     (cursor, end);
     if (error_buffer[0]) {
-      eprintln(LANG("Errorx: %lu: %s",
-                    "Errorx: %lu: %s"),
+      eprintln(LANG("Error: %lu: %s",
+                    "Error: %lu: %s"),
                original_line_number((size_t)(cursor - src->start), src),
                error_buffer);
       error_buffer[0] = 0;
@@ -1952,10 +1952,14 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     if        ((token_end = preprocessor(cursor, end))) {
       if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
         if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
-          eprintln("Warning: %lu: duplicated Cedro #pragma.\n"
+          eprintln(
+              LANG("Aviso: %lu: #pragma Cedro duplicada.\n"
+                   "  puede hacer que algún código se malinterprete,\n"
+                   "  por ejemplo si usa `auto` con su significado normal.",
+                   "Warning: %lu: duplicated Cedro #pragma.\n"
                    "  This might cause some code to be misinterpreted,\n"
-                   "  for instance if it uses `auto` in its standard meaning.",
-                   original_line_number((size_t)(cursor - src->start), src));
+                   "  for instance if it uses `auto` in its standard meaning."),
+              original_line_number((size_t)(cursor - src->start), src));
         }
       }
       TOKEN1(T_PREPROCESSOR);
@@ -2202,7 +2206,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   return cursor;
 }
 
-/***************** macros *****************/
 typedef void (*MacroFunction_p)(mut_Marker_array_p markers,
                                 mut_Byte_array_p src);
 typedef const struct Macro {
@@ -2370,8 +2373,8 @@ int main(int argc, char** argv)
   }
 
   if (opt_run_benchmark) {
-    options.apply_macros  = false;
-    opt_print_markers     = false;
+    options.apply_macros = false;
+    opt_print_markers    = false;
   }
 
   mut_Marker_array markers = new_Marker_array(8192);
