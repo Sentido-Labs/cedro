@@ -4,7 +4,8 @@ LOGO=logo.png
 CSS=doc.css
 
 # The include paths must be put also in Doxyfile (see below).
-CFLAGS=-g -L build/lib -I lib -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
+CFLAGS=-g -L build/lib -I lib -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
+# No -Wsign-conversion because most libraries do not go well with it.
 CEDRO=tools/cedro/cedro
 CEDROCC=$(CEDRO)cc
 
