@@ -634,6 +634,43 @@ int main(int argc, char **argv) {
       </div>
       <p>Compilers like GCC and clang have non-standard features to do this
         like the <a href="https://echorand.me/site/notes/articles/c_cleanup/cleanup_attribute_c.html"><code>__cleanup__</code> variable attribute</a>.</p>
+      <p>Cedro does not have the limitation of the deferred code having to be a function: it can be a code block, with or without conditionals, which allows for instance to emulate <a href="https://ziglang.org/learn/overview/#manual-memory-management">Zig’s <code>errdefer</code></a> by performing different actions in case of error:</p>
+      <table>
+        <tr>
+          <td>
+            <code>char* allocate_block(size_t n, char** err_p)
+{
+    char* result = malloc(n);
+    <b>auto if (*err_p) {
+        free(result);
+        result = NULL;
+    }</b>
+
+    if (n > 10) {
+        *err_p = "n is too big";
+    }
+
+    return result;
+}</code>
+          </td><td>
+            <code>char* allocate_block(size_t n, char** err_p)
+{
+    char* result = malloc(n);
+
+    if (n > 10) {
+        *err_p = "n is too big";
+    }
+
+    <b>if (*err_p) {
+        free(result);
+        result = NULL;
+    }</b>
+
+    return result;
+}</code>
+          </td>
+        </tr>
+      </table>
     </section>
 
     <section id="block-macros">

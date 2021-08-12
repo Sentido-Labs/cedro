@@ -634,6 +634,43 @@ int main(int argc, char **argv) {
       </div>
       <p>Compiladores como GCC y clang tienen características no estandarizadas para hacerlo,
         como el <a href="https://echorand.me/site/notes/articles/c_cleanup/cleanup_attribute_c.html">atributo de variables <code>__cleanup__</code> (en inglés)</a>.</p>
+      <p>Cedro no tiene la limitación de que el código diferido tenga que ser una función: puede ser un bloque de código, con o sin condicionales, lo que permite por ejemplo emular el <a href="https://ziglang.org/learn/overview/#manual-memory-management"><code>errdefer</code> de Zig</a> realizando acciones diferentes en caso de error:</p>
+      <table>
+        <tr>
+          <td>
+            <code>char* reserva_bloque(size_t n, char** err_p)
+{
+    char* resultado = malloc(n);
+    <b>auto if (*err_p) {
+        free(resultado);
+        resultado = NULL;
+    }</b>
+
+    if (n > 10) {
+        *err_p = "n es demasiado grande";
+    }
+
+    return resultado;
+}</code>
+          </td><td>
+            <code>char* reserva_bloque(size_t n, char** err_p)
+{
+    char* resultado = malloc(n);
+
+    if (n > 10) {
+        *err_p = "n es demasiado grande";
+    }
+
+    <b>if (*err_p) {
+        free(resultado);
+        resultado = NULL;
+    }</b>
+
+    return resultado;
+}</code>
+          </td>
+        </tr>
+      </table>
     </section>
 
     <section ="block-macros">
