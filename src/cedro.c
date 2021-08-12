@@ -2318,6 +2318,19 @@ usage_en =
 
 int main(int argc, char** argv)
 {
+  if (argc > 2 and str_eq("new", argv[1])) {
+    mut_Byte_array cmd = new_Byte_array(80);
+    push_str(&cmd, argv[0]);
+    push_str(&cmd, "-new");
+    for (int i = 2; i < argc; ++i) {
+      push_str(&cmd, " ");
+      push_str(&cmd, argv[i]);
+    }
+    int result = system(as_c_string(&cmd));
+    destruct_Byte_array(&cmd);
+    return result;
+  }
+
   Options options = { // Remember to keep the usage strings updated.
     .apply_macros           = true,
     .escape_ucn             = false,
