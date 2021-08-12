@@ -727,9 +727,7 @@ const uint8_t image
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮
 };</code>
-      <p>The file name is relative to the current directory,
-        not the C file, because usually binary files
-        do not go next to the source code.</p>
+      <p>The file name is relative to the including C file.</p>
       <p>Note: the directive must start exactly with “<code>#include {</code>”,
         with no more or less space between
         “<code>#include</code>” and the brace “<code>{</code>”.</p>
