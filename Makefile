@@ -1,6 +1,9 @@
 NAME=cedro
 
 CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
+# miniz has many implicit sign conversions, after removing some it works on
+# some manchines but it is not enough in others, so better ignore it:
+CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
 
 default: release
 all: release debug
@@ -28,14 +31,14 @@ bin/cedrocc:       src/cedrocc.c Makefile bin/cedro
 
 bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc
 	@mkdir -p bin
-	bin/cedrocc $< -I src $(CFLAGS) -o $@
+	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@
 bin/cedro-new:       src/cedro-new.c template.zip Makefile bin/cedrocc
 	@mkdir -p bin
-	bin/cedrocc $< -I src $(CFLAGS) -o $@ -O
+	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ -O
 
 bin/%: src/%.c Makefile bin/cedrocc
 	@mkdir -p bin
-	bin/cedrocc $< -I src $(CFLAGS) -o $@ -O
+	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ -O
 
 %.zip: % %/** bin/zip-template
 	bin/zip-template $@ $<
