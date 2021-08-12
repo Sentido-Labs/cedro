@@ -262,7 +262,8 @@ int main(int argc, char* argv[])
 
   char user_name [255 + 1] = {0};
   char user_email[255 + 1] = {0};
-  FILE* git_stdout = popen("git config user.name", "r");
+  FILE* git_stdout =
+      popen("git config user.name 2>/dev/null", "r");
   if (git_stdout) {
     int len = fread(user_name, sizeof(user_name[0]), 255, git_stdout);
     pclose(git_stdout);
@@ -271,7 +272,7 @@ int main(int argc, char* argv[])
       // If this command failed, the next one is not going to work. Give up.
     } else {
       if (len) user_name[len-1] = 0; // There is a LF after the name.
-      git_stdout = popen("git config user.email", "r");
+      git_stdout = popen("git config user.email 2>/dev/null", "r");
       if (git_stdout) {
         len = fread(user_email, sizeof(user_email[0]), 255, git_stdout);
         pclose(git_stdout);
