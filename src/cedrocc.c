@@ -161,7 +161,7 @@ DEFINE_ARRAY_OF(SourceFile, 0, {
       ++cursor;
     }
   });
-SourceFile_p
+static SourceFile_p
 get_SourceFile_for_path(mut_SourceFile_array_p _, Byte_array path)
 {
   SourceFile_mut_p cursor = start_of_SourceFile_array(_);
@@ -177,13 +177,17 @@ get_SourceFile_for_path(mut_SourceFile_array_p _, Byte_array path)
 
   return NULL;
 }
-bool
+/** Find a file in the given paths.
+ * `result` is modified only if the file is found.
+ */
+static bool
 find_include_file(IncludePaths_p _, Byte_array_slice path,
                   mut_Byte_array_p result)
 {
+  bool found = false;
+
   mut_Byte_array path_buffer;
   init_Byte_array(&path_buffer, 256);
-  auto destruct_Byte_array(&path_buffer);
   size_t i = len_IncludePaths(_);
   while (i is_not 0) {
     --i;
@@ -192,12 +196,15 @@ find_include_file(IncludePaths_p _, Byte_array_slice path,
     push_Byte_array(&path_buffer, '/');
     append_Byte_array(&path_buffer, path);
     if (access(as_c_string(&path_buffer), F_OK) == 0) {
+      result->len = 0;
       append_Byte_array(result, bounds_of_Byte_array(&path_buffer));
-      return true;
+      found = true;
+      break;
     }
   }
+  destruct_Byte_array(&path_buffer);
 
-  return false;
+  return found;
 }
 
 /**
@@ -207,7 +214,7 @@ find_include_file(IncludePaths_p _, Byte_array_slice path,
    or `-1` if there was no error but the included file does not contain
    the Cedro `#pragma` so it does not need to be expanded in place.
  */
-int
+static int
 include(const char* file_name,
         Byte level,
         mut_IncludePaths_p include_paths,
@@ -292,8 +299,6 @@ include(const char* file_name,
           a = b;
           mut_Byte_array s = {0};
           auto destruct_Byte_array(&s);
-          append_Byte_array(&s, content);
-          s.len = 0;
           if ((quoted_include &&
                find_include_file(include_paths_quote, content, &s)) ||
               find_include_file(include_paths, content, &s)) {

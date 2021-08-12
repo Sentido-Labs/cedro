@@ -22,6 +22,18 @@
  * \author Alberto González Palomo https://sentido-labs.com
  * \copyright ©2021 Alberto González Palomo https://sentido-labs.com
  *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Created: 2020-11-25 22:41
  */
 
@@ -975,8 +987,7 @@ space(Byte_p start, Byte_p end)
         goto exit;
         // Unreachable: break;
     }
-  }
-exit:
+  } exit:
   return (cursor is start)? NULL: cursor;
 }
 
@@ -1202,8 +1213,7 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
         break;
     }
     --start_of_line;
-  }
-found:
+  } found:
 
   if (nesting is_not 0 or start_of_line < start) {
     err->message = LANG("Demasiados cierres de grupo.",
@@ -1237,8 +1247,7 @@ find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
       default: break;
     }
     ++end_of_line;
-  }
-found:
+  } found:
 
   if (nesting is_not 0 or end_of_line is end) {
     err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
@@ -1272,8 +1281,7 @@ find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
       default: break;
     }
     --start_of_block;
-  }
-found:
+  } found:
 
   if (nesting is_not 0 or start_of_block < start) {
     err->message = LANG("Demasiados cierres de bloque.",
@@ -1304,8 +1312,7 @@ find_block_end(Marker_p cursor, Marker_p end, mut_Error_p err)
       default: break;
     }
     ++end_of_block;
-  }
-found:
+  } found:
 
   if (nesting is_not 0 or end_of_block is end) {
     err->message = LANG("Bloque sin cerrar.", "Unclosed block.");
@@ -1641,8 +1648,8 @@ unparse(Marker_array_slice markers,
           } else if (m->token_type is T_PREPROCESSOR) {
             text = slice_for_marker(src, m).start_p;
             if (m->len >= 9 and strn_eq("#define }", (char*)text, 9)) {
-              fputs("// End #define", out);
-              // Not needed: line_length += strlen("// End #define");
+              fputs("/* End #define */", out);
+              // Not needed: line_length += strlen("/* End #define */");
               break;
             }
             fwrite(text, sizeof(src->start[0]), m->len, out);
@@ -1697,31 +1704,39 @@ unparse(Marker_array_slice markers,
       if (m->len >= len and strn_eq("#include {", (char*)text, len)) {
         size_t end;
         for (end = len; end < m->len; ++end) if (text[end] is '}') break;
-        char* file_name = malloc(end - len + 1);
-        if (!file_name) {
-          fprintf(out, "Out of memory.\n");
-          return;
-        }
-        memcpy(file_name, text + len, end - len);
-        file_name[end - len] = '\0';
+        mut_Byte_array file_name = {0};
+        push_str(&file_name, src_file_name);
+        Byte_array_mut_slice dirname = bounds_of_Byte_array(&file_name);
+        while (dirname.end_p is_not dirname.start_p) {
+          switch (*(dirname.end_p-1)) {
+            case '/': case '\\': goto found_path_separator;
+            default: --dirname.end_p;
+          }
+        } found_path_separator:
+        file_name.len = len_Byte_array_slice(dirname);
+        append_Byte_array(&file_name, (Byte_array_slice){
+            .start_p = text + len,
+            .end_p   = text + end
+        });
+        const char* included_file = as_c_string(&file_name);
         mut_Byte_array bin;
-        int err = read_file(&bin, file_name);
+        int err = read_file(&bin, included_file);
         if (err) {
-          print_file_error(err, file_name, &bin);
-          fprintf(out, ";\n#error %s: %s\n", strerror(errno), file_name);
+          print_file_error(err, included_file, &bin);
+          fprintf(out, ";\n#error %s: %s\n", strerror(errno), included_file);
           break;
         }
-        char*          basename = strrchr(file_name, '/');
-        if (!basename) basename = strrchr(file_name, '\\');
-        if (basename) ++basename; else basename = file_name;
-        fprintf(out, "[%lu] = { // %s\n0x%2X",
+        const char*    basename = strrchr(included_file, '/');
+        if (!basename) basename = strrchr(included_file, '\\');
+        if (basename) ++basename; else basename = included_file;
+        fprintf(out, "[%lu] = { /* %s */\n0x%2X",
                 bin.len, basename, bin.start[0]);
         for (size_t i = 1; i is_not bin.len; ++i) {
-          fprintf(out,
-                  (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+          fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
         }
         fputs("\n}", out);
         destruct_Byte_array(&bin);
+        destruct_Byte_array(&file_name);
 
         if (m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
         continue;
@@ -2403,16 +2418,16 @@ int main(int argc, char** argv)
   init_Marker_array(&markers, 8192);
 
   for (int i = 1; i < argc; ++i) {
-    char* arg = argv[i];
-    if (arg[0] is '-') continue;
+    char* file_name = argv[i];
+    if (file_name[0] is '-') continue;
 
     FILE* out = stdout;
 
     mut_Byte_array src;
-    int err = read_file(&src, arg);
+    int err = read_file(&src, file_name);
     if (err) {
-      print_file_error(err, arg, &src);
-      fprintf(out, ";\n#error %s: %s\n", strerror(errno), arg);
+      print_file_error(err, file_name, &src);
+      fprintf(out, ";\n#error %s: %s\n", strerror(errno), file_name);
       break;
     }
 
@@ -2424,8 +2439,8 @@ int main(int argc, char** argv)
 
     if (opt_run_benchmark) {
       double t = benchmark(&src, &options);
-      if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, arg);
-      else         eprintln("%.1fs for %s", t         , arg);
+      if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
+      else         eprintln("%.1fs for %s", t         , file_name);
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
@@ -2439,7 +2454,7 @@ int main(int argc, char** argv)
         print_markers(&markers, &src, "", 0, 0);
       } else {
         unparse(bounds_of_Marker_array(&markers),
-                &src, original_src_len, arg, options, out);
+                &src, original_src_len, file_name, options, out);
       }
     }
 

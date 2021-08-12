@@ -78,7 +78,7 @@ const char* const usage_en =
     ;
 
 Byte template_zip
-#include {template.zip}
+#include {../template.zip}
 ;
 
 #define init(...)                mz_zip_reader_init_mem(__VA_ARGS__)
