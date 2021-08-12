@@ -246,9 +246,8 @@ int main(int argc, char* argv[])
     }
   }
 
-  char user_name [255 + 1];
-  char user_email[255 + 1];
-  user_name[0] = user_email[0] = 0;
+  char user_name [255 + 1] = {0};
+  char user_email[255 + 1] = {0};
   FILE* git_stdout = popen("git config user.name", "r");
   if (git_stdout) {
     int len = fread(user_name, sizeof(user_name[0]), 255, git_stdout);
