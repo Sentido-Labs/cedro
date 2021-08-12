@@ -57,6 +57,23 @@
       <p>For API documentation, see <a href="doc/api/index.html">doc/api/index.html</a>
         after running <code>make doc</code> that requires having
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
+      <p>The second executable, <code>cedrocc</code>, allows using Cedro as if it was part of the C compiler.</p>
+      <code>Usage: cedrocc [options] &lt;file.c&gt; [ file2.o … ]
+  Runs Cedro on the first file name that ends with “.c”,
+  and compiles the result with “cc -x c -” plus the other arguments.
+    cedrocc -o fichero fichero.c
+    cedro fichero.c | cc -x c - -o fichero
+  You can specify the compiler, e.g. gcc:
+    CEDRO_CC='gcc -x c -' cedrocc …
+  For debugging, this writes the code that would be piped into cc,
+  into stdout instead:
+    CEDRO_CC='' cedrocc …</code>
+      <p>There is a third executable, <code>cedro-new</code>, that produces a program draft in a similar way to <code>cargo new</code> in Rust. <code>cedro new …</code> will actually run <code>cedro-new …</code>. The content is produced from the template in the <code>template/</code> directory, that gets included in the <code>cedro-new</code> executable at compilation.</p>
+      <code>Usage: cedro-new [options] &lt;name&gt;
+  Creates a directory named &lt;name&gt;/ with the template.
+  -h, --help        Shows this message.
+  -i, --interactive Asks for the names for command and project.
+                    Otherwise, they will be derived from the directory name.</code>
     </section>
 
     <section id="backstitch-operator">

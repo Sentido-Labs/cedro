@@ -57,6 +57,23 @@
       <p>Para la documentación (en inglés) de la API, véase <a href="doc/api/index.html">doc/api/index.html</a>
         tras ejecutar <code>make doc</code> que necesita tener
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> instalado.</p>
+      <p>El segundo ejecutable, <code>cedrocc</code>, permite usar Cedro como si fuera parte del compilador C.</p>
+      <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [ fichero2.o … ]
+  Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,
+  y compila el resultado con «cc -x c -» mas los otros argumentos.
+    cedrocc -o fichero fichero.c
+    cedro fichero.c | cc -x c - -o fichero
+  Se puede especificar el compilador, p.ej. gcc:
+    CEDRO_CC='gcc -x c -' cedrocc …
+  Para depuración, esto escribe el código que iría entubado a cc,
+  en stdout:
+    CEDRO_CC='' cedrocc …</code>
+      <p>Hay un tercer ejecutable, <code>cedro-new</code>, que produce un borrador de programa de manera similar a <code>cargo new</code> en Rust. <code>cedro new …</code> en realidad ejecuta <code>cedro-new …</code>. El contenido se produce a partir de la plantilla en el directorio <code>template/</code>, que se incluye en el ejecutable <code>cedro-new</code> al compilarlo.</p>
+      <code>Uso: cedro-new [opciones] &lt;nombre&gt;
+  Crea un directorio llamado &lt;nombre&gt;/ con la plantilla.
+  -h, --help        Muestra este mensaje.
+  -i, --interactive Pregunta por los nombres de programa y proyecto.
+                    Si no, se eligen a partir del nombre del directorio.</code>
     </section>
 
     <section id="backstitch-operator">
