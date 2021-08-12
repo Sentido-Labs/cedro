@@ -1,4 +1,5 @@
-/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /** \file */
 /** \mainpage
  * Cedro C pre-processor piped through the system’s C compiler, cc.

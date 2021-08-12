@@ -1,4 +1,5 @@
-/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /** \file */
 /** \mainpage
  * The Cedro C pre-processor has four features:
