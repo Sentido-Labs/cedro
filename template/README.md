@@ -3,18 +3,18 @@
 Just an example of using Cedro together with some utility functions,
 that you can use as base for new programs.
 
-It includes my customized hash table and btree libraries derived from khash.
+It includes my customized hash table library derived from
+[khash](http://attractivechaos.github.io/klib/#About),
+and also Josh Baker’s [btree.c](https://github.com/tidwall/btree.c).
 
-- [main](doc/main_8c.html)
-- [hash-table](doc/hash-table_8h.html)
-- [btree](doc/btree_8h.html)
+  - [main](doc/main_8c.html)
+  - [hash-table](doc/hash-table_8h.html)
+  - [btree](doc/btree_8c.html)
 
 ## Build
 `make` to build the executable as `bin/{template}`,
-or `make doc` to build the API documentation
+and `make doc` to build the API documentation
 using [Doxygen](https://www.doxygen.nl/index.html).
-
-The files `src/main.c` and `lib/hash-table.h` are processed with Cedro.
 
 ## License
 TODO: put license here (also `src/main.cc`), for instance GPL or MIT.

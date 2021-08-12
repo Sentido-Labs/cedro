@@ -9,10 +9,10 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
   mut_Error err = { .position = NULL, .message = NULL };
 
-  Marker comma     = new_marker(src, ",",  T_COMMA);
-  Marker semicolon = new_marker(src, ";",  T_SEMICOLON);
-  Marker space     = new_marker(src, " ",  T_SPACE);
-  Marker newline   = new_marker(src, "\n", T_SPACE);
+  Marker comma     = Marker_from(src, ",",  T_COMMA);
+  Marker semicolon = Marker_from(src, ";",  T_SEMICOLON);
+  Marker space     = Marker_from(src, " ",  T_SPACE);
+  Marker newline   = Marker_from(src, "\n", T_SPACE);
   Marker_array_mut_slice object;
   Marker_array_mut_slice slice;
   while (cursor is_not end) {

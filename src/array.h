@@ -82,23 +82,10 @@ typedef const struct mut_##T##_array_mut_slice                          \
 /*   */ mut_##T##_array_slice, * const mut_##T##_array_slice_p,         \
   /**/                         *       mut_##T##_array_slice_mut_p;     \
                                                                         \
-/** Initialize the slice to point at (*array_p)[`start`...`end`].       \
-    `end` can be 0, in which case the slice extends to                  \
-    the end of `array_p`. */                                            \
-static void                                                             \
-init_##T##_array_slice(T##_array_mut_slice_p _,                         \
-                       T##_array_p array_p,                             \
-                       size_t start, size_t end)                        \
-{                                                                       \
-  _->start_p = array_p->start + start;                                  \
-  _->end_p   = array_p->start + end;                                    \
-}                                                                       \
-/** Stack-allocate and initialize a `mut_##T##_array_slice`.            \
-    `end` can be 0, in which case the slice extends to                  \
-    the end of `array_p`. */                                            \
+/** Stack-allocate and initialize a `mut_##T##_array_slice`. */         \
 static T##_array_mut_slice                                              \
-new_##T##_array_slice(mut_##T##_array_mut_p array_p,                    \
-                          size_t start, size_t end)                     \
+T##_array_slice_from(mut_##T##_array_mut_p array_p,                     \
+                     size_t start, size_t end)                          \
 {                                                                       \
   return (T##_array_mut_slice){                                         \
     .start_p = (mut_##T##_mut_p) array_p->start + start,                \
@@ -106,31 +93,15 @@ new_##T##_array_slice(mut_##T##_array_mut_p array_p,                    \
   };                                                                    \
 }                                                                       \
                                                                         \
-/** Initialize the slice to point at `(*array_p)[`start`...`end`]`.     \
-    `end` can be 0, in which case the slice extends to                  \
-    the end of `array_p`. */                                            \
-static void                                                             \
-init_mut_##T##_array_slice(mut_##T##_array_mut_slice_p _,               \
-                           mut_##T##_array_mut_p array_p,               \
+/** Stack-allocate and initialize a `mut_##T##_array_slice`. */         \
+static mut_##T##_array_mut_slice                                        \
+mut_##T##_array_slice_from(mut_##T##_array_mut_p array_p,               \
                            size_t start, size_t end)                    \
 {                                                                       \
-  _->start_p = (mut_##T##_mut_p) array_p->start + start;                \
-  if (end) _->end_p = (mut_##T##_mut_p) array_p->start + end;           \
-  else     _->end_p = (mut_##T##_mut_p) array_p->start + array_p->len;  \
-}                                                                       \
-/** Stack-allocate and initialize a `mut_##T##_array_slice`.            \
-    `end` can be 0, in which case the slice extends to                  \
-    the end of `array_p`. */                                            \
-static mut_##T##_array_mut_slice                                        \
-new_mut_##T##_array_slice(mut_##T##_array_mut_p array_p,                \
-                          size_t start, size_t end)                     \
-{                                                                       \
-  mut_##T##_array_mut_slice _ = {                                       \
-    .start_p = (mut_##T##_mut_p) array_p->start + start                 \
+  return (mut_##T##_array_mut_slice){                                   \
+    .start_p = (mut_##T##_mut_p) array_p->start + start,                \
+    .end_p   = (mut_##T##_mut_p) array_p->start + end                   \
   };                                                                    \
-  if (end) _.end_p = (mut_##T##_mut_p) array_p->start + end;            \
-  else     _.end_p = (mut_##T##_mut_p) array_p->start + array_p->len;   \
-  return _;                                                             \
 }                                                                       \
                                                                         \
 static size_t                                                           \
@@ -163,22 +134,6 @@ init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
   _->start = _->capacity? malloc(_->capacity * sizeof(*_->start)): NULL;\
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
-}                                                                       \
-/** Stack-allocate and initialize a `mut_##T##_array`.                  \
-    The items are still heap-allocated.                                 \
-    \code{.c}                                                           \
-    // We expect around 100 items.                                   \n \
-    mut_##T##_array things = new_##T##_array(&things, 100);          \n \
-    {...}                                                            \n \
-    destruct_##T##_array(&things);                                   \n \
-    \endcode                                                            \
- */                                                                     \
-static mut_##T##_array                                                  \
-new_##T##_array(size_t initial_capacity)                                \
-{                                                                       \
-  mut_##T##_array _;                                                    \
-  init_##T##_array(&_, initial_capacity);                               \
-  return _;                                                             \
 }                                                                       \
 /** Heap-allocate and initialize a mut_##T##_array.                     \
  * This is the one that works more similarly to `new` in C++ or Java,   \

@@ -1,4 +1,5 @@
-/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /** \file */
 /** \mainpage
  * The Cedro C pre-processor has four features:
@@ -499,7 +500,7 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
  * and return a marker poiting there.
  */
 static Marker
-new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
+Marker_from(mut_Byte_array_p src, const char * const text, TokenType token_type)
 {
   Byte_mut_p cursor = start_of_Byte_array(src);
   Byte_mut_p match  = NULL;
@@ -1469,7 +1470,8 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
       markers->len <  10000? "%s% 4lu: ":
       markers->len < 100000? "%s% 5lu: ": "%s% 6lu: ";
 
-  mut_Byte_array token_text = new_Byte_array(80);
+  mut_Byte_array token_text;
+  init_Byte_array(&token_text, 80);
 
   Marker_p markers_start = start_of_Marker_array(markers);
   Marker_p m_start =
@@ -1696,6 +1698,10 @@ unparse(Marker_array_slice markers,
         size_t end;
         for (end = len; end < m->len; ++end) if (text[end] is '}') break;
         char* file_name = malloc(end - len + 1);
+        if (!file_name) {
+          fprintf(out, "Out of memory.\n");
+          return;
+        }
         memcpy(file_name, text + len, end - len);
         file_name[end - len] = '\0';
         mut_Byte_array bin;
@@ -1880,7 +1886,8 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  *
  *  Example:
  * ```
- * mut_Marker_array markers = new_Marker_array(8192);
+ * mut_Marker_array markers;
+ * init_Marker_array(&markers, 8192);
  * parse(&src, &markers);
  * ```
  */
@@ -1923,8 +1930,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     } else if ((token_end = number    (cursor, end))) {
     } else      token_end = other     (cursor, end);
     if (error_buffer[0]) {
-      eprintln(LANG("Errorx: %lu: %s",
-                    "Errorx: %lu: %s"),
+      eprintln(LANG("Error: %lu: %s",
+                    "Error: %lu: %s"),
                original_line_number((size_t)(cursor - src->start), src),
                error_buffer);
       error_buffer[0] = 0;
@@ -1951,10 +1958,14 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     if        ((token_end = preprocessor(cursor, end))) {
       if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
         if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
-          eprintln("Warning: %lu: duplicated Cedro #pragma.\n"
+          eprintln(
+              LANG("Aviso: %lu: #pragma Cedro duplicada.\n"
+                   "  puede hacer que algún código se malinterprete,\n"
+                   "  por ejemplo si usa `auto` con su significado normal.",
+                   "Warning: %lu: duplicated Cedro #pragma.\n"
                    "  This might cause some code to be misinterpreted,\n"
-                   "  for instance if it uses `auto` in its standard meaning.",
-                   original_line_number((size_t)(cursor - src->start), src));
+                   "  for instance if it uses `auto` in its standard meaning."),
+              original_line_number((size_t)(cursor - src->start), src));
         }
       }
       TOKEN1(T_PREPROCESSOR);
@@ -2025,7 +2036,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                       m->token_type is T_BLOCK_END) {
                     label_candidate->token_type = T_CONTROL_FLOW_LABEL;
                     token_type = T_LABEL_COLON;
-                    mut_Byte_array text = new_Byte_array(10);
+                    mut_Byte_array text;
+                    init_Byte_array(&text, 10);
                     extract_src(label_candidate, label_candidate+1, src, &text);
                     destruct_Byte_array(&text);
                   }
@@ -2201,7 +2213,6 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   return cursor;
 }
 
-/***************** macros *****************/
 typedef void (*MacroFunction_p)(mut_Marker_array_p markers,
                                 mut_Byte_array_p src);
 typedef const struct Macro {
@@ -2224,7 +2235,8 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
   const size_t repetitions = 100;
   clock_t start = clock();
 
-  mut_Marker_array markers = new_Marker_array(8192);
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
 
   for (size_t i = repetitions + 1; i; --i) {
     delete_Marker_array(&markers, 0, markers.len);
@@ -2252,7 +2264,7 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
-    "  El resultado va a stdout, puede usarse sin fichero intermedio así:\n"
+    "  El resultado va a stdout, para entregarlo al compilador:\n"
     " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
@@ -2283,7 +2295,7 @@ usage_es =
 static const char* const
 usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
-    "  The result goes to stdout, can be used without an intermediate file like this:\n"
+    "  The result goes to stdout, to be fed into the compiler:\n"
     " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"
     " cedrocc -o file file.c\n"
@@ -2314,6 +2326,20 @@ usage_en =
 
 int main(int argc, char** argv)
 {
+  if (argc > 2 and str_eq("new", argv[1])) {
+    mut_Byte_array cmd;
+    init_Byte_array(&cmd, 80);
+    push_str(&cmd, argv[0]);
+    push_str(&cmd, "-new");
+    for (int i = 2; i < argc; ++i) {
+      push_str(&cmd, " ");
+      push_str(&cmd, argv[i]);
+    }
+    int result = system(as_c_string(&cmd));
+    destruct_Byte_array(&cmd);
+    return result;
+  }
+
   Options options = { // Remember to keep the usage strings updated.
     .apply_macros           = true,
     .escape_ucn             = false,
@@ -2369,11 +2395,12 @@ int main(int argc, char** argv)
   }
 
   if (opt_run_benchmark) {
-    options.apply_macros  = false;
-    opt_print_markers     = false;
+    options.apply_macros = false;
+    opt_print_markers    = false;
   }
 
-  mut_Marker_array markers = new_Marker_array(8192);
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];

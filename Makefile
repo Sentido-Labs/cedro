@@ -45,7 +45,7 @@ doc:
 .PHONY: doc
 
 test: src/$(NAME)-test.c bin/$(NAME)
-	$(CC_STRICT) -o bin/$@ $<
+	$(CC) $(CFLAGS) -o bin/$@ $<
 	bin/$@
 .PHONY: test
 
@@ -59,7 +59,7 @@ check: bin/$(NAME)
 	valgrind --leak-check=yes bin/$(NAME) src/$(NAME)cc.c >/dev/null
 	@echo
 	@echo This was useful when Cedro was simpler, but it has become way too slow:
-	cppcheck bin/$(NAME).i --std=c99 --enable=performance,portability --xml 2>&1 | cppcheck-htmlreport --report-dir=doc/cppcheck --source-dir=src
+	@echo '    cppcheck bin/$(NAME).i --std=c99 --enable=performance,portability --xml 2>&1 | cppcheck-htmlreport --report-dir=doc/cppcheck --source-dir=src'
 	gcc -fanalyzer -o /dev/null -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable src/$(NAME).c
 # Used to work:	scan-bin -o doc/clang bin/$(NAME)
 

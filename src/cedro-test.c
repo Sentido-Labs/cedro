@@ -2,7 +2,7 @@
 #include "cedro.c"
 #undef main
 
-#define run_test(name) test_##name(); log("OK: " #name)
+#define run_test(name) test_##name(); eprintln("OK: " #name)
 #define eq(a, b) (a == b)
 
 void test_number()
@@ -10,7 +10,7 @@ void test_number()
   Byte_p text = B("100");
   Byte_p cursor = number(text, text + strlen((const char *) text));
   assert(eq(cursor, text + strlen((const char *) text)) ||
-         (log("Failed to parse “%s”", (const char *) text), false));
+         (eprintln("Failed to parse “%s”", (const char *) text), false));
 }
 
 void test_const()
@@ -46,41 +46,40 @@ void test_array()
     push_Byte_array(&array, text[i]);
   }
   assert(eq(array.len, text_len) ||
-         (log("Wront text length %lu ≠ %lu", array.len, text_len), false));
+         (eprintln("Wront text length %lu ≠ %lu", array.len, text_len), false));
 
   char* text_rebuilt = to_string_Byte_array(&array);
   assert(str_eq((char*const) text, (char*const) text_rebuilt) ||
-         (log(text_rebuilt), false));
+         (eprintln(text_rebuilt), false));
   free(text_rebuilt);
 
   mut_Byte_array text_array = {
     strlen((char*const) text) + 1, strlen((char*const) text) + 1,
     (mut_Byte_p) text
   };
-  mut_Byte_array_slice slice;// = { &text_array 25, 25 + 35,  };
-  init_Byte_array_slice(&slice, &text_array, 25, 25 + 35);
+  Byte_array_slice slice = Byte_array_slice_from(&text_array, 25, 25 + 35);
   // Will fail:
   //slice.array_p = &array;
-  //splice_Byte_array(&array, 0, 0, &slice);
+  //splice_Byte_array(&array, 0, 0, slice);
 
-  splice_Byte_array(&array, 11, 0, NULL, &slice);
+  splice_Byte_array(&array, 11, 0, NULL, slice);
   assert(eq(214, array.len) ||
          (text_rebuilt = to_string_Byte_array(&array),
-          log("Insert:\n%s", text_rebuilt),
+          eprintln("Insert:\n%s", text_rebuilt),
           free(text_rebuilt), false));
 
-  splice_Byte_array(&array, 25 + 35, 36, NULL, NULL);
+  splice_Byte_array(&array, 25 + 35, 36, NULL, (Byte_array_slice){0});
   assert(eq(178, array.len) ||
          (text_rebuilt = to_string_Byte_array(&array),
-          log("Delete:\n%s", text_rebuilt),
+          eprintln("Delete:\n%s", text_rebuilt),
           free(text_rebuilt), false));
 
-  splice_Byte_array(&array, 101, 76, NULL, &slice);
+  splice_Byte_array(&array, 101, 76, NULL, slice);
   text_rebuilt = to_string_Byte_array(&array);
   assert(eq(137, array.len) ||
-         (log("Splice:\n%s", text_rebuilt), false));
+         (eprintln("Splice:\n%s", text_rebuilt), false));
   assert(str_eq(text_rebuilt, "En un lugar de cuyo nombre no quiero acordarme de La Mancha, no ha mucho tiempo que vivía un hidalgo de cuyo nombre no quiero acordarme.") ||
-         (log("Splice:\n%s", text_rebuilt), false));
+         (eprintln("Splice:\n%s", text_rebuilt), false));
   free(text_rebuilt);
 }
 

@@ -271,7 +271,8 @@ int main(int argc, char* argv[])
   if (user_name [0] == 0) strncpy(user_name,  "Your Name Here",    256);
   if (user_email[0] == 0) strncpy(user_email, "email@example.com", 256);
 
-  mut_Byte_array path = new_Byte_array(256);
+  mut_Byte_array path;
+  init_Byte_array(&path, 256);
   auto destruct_Byte_array(&path);
 
   for (mz_uint i = 0; i < get_num_files(&zip_archive); i++) {

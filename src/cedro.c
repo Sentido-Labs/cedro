@@ -500,7 +500,7 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
  * and return a marker poiting there.
  */
 static Marker
-new_marker(mut_Byte_array_p src, const char * const text, TokenType token_type)
+Marker_from(mut_Byte_array_p src, const char * const text, TokenType token_type)
 {
   Byte_mut_p cursor = start_of_Byte_array(src);
   Byte_mut_p match  = NULL;
@@ -1470,7 +1470,8 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
       markers->len <  10000? "%s% 4lu: ":
       markers->len < 100000? "%s% 5lu: ": "%s% 6lu: ";
 
-  mut_Byte_array token_text = new_Byte_array(80);
+  mut_Byte_array token_text;
+  init_Byte_array(&token_text, 80);
 
   Marker_p markers_start = start_of_Marker_array(markers);
   Marker_p m_start =
@@ -1697,6 +1698,10 @@ unparse(Marker_array_slice markers,
         size_t end;
         for (end = len; end < m->len; ++end) if (text[end] is '}') break;
         char* file_name = malloc(end - len + 1);
+        if (!file_name) {
+          fprintf(out, "Out of memory.\n");
+          return;
+        }
         memcpy(file_name, text + len, end - len);
         file_name[end - len] = '\0';
         mut_Byte_array bin;
@@ -1881,7 +1886,8 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  *
  *  Example:
  * ```
- * mut_Marker_array markers = new_Marker_array(8192);
+ * mut_Marker_array markers;
+ * init_Marker_array(&markers, 8192);
  * parse(&src, &markers);
  * ```
  */
@@ -2030,7 +2036,8 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
                       m->token_type is T_BLOCK_END) {
                     label_candidate->token_type = T_CONTROL_FLOW_LABEL;
                     token_type = T_LABEL_COLON;
-                    mut_Byte_array text = new_Byte_array(10);
+                    mut_Byte_array text;
+                    init_Byte_array(&text, 10);
                     extract_src(label_candidate, label_candidate+1, src, &text);
                     destruct_Byte_array(&text);
                   }
@@ -2228,7 +2235,8 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
   const size_t repetitions = 100;
   clock_t start = clock();
 
-  mut_Marker_array markers = new_Marker_array(8192);
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
 
   for (size_t i = repetitions + 1; i; --i) {
     delete_Marker_array(&markers, 0, markers.len);
@@ -2319,7 +2327,8 @@ usage_en =
 int main(int argc, char** argv)
 {
   if (argc > 2 and str_eq("new", argv[1])) {
-    mut_Byte_array cmd = new_Byte_array(80);
+    mut_Byte_array cmd;
+    init_Byte_array(&cmd, 80);
     push_str(&cmd, argv[0]);
     push_str(&cmd, "-new");
     for (int i = 2; i < argc; ++i) {
@@ -2390,7 +2399,8 @@ int main(int argc, char** argv)
     opt_print_markers    = false;
   }
 
-  mut_Marker_array markers = new_Marker_array(8192);
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];

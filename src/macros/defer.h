@@ -120,9 +120,9 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
 static void
 macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 {
-  Marker space       = new_marker(src, " ", T_SPACE);
-  Marker block_start = new_marker(src, "{", T_BLOCK_START);
-  Marker block_end   = new_marker(src, "}", T_BLOCK_END);
+  Marker space       = Marker_from(src, " ", T_SPACE);
+  Marker block_start = Marker_from(src, "{", T_BLOCK_START);
+  Marker block_end   = Marker_from(src, "}", T_BLOCK_END);
   mut_Marker indent_one_level = { .start = 0, .len = 0, .token_type = T_NONE };
 
   mut_TokenType_array block_stack;

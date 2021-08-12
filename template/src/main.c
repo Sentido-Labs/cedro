@@ -18,8 +18,8 @@
  * TODO: put license here, for instance GPL or MIT.
  * You can get help picking one at: https://choosealicense.com/
  *
- * The logo ([doc/logo.png](logo.png)) is just a placeholder I made myself.
- * Please replace it with your own.
+ * The C logo ([doc/logo.png](logo.png)) was made by
+ * [Alberto González Palomo](https://sentido-labs.com).
  *
  * The copy of Cedro under `tools/cedro/` has the same licence as Cedro,
  * but that does not affect your code if you do not include or link it
@@ -92,13 +92,15 @@ println(const char * const fmt, ...)
 bool
 string_count_print(const void* a, void* udata)
 {
-    const struct string_count *_ = a;
-    eprintln(_->count == 1?
-             LANG("«%s» aparece %d vez.",
-                  "“%s” appears %d time."):
-             LANG("«%s» aparece %d veces.",
-                  "“%s” appears %d times."),
-             _->arg, _->count);
+    const struct string_count* _ = a;
+    FILE* out = (FILE*)udata;
+    fprintf(out,
+            _->count == 1?
+            LANG("«%s» aparece %lu vez.\n",
+                 "“%s” appears %lu time.\n"):
+            LANG("«%s» aparece %lu veces.\n",
+                 "“%s” appears %lu times.\n"),
+            _->arg, _->count);
     return true;
 }
 
@@ -204,7 +206,7 @@ main(int argc, char** argv)
                   "\nCounts using the btree:"));
     btree_ascend(btree,
                  &(struct string_count){ .arg = "" },
-                 string_count_print, NULL);
+                 string_count_print, stderr);
 
     return 0;
 }

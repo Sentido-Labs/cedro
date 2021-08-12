@@ -1,4 +1,5 @@
-/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*- */
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /** \file */
 /** \mainpage
  * Cedro C pre-processor piped through the system’s C compiler, cc.
@@ -22,24 +23,28 @@
 static const char* const
 usage_es =
     "Uso: cedrocc [opciones] <fichero.c> [ fichero2.o … ]\n"
-    "Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
-    "y compila el resultado con «%s» mas los otros argumentos.\n"
-    "  cedrocc -o fichero fichero.c\n"
-    "  cedro fichero.c | cc -x c - -o fichero\n"
-    "Para usar otro compilador, p.ej. gcc: CEDRO_CC='gcc -x c -' cedrocc …\n"
-    "Para depuración, CEDRO_CC='' escribe el código que iría entubado a cc,\n"
-    "en stdout."
+    "  Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
+    "  y compila el resultado con «%s» mas los otros argumentos.\n"
+    "    cedrocc -o fichero fichero.c\n"
+    "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  Se puede especificar el compilador, p.ej. gcc:\n"
+    "    CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "  Para depuración, esto escribe el código que iría entubado a cc,\n"
+    "  en stdout:\n"
+    "    CEDRO_CC='' cedrocc …"
     ;
 static const char* const
 usage_en =
     "Usage: cedrocc [options] <file.c> [ file2.o … ]\n"
-    "Runs Cedro on the first file name that ends with “.c”,\n"
-    "and compiles the result with “%s” plus the other arguments.\n"
-    "  cedrocc -o fichero fichero.c\n"
-    "  cedro fichero.c | cc -x c - -o fichero\n"
-    "To use another compiler, e.g. gcc: CEDRO_CC='gcc -x c -' cedrocc …"
-    "For debugging, CEDRO_CC='' writes the code that would be piped into cc,\n"
-    "into stdout instead."
+    "  Runs Cedro on the first file name that ends with “.c”,\n"
+    "  and compiles the result with “%s” plus the other arguments.\n"
+    "    cedrocc -o fichero fichero.c\n"
+    "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  You can specify the compiler, e.g. gcc:\n"
+    "    CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "  For debugging, this writes the code that would be piped into cc,\n"
+    "  into stdout instead:\n"
+    "    CEDRO_CC='' cedrocc …"
     ;
 
 typedef size_t mut_size_t, * mut_size_t_mut_p, * const mut_size_t_p;
@@ -49,10 +54,11 @@ TYPEDEF_STRUCT(IncludePaths, {
     mut_Byte_array text;
     mut_size_t_array lengths;
   });
-static mut_IncludePaths
-new_IncludePaths()
+void
+init_IncludePaths(mut_IncludePaths_p _, size_t initial_capacity)
 {
-  return (mut_IncludePaths){0};
+  init_Byte_array(&_->text, initial_capacity * 40);
+  init_size_t_array(&_->lengths, initial_capacity);
 }
 static void
 destruct_IncludePaths(mut_IncludePaths_p _)
@@ -163,7 +169,8 @@ bool
 find_include_file(IncludePaths_p _, Byte_array_slice path,
                   mut_Byte_array_p result)
 {
-  mut_Byte_array path_buffer = new_Byte_array(256);
+  mut_Byte_array path_buffer;
+  init_Byte_array(&path_buffer, 256);
   auto destruct_Byte_array(&path_buffer);
   size_t i = len_IncludePaths(_);
   while (i is_not 0) {
@@ -196,7 +203,9 @@ include(const char* file_name,
         FILE* cc_stdin)
 {
   if (level > 10) {
-    eprintln("Error: too much include recursion at: %s", file_name);
+    eprintln(LANG("Error: demasiada recursión de «include» en: %s",
+                  "Error: too much include recursion at: %s"),
+             file_name);
     return EINVAL;
   }
 
@@ -210,7 +219,8 @@ include(const char* file_name,
       .discard_space          = false,
       .insert_line_directives = true;
 
-  mut_Marker_array markers = new_Marker_array(8192);
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
   auto destruct_Marker_array(&markers);
 
   mut_Byte_array src = {0};
@@ -265,10 +275,11 @@ include(const char* file_name,
 
         if (content.end_p > content.start_p) {
           b = index_Marker_array(&markers, m);
-          unparse(new_Marker_array_slice(&markers, a, b),
+          unparse(Marker_array_slice_from(&markers, a, b),
                   &src, original_src_len, file_name, options, cc_stdin);
           a = b;
-          mut_Byte_array s = {0}; auto destruct_Byte_array(&s);
+          mut_Byte_array s = {0};
+          auto destruct_Byte_array(&s);
           append_Byte_array(&s, content);
           s.len = 0;
           if ((quoted_include &&
@@ -301,7 +312,7 @@ include(const char* file_name,
       ++m;
     }
     b = index_Marker_array(&markers, end);
-    unparse(new_Marker_array_slice(&markers, a, b),
+    unparse(Marker_array_slice_from(&markers, a, b),
             &src, original_src_len, file_name, options, cc_stdin);
   }
 
@@ -321,8 +332,9 @@ int main(int argc, char* argv[])
 
   char* file_name = NULL;
 
-  mut_IncludePaths include_paths       = new_IncludePaths(10);
-  mut_IncludePaths include_paths_quote = new_IncludePaths(10);
+  mut_IncludePaths include_paths, include_paths_quote;
+  init_IncludePaths(&include_paths,       10);
+  init_IncludePaths(&include_paths_quote, 10);
   auto destruct_IncludePaths(&include_paths);
   auto destruct_IncludePaths(&include_paths_quote);
 
@@ -347,14 +359,18 @@ int main(int argc, char* argv[])
     } else if (strn_eq(arg, "-I", 2) /* Ignore -isystem, -idirafter */) {
       char* path = arg[2]? arg + 2: (j + 1 < argc)? argv[j + 1]: "";
       if (path[0] is '\0' or path[0] is '-') {
-        eprintln("Missing value for %s option.", arg);
+        eprintln(LANG("Falta el valor para la opción %s.",
+                      "Missing value for %s option."),
+                 arg);
         return EINVAL;
       }
       append_path(&include_paths, path, strlen(path));
     } else if (str_eq(arg, "-iquote")) {
       char* path = (j + 1 < argc)? argv[j + 1]: "";
       if (path[0] is '\0' or path[0] is '-') {
-        eprintln("Missing value for %s option.", arg);
+        eprintln(LANG("Falta el valor para la opción %s.",
+                      "Missing value for %s option."),
+                 arg);
         return EINVAL;
       }
       append_path(&include_paths_quote, path, strlen(path));
