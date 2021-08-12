@@ -702,7 +702,7 @@ f_##A(B, C); /// Specialized version of f() for type A.
 #define }</code>
 <code>#define macro(A, B, C)                                                        \
 f_##A(B, C); /** Specialized version of f() for type A. */                    \
-// End #define</code>
+/* End #define */</code>
       <p>Preprocessor directives are still not allowed
         inside macros, so you can not use
         <code>#if</code>, <code>#include</code>, etc.</p>
@@ -722,7 +722,7 @@ const uint8_t image
 ;</code>
       <code>#include &lt;stdint.h&gt;
 const uint8_t image
-[1480] = { // cedro-32x32.png
+[1480] = { /* cedro-32x32.png */
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮

@@ -1641,8 +1641,8 @@ unparse(Marker_array_slice markers,
           } else if (m->token_type is T_PREPROCESSOR) {
             text = slice_for_marker(src, m).start_p;
             if (m->len >= 9 and strn_eq("#define }", (char*)text, 9)) {
-              fputs("// End #define", out);
-              // Not needed: line_length += strlen("// End #define");
+              fputs("/* End #define */", out);
+              // Not needed: line_length += strlen("/* End #define */");
               break;
             }
             fwrite(text, sizeof(src->start[0]), m->len, out);
@@ -1714,7 +1714,7 @@ unparse(Marker_array_slice markers,
         char*          basename = strrchr(file_name, '/');
         if (!basename) basename = strrchr(file_name, '\\');
         if (basename) ++basename; else basename = file_name;
-        fprintf(out, "[%lu] = { // %s\n0x%2X",
+        fprintf(out, "[%lu] = { /* %s */\n0x%2X",
                 bin.len, basename, bin.start[0]);
         for (size_t i = 1; i is_not bin.len; ++i) {
           fprintf(out,
