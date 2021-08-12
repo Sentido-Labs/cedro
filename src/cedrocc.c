@@ -23,24 +23,28 @@
 static const char* const
 usage_es =
     "Uso: cedrocc [opciones] <fichero.c> [ fichero2.o … ]\n"
-    "Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
-    "y compila el resultado con «%s» mas los otros argumentos.\n"
-    "  cedrocc -o fichero fichero.c\n"
-    "  cedro fichero.c | cc -x c - -o fichero\n"
-    "Para usar otro compilador, p.ej. gcc: CEDRO_CC='gcc -x c -' cedrocc …\n"
-    "Para depuración, CEDRO_CC='' escribe el código que iría entubado a cc,\n"
-    "en stdout."
+    "  Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
+    "  y compila el resultado con «%s» mas los otros argumentos.\n"
+    "    cedrocc -o fichero fichero.c\n"
+    "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  Se puede especificar el compilador, p.ej. gcc:\n"
+    "    CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "  Para depuración, esto escribe el código que iría entubado a cc,\n"
+    "  en stdout:\n"
+    "    CEDRO_CC='' cedrocc …"
     ;
 static const char* const
 usage_en =
     "Usage: cedrocc [options] <file.c> [ file2.o … ]\n"
-    "Runs Cedro on the first file name that ends with “.c”,\n"
-    "and compiles the result with “%s” plus the other arguments.\n"
-    "  cedrocc -o fichero fichero.c\n"
-    "  cedro fichero.c | cc -x c - -o fichero\n"
-    "To use another compiler, e.g. gcc: CEDRO_CC='gcc -x c -' cedrocc …"
-    "For debugging, CEDRO_CC='' writes the code that would be piped into cc,\n"
-    "into stdout instead."
+    "  Runs Cedro on the first file name that ends with “.c”,\n"
+    "  and compiles the result with “%s” plus the other arguments.\n"
+    "    cedrocc -o fichero fichero.c\n"
+    "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  You can specify the compiler, e.g. gcc:\n"
+    "    CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "  For debugging, this writes the code that would be piped into cc,\n"
+    "  into stdout instead:\n"
+    "    CEDRO_CC='' cedrocc …"
     ;
 
 typedef size_t mut_size_t, * mut_size_t_mut_p, * const mut_size_t_p;

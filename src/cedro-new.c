@@ -256,13 +256,13 @@ int main(int argc, char* argv[])
       perror("git config user.name");
       // If this command failed, the next one is not going to work. Give up.
     } else {
-      if (len) user_name[len-1] = 0;
+      if (len) user_name[len-1] = 0; // There is a LF after the name.
       git_stdout = popen("git config user.email", "r");
       if (git_stdout) {
         len = fread(user_email, sizeof(user_email[0]), 255, git_stdout);
         pclose(git_stdout);
         if (len == -1) perror("git config user.email");
-        else if (len)  user_email[len-1] = 0;
+        else if (len)  user_email[len-1] = 0; // There is a LF after the email.
       }
     }
   }
@@ -294,7 +294,7 @@ int main(int argc, char* argv[])
     if (strn_eq("template/", filename, 9)) filename += 9;
     push_str(&path, filename);
 
-    mz_uint flags = 0;// From enum mz_zip_flags.
+    mz_uint flags = 0; // From enum mz_zip_flags.
     size_t extracted_size;
     void*  extracted_bytes = extract(&zip_archive,
                                      file_stat.m_filename, &extracted_size,

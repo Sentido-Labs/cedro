@@ -2253,7 +2253,7 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
-    "  El resultado va a stdout, puede usarse sin fichero intermedio así:\n"
+    "  El resultado va a stdout, para entregarlo al compilador:\n"
     " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
@@ -2284,7 +2284,7 @@ usage_es =
 static const char* const
 usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
-    "  The result goes to stdout, can be used without an intermediate file like this:\n"
+    "  The result goes to stdout, to be fed into the compiler:\n"
     " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"
     " cedrocc -o file file.c\n"

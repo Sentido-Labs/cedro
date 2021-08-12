@@ -351,7 +351,8 @@ $ valgrind --leak-check=yes ./repeat
 
       <p>En este ejemplo adaptado de
         <a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2542.pdf#40">«Proposal for C2x, WG14 ​n2542, Defer Mechanism for C» pág. 40</a>,
-        los recursos devueltos son bloqueos giratorios [«spin locks»]:</p>
+        los recursos devueltos son bloqueos giratorios [«spin locks»]:
+        <em>(la diferencia por supuesto es que en este caso las llamadas a <code>spin_unlock()</code> no se ejecutan tras el «panic»)</em></p>
       <table>
         <tr>
           <td>
@@ -408,15 +409,14 @@ int f1(void) {
         en una presentación de 2019 titulada
         <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">“The Road to Zig 1.0" a los 29:21″</a>,
         y aquí he re-creado su ejemplo en C usando Cedro para producir
-        la función tal cuál la mostró, excepto que Cedro no sabe
-        que el bucle <code>for</code> al final nunca retorna así que añade
+        la función tal cual la mostró, excepto que Cedro no sabe
+        que el bucle <code>for</code> al final nunca termina así que añade
         devoluciones innecesarias de recursos tras él.</p>
       <table>
         <tr>
           <td>
-            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
-// Example retrofitted from C example by Andrew Kelley:
-// https://www.youtube.com/watch?v=Gv2I7qTux7g&t=1761s
+            <code>// Example retrofitted from C example by Andrew Kelley:
+// <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s</a>
 
 #pragma Cedro 1.0
 
@@ -463,9 +463,8 @@ int main(int argc, char **argv) {
     for (;;) soundio_wait_events(soundio);
 }</code>
           </td><td>
-            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
-// Example retrofitted from C example by Andrew Kelley:
-// https://www.youtube.com/watch?v=Gv2I7qTux7g&t=1761s
+            <code>// Example retrofitted from C example by Andrew Kelley:
+// <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s</a>
 
 int main(int argc, char **argv) {
     struct SoundIo *soundio = soundio_create();
@@ -531,9 +530,8 @@ int main(int argc, char **argv) {
       <table>
         <tr>
           <td>
-            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
-// Example retrofitted from Zig example by Andrew Kelley:
-// https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s
+            <code>// Example retrofitted from Zig example by Andrew Kelley:
+// <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s</a>
 
 #pragma Cedro 1.0
 
@@ -568,9 +566,8 @@ int main(int argc, char **argv) {
 }</code>
           </td>
           <td>
-            <code>/* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*- */
-// Example retrofitted from Zig example by Andrew Kelley:
-// https://www.youtube.com/watch?v=Gv2I7qTux7g&t=1761s
+            <code>// Example retrofitted from Zig example by Andrew Kelley:
+// <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s</a>
 
 int main(int argc, char **argv) {
     struct SoundIo *soundio = soundio_create();
@@ -642,7 +639,7 @@ int main(int argc, char **argv) {
         [<a href="#note-defer-2" name="node-defer-2-ref">2</a>].</p>
       <div id="note-defer-1">
         [<a href="#note-defer-1-ref">1</a>]
-        “<em><a href="https://gustedt.gitlabpages.inria.fr/p99/p99-html/utilities.html#blocks">P99 Scope-bound resource management with for-statements</a></em>” del mismo autor (2010), “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), ”<em><a href="https://news.ycombinator.com/item?id=25419916">C compatible scoped locks</a></em>“ (2021), “<em><a href="https://www.youtube.com/watch?v=QpAhX-gsHMs&t=1053s">Modern C and What We Can Learn From It - Luca Sas [ ACCU 2021 ] 00:17:18</a></em>”, 2021
+        “<em><a href="https://gustedt.gitlabpages.inria.fr/p99/p99-html/utilities.html#blocks">P99 Scope-bound resource management with for-statements</a></em>” del mismo autor (2010), “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), ”<em><a href="https://news.ycombinator.com/item?id=25419916">C compatible scoped locks</a></em>“ (2021), “<em><a href="https://www.youtube.com/watch?v=QpAhX-gsHMs&amp;t=1053s">Modern C and What We Can Learn From It - Luca Sas [ ACCU 2021 ] 00:17:18</a></em>”, 2021
         <!-- C++: , o “<em><a href="https://stackoverflow.com/questions/48117908/is-the-a-practical-way-to-emulate-go-language-defer-in-c-or-c-destructors">Is there a practical way to emulate GO language defer in C?</a></em>” -->
       </div>
       <div id="note-defer-2">
@@ -744,8 +741,7 @@ const uint8_t imagen
         que usé hace muchos años y la tiene desde 1994.</p>
       <p>Más recientemente,
         la macro <a href="https://doc.rust-lang.org/std/macro.include_bytes.html"><code>include_bytes!()</code></a>
-        me ha sido muy útil en mis programas en Rust,
-        así que la añadí a Cedro.</p>
+        me ha sido muy útil en mis programas en Rust.</p>
     </section>
 
     <footer>
