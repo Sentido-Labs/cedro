@@ -401,6 +401,13 @@ int main(int argc, char* argv[])
     return ENOENT;
   }
 
+  const char* file_dir_name_end = strrchr(file_name, '/');
+  if (file_dir_name_end) {
+    prepend_path(&include_paths_quote,
+                 file_name,
+                 (size_t)(file_dir_name_end - file_name));
+  }
+
   if (cc[0] is_not 0) { // Only add options if `cc` is not "".
     size_t length = 0;
     for (size_t j = 0; j < i; ++j) {
@@ -416,13 +423,6 @@ int main(int argc, char* argv[])
     for (size_t j = 0; j < i; ++j) {
       if (j is_not 0) strncat(cmd, " ", length);
       strncat(cmd, args[j], length);
-    }
-
-    const char* file_dir_name_end = strrchr(file_name, '/');
-    if (file_dir_name_end) {
-      prepend_path(&include_paths_quote,
-                   file_name,
-                   (size_t)(file_dir_name_end - file_name));
     }
 
     FILE* cc_stdin = (cmd[0] is 0)? stdout: popen(cmd, "w");
