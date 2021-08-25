@@ -313,14 +313,15 @@ truncate_##T##_array(mut_##T##_array_p _, size_t len)                   \
     copying its bits into `*item_p` unless `item_p` is `0`,             \
     in which case destruct_##T##_block()                                \
     is called on those elements. */                                     \
-static void                                                             \
+static bool                                                             \
 pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
 {                                                                       \
-  if (not _->len) return;                                               \
+  if (not _->len) return false;                                         \
   mut_##T##_p last_p = (mut_##T##_p) _->start + _->len - 1;             \
-  if (item_p) memmove((void*) last_p, item_p, sizeof(*_->start));       \
+  if (item_p) memmove(item_p, last_p, sizeof(*_->start));               \
   else        destruct_##T##_block((mut_##T##_p) last_p, last_p + 1);   \
   --_->len;                                                             \
+  return true;                                                          \
 }                                                                       \
                                                                         \
 /** Return a pointer to the element at `position`.                      \
