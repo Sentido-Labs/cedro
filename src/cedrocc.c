@@ -26,6 +26,8 @@
 
 /* _POSIX_C_SOURCE is needed for popen()/pclose(). */
 #define _POSIX_C_SOURCE 200112L
+/* In Solaris 8, we need __EXTENSIONS__ for popen()/pclose() and vsnprintf(). */
+#define __EXTENSIONS__
 
 #define USE_CEDRO_AS_LIBRARY
 #include "cedro.c"
