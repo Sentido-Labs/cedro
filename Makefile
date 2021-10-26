@@ -1,9 +1,14 @@
 NAME=cedro
 
+# Strict compilation flags, use during development:
 CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
 # miniz has many implicit sign conversions, after removing some it works on
 # some manchines but it is not enough in others, so better ignore it:
 CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
+
+# Loose compilation flags, use for delivery:
+CFLAGS=-g -std=c99
+CFLAGS_MINIZ=-g -std=c99
 
 default: release
 all: release debug

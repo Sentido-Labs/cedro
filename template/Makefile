@@ -4,33 +4,57 @@ LOGO=logo.png
 CSS=doc.css
 
 # The include paths must be put also in Doxyfile (see below).
-CFLAGS=-g -L build/lib -I lib -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
-# No -Wsign-conversion because most libraries do not go well with it.
+
+# Strict compilation flags, use during development:
+CFLAGS=-g -L build/lib -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion
+
+# Loose compilation flags, use for delivery:
+CFLAGS=-g -L build/lib -I lib -I src -std=c99
+
+TEST_ARGUMENTS="dummy"
+
 CEDRO=tools/cedro/cedro
 CEDROCC=$(CEDRO)cc
 
 LIBRARIES=lib/build/btree.c-0.2.1/btree.o
 
-all: release
-debug:   $(LIBRARIES) build/$(CMDNAME)-debug
 release: $(LIBRARIES) build/$(CMDNAME)
-.PHONY: all debug release
+debug:   $(LIBRARIES) build/$(CMDNAME)-debug
+static:  $(LIBRARIES) build/$(CMDNAME)-static
+bt: debug
+	gdb build/$(CMDNAME)-debug -batch -ex "run $(TEST_ARGUMENTS)" -ex "bt"
+help:
+	@echo "Compilation results go in 'build/'."
+	@echo " release: optimized build, dynamic linking. (default)"
+	@echo " debug: unoptimized build, dynamic linking."
+	@echo " static:  optimized build,  static linking."
+	@echo " doc: make documentation in 'doc/index.html', needs doxygen: https//doxygen.org"
+	@echo " clean: remove build/, doc/, $(CEDRO), $(CEDROCC)"
+.PHONY: release debug static bt help
 
 $(CEDRO): $(CEDRO).c
 	$(CC) $(CFLAGS) -O -o $@ $<
 $(CEDROCC): $(CEDROCC).c $(CEDRO)
 	$(CEDRO) --insert-line-directives $< | $(CC) $(CFLAGS) -I `dirname $(CEDRO)` -O -o $@ -x c -
 
-build/$(CMDNAME)-debug: src/main.c src/*.c Makefile $(CEDROCC)
+build/$(CMDNAME).o:     src/main.c src/*.c Makefile $(CEDROCC)
 	@mkdir -p build
-	$(CEDROCC) $< $(CFLAGS) -o $@
-	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(CMDNAME) "dummy" </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; fi; fi
-
-build/$(CMDNAME):       src/main.c src/*.c Makefile $(CEDROCC)
-	@mkdir -p build
-	$(CEDROCC) $< $(CFLAGS) -c           -o $@.o -O
+	$(CEDROCC) $< $(CFLAGS) -c           -o $@ -O
+build/$(CMDNAME):       build/$(CMDNAME).o Makefile
 	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
-	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(CMDNAME) "dummy" </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; fi; fi
+	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+
+build/$(CMDNAME)-debug.o: src/main.c src/*.c Makefile $(CEDROCC)
+	@mkdir -p build
+	$(CEDROCC) $< $(CFLAGS) -c           -o $@
+build/$(CMDNAME)-debug:   build/$(CMDNAME)-debug.o Makefile
+	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
+	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+
+build/$(CMDNAME)-static: src/main.c src/*.c Makefile $(CEDROCC)
+	@mkdir -p build
+	$(CEDROCC) $< $(CFLAGS) -o $@ -O -static
+	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
 
 lib/build/%.o: lib/%.c lib/%.h
 	mkdir -p $$(dirname $@)
