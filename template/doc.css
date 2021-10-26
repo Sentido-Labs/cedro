@@ -5,3 +5,4 @@ div.header div.title { font-size:1.0rem; font-weight:normal; }
 dt { font-weight:normal; }
 .memtitle { background-image:none; font-size:1rem; }
 h2.groupheader { text-align:center; font-size:1rem; }
+div.fragment { padding:0.5em; }
