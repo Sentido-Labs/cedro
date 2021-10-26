@@ -33,13 +33,23 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef __UINT8_C
 #include <stdint.h>
+#else
+/* _SYS_INT_TYPES_H: Solaris 8, gcc 3.3.6 */
+#ifndef _SYS_INT_TYPES_H
+typedef unsigned char uint8_t;
+#endif
+#endif
+
 #include <stdbool.h>
 #include <string.h>
 #define SIZE_ERROR (size_t)(-1)
-#define str_eq(a, b)     (0 == strcmp(a, b))
-#define strn_eq(a, b, n) (0 == strncmp(a, b, n))
+#define mem_eq(a, b, len) (0 == memcmp(a, b, len))
+#define str_eq(a, b)      (0 == strcmp(a, b))
+#define strn_eq(a, b, n)  (0 == strncmp(a, b, n))
 #include <stdarg.h>
+#include <assert.h>
 #include <errno.h>
 
 #pragma Cedro 1.0

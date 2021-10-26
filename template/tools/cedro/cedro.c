@@ -37,10 +37,21 @@
  * Created: 2020-11-25 22:41
  */
 
+/* In Solaris 8, we need __EXTENSIONS__ for vsnprintf(). */
+#define __EXTENSIONS__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#ifdef __UINT8_C
 #include <stdint.h>
+#else
+/* _SYS_INT_TYPES_H: Solaris 8, gcc 3.3.6 */
+#ifndef _SYS_INT_TYPES_H
+typedef unsigned char uint8_t;
+typedef unsigned long uint32_t;
+#endif
+#endif
 #include <stdbool.h>
 #include <iso646.h>
 #define is_not not_eq
