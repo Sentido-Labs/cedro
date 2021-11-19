@@ -97,7 +97,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           // TODO: check that there is a group opening before the line if
           //       if it is not an statement.
           mut_Marker_array replacement;
-          // The factor of 2 here is a heuristic to avoid relocations in general.
+          // The factor of 2 here is a heuristic to avoid relocations.
           init_Marker_array(&replacement,
                             2 * (size_t)(end_of_line - object.start_p));
           Marker_mut_p segment_start = first_segment_start;
