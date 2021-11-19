@@ -411,23 +411,21 @@ int main(int argc, char* argv[])
   }
 
   if (cc[0] is_not 0) { // Only add options if `cc` is not "".
-    size_t length = 0;
+    mut_Byte_array cmd = {0};
+    auto destruct_Byte_array(&cmd);
+
     for (size_t j = 0; j < i; ++j) {
-      length += (j is 0? 0: 1) + strlen(args[j]);
+      if (j is_not 0) push_str(&cmd, " ");
+      push_str(&cmd, args[j]);
+    }
+    if (file_dir_name_end) {
+      push_str(&cmd, " -iquote ");
+      append_Byte_array(&cmd, (Byte_array_slice){
+          B(file_name), B(file_dir_name_end)
+        });
     }
 
-    ++length; // Make space for the zero terminator.
-    char* cmd = malloc(length);
-    auto free(cmd);
-    cmd[0] = 0;
-    // Quadratic performance, but the string is small anyway.
-    // Can be optimized by keeping track of the offset for the next write.
-    for (size_t j = 0; j < i; ++j) {
-      if (j is_not 0) strncat(cmd, " ", length);
-      strncat(cmd, args[j], length);
-    }
-
-    FILE* cc_stdin = (cmd[0] is 0)? stdout: popen(cmd, "w");
+    FILE* cc_stdin = popen(as_c_string(&cmd), "w");
     if (cc_stdin) {
       return_code = include(file_name,
                             0,
@@ -435,12 +433,12 @@ int main(int argc, char* argv[])
                             &include_paths_quote,
                             cc_stdin);
       if (return_code is_not EXIT_SUCCESS) {
-        if (cc_stdin is_not stdout) pclose(cc_stdin);
+        pclose(cc_stdin);
       } else {
-        if (cc_stdin is_not stdout) return_code = pclose(cc_stdin);
+        return_code = pclose(cc_stdin);
       }
     } else {
-      perror(cmd);
+      perror(as_c_string(&cmd));
       return_code = errno;
     }
   } else {

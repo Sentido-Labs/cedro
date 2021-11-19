@@ -52,7 +52,6 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
         }
       }
-      size_t nesting = 0;
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
         eprintln("Error: %lu: %s",
@@ -69,16 +68,30 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         // Trim space before object.
         start_of_line = skip_space_forward(start_of_line, object.end_p);
         // Boost precedence to 13.5, before assignment and comma operators:
+        size_t nesting = 0;
         object.start_p = object.end_p;
         while (object.start_p is_not start_of_line) {
           --object.start_p;
-          if (object.start_p->token_type is T_OP_14 or
-              object.start_p->token_type is T_COMMA) {
-            object.start_p = skip_space_forward(object.start_p + 1,
-                                                object.end_p);
-            break;
+          switch (object.start_p->token_type) {
+            case T_TUPLE_END: case T_INDEX_END: case T_GROUP_END:
+              ++nesting;
+              break;
+            case T_TUPLE_START: case T_INDEX_START: case T_GROUP_START:
+              // nesting can not be 0: find_line_start() checks fence pairing.
+              assert(nesting is_not 0);
+              --nesting;
+              break;
+            case T_OP_14: case T_COMMA:
+              if (nesting is 0) {
+                object.start_p = skip_space_forward(object.start_p + 1,
+                                                    object.end_p);
+                goto boosted_precedence;
+              }
+              break;
+            default:
+              break;
           }
-        }
+        } boosted_precedence:
         // Trim space after object, between it and backstitch operator.
         object.end_p = skip_space_back(object.start_p, object.end_p);
 
@@ -97,12 +110,12 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           // TODO: check that there is a group opening before the line if
           //       if it is not an statement.
           mut_Marker_array replacement;
-          // The factor of 2 here is a heuristic to avoid relocations in general.
+          // The factor of 2 here is a heuristic to avoid relocations.
           init_Marker_array(&replacement,
                             2 * (size_t)(end_of_line - object.start_p));
           Marker_mut_p segment_start = first_segment_start;
           Marker_mut_p segment_end   = segment_start;
-          while (segment_end < end_of_line) {
+          do {
             // Look for segment end.
             while (segment_end < end_of_line) {
               if (not nesting and segment_end->token_type is T_COMMA) break;
@@ -131,13 +144,6 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             }
             // Trim space after segment.
             segment_end = skip_space_back(segment_start, segment_end);
-
-            if (segment_end is segment_start) {
-              eprintln("Warning: %ld: empty backstitch segment.",
-                       line_number(src, markers, segment_start));
-              segment_end = ++segment_start;
-              continue;
-            }
 
             Marker_mut_p insertion_point = segment_start;
             bool inside_parenthesis = false;
@@ -174,50 +180,38 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               insertion_point = segment_start;
             }
 
-            if (insertion_point is segment_start) {
-              if (object.start_p is_not object.end_p) {
-                append_Marker_array(&replacement, object);
-                if ((segment_start+1)->token_type == T_SPACE) {
-                  push_Marker_array(&replacement, space);
-                }
-              }
-              if (prefix) push_Marker_array(&replacement, *prefix);
-              if (suffix) {
-                push_Marker_array(&replacement, *insertion_point++);
-                push_Marker_array(&replacement, *suffix);
-              }
-            } else {
-              slice.start_p = segment_start;
-              slice.end_p   = insertion_point;
-              if (prefix || suffix) {
-                while (slice.end_p != segment_start) {
-                  --slice.end_p;
-                  if (slice.end_p->token_type is T_IDENTIFIER) break;
-                }
-                append_Marker_array(&replacement, slice);
-                if (prefix) {
-                  push_Marker_array(&replacement, *prefix);
-                } else {
-                  push_Marker_array(&replacement, *slice.end_p++);
-                  push_Marker_array(&replacement, *suffix);
-                }
-                slice.start_p = slice.end_p;
-                slice.end_p   = insertion_point;
+            slice.start_p = segment_start;
+            slice.end_p   = insertion_point;
+            if (prefix || suffix) {
+              while (slice.end_p != segment_start) {
+                --slice.end_p;
+                if (slice.end_p->token_type is T_IDENTIFIER) break;
               }
               append_Marker_array(&replacement, slice);
-              // Only insert object if not empty, allow elided object.
-              if (object.end_p is_not object.start_p) {
-                append_Marker_array(&replacement, object);
-                if (inside_parenthesis) {
-                  if (insertion_point->token_type is_not T_TUPLE_END) {
-                    push_Marker_array(&replacement, comma);
-                    push_Marker_array(&replacement, space);
-                  }
-                } else {
+              if (prefix) {
+                push_Marker_array(&replacement, *prefix);
+              } else {
+                push_Marker_array(&replacement, *slice.end_p++);
+                push_Marker_array(&replacement, *suffix);
+              }
+              slice.start_p = slice.end_p;
+              slice.end_p   = insertion_point;
+            }
+            append_Marker_array(&replacement, slice);
+            // Only insert object if not empty, allow elided object.
+            if (object.end_p is_not object.start_p) {
+              append_Marker_array(&replacement, object);
+              if (inside_parenthesis) {
+                if (insertion_point->token_type is_not T_TUPLE_END) {
+                  push_Marker_array(&replacement, comma);
                   push_Marker_array(&replacement, space);
                 }
+              } else if (segment_start != end_of_line &&
+                         (segment_start+1)->token_type == T_SPACE) {
+                push_Marker_array(&replacement, space);
               }
             }
+
             slice.start_p = insertion_point;
             slice.end_p   = segment_end;
             append_Marker_array(&replacement, slice);
@@ -235,7 +229,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               segment_start = skip_space_forward(segment_start, end_of_line);
               segment_end = segment_start;
             }
-          }
+          } while (segment_end < end_of_line);
           // Invalidates: markers
           cursor_position = (size_t)(object.start_p - start);
           splice_Marker_array(markers,

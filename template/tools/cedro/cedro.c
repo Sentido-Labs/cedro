@@ -1456,7 +1456,7 @@ tabulate_eprint(size_t skip, size_t tabulator)
  *  @param[in] src original source code.
  *  @param[in] prefix string to be added at the beginning of the line.
  *  @param[in] start index to start with.
- *  @param[in] end   index to end with: if `0`, use the end of the array.
+ *  @param[in] end   index to end with: one past the index of the last marker.
  */
 static void
 print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
@@ -1492,11 +1492,8 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
   init_Byte_array(&token_text, 80);
 
   Marker_p markers_start = start_of_Marker_array(markers);
-  Marker_p m_start =
-      get_Marker_array(markers, start);
-  Marker_p m_end   = end?
-      get_Marker_array(markers, end):
-      end_of_Marker_array(markers);
+  Marker_p m_start = markers->start + start;
+  Marker_p m_end   = markers->start + end;
   const char * token = NULL;
   for (Marker_mut_p m = m_start; m is_not m_end; ++m) {
     token_text.len = 0;
@@ -1544,19 +1541,17 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
  */
 static void
 debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p markers, Byte_array_p src) {
-  size_t i = (size_t)(cursor - start_of_Marker_array(markers));
   eprintln("%s:", label);
+  size_t i = (size_t)(cursor - start_of_Marker_array(markers));
+  size_t start = i > radius? i - radius: 0;
+  size_t end   = i+1 + radius;
+  if (start > markers->len) start = markers->len;
+  if (i     > markers->len) i     = markers->len;
+  if (end   > markers->len) end   = markers->len;
 
-  if (markers->len is 0) return;
-  print_markers(markers, src, "  ",
-                i > radius      ? i - radius: 0,
-                i < markers->len? i         : markers->len - 1);
-  print_markers(markers, src, "* ",
-                i < markers->len? i  : markers->len - 1,
-                i < markers->len? i+1: markers->len);
-  print_markers(markers, src, "  ",
-                i+1 < markers->len          ? i+1         : markers->len - 1,
-                i+1 + radius <= markers->len? i+1 + radius: markers->len - 1);
+  print_markers(markers, src, "  ", start, i    );
+  print_markers(markers, src, "* ", i    , i + 1);
+  print_markers(markers, src, "  ", i + 1, end  );
 }
 
 /** Format the markers back into source code form.
@@ -2462,7 +2457,7 @@ int main(int argc, char** argv)
       }
 
       if (opt_print_markers) {
-        print_markers(&markers, &src, "", 0, 0);
+        print_markers(&markers, &src, "", 0, markers.len);
       } else {
         unparse(bounds_of_Marker_array(&markers),
                 &src, original_src_len, file_name, options, out);
