@@ -68,6 +68,7 @@
   Para depuración, esto escribe el código que iría entubado a cc,
   en stdout:
     CEDRO_CC='' cedrocc …</code>
+      <p>Si recibes un mensaje de error como “embedding a directive within macro arguments is not portable” (GCC) o “embedding a directive within macro arguments has undefined behavior” (clang), significa que usas Cedro con `--insert-line-directives` dentro de los parámetros de una macro. Puedes bien expandir el código dado a la macro manualmente, o evitar el `--insert-line-directives` reemplazando `cedrocc -o fichero fichero.c` con `cedro fichero.c | cc -x c - -o fichero`.</p>
       <p>Hay un tercer ejecutable, <code>cedro-new</code>, que produce un borrador de programa de manera similar a <code>cargo new</code> en Rust. <code>cedro new …</code> en realidad ejecuta <code>cedro-new …</code>. El contenido se produce a partir de la plantilla en el directorio <code>template/</code>, que se incluye en el ejecutable <code>cedro-new</code> al compilarlo.</p>
       <code>Uso: cedro-new [opciones] &lt;nombre&gt;
   Crea un directorio llamado &lt;nombre&gt;/ con la plantilla.
