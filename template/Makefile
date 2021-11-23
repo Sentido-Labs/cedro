@@ -1,7 +1,7 @@
 CMDNAME={template}
 NAME={Template}
 LOGO=logo.png
-CSS=doc.css
+CSS=doc/api.css
 
 # The include paths must be put also in Doxyfile (see below).
 
@@ -60,10 +60,15 @@ lib/build/%.o: lib/%.c lib/%.h
 	mkdir -p $$(dirname $@)
 	$(CC) -c $< $(CFLAGS) -o $@ -O
 
-doc: src/* Makefile Doxyfile
-	mkdir -p doc
+doc: doc/api/main.c Makefile Doxyfile
+	mkdir -p doc/api
 	NAME="$(NAME)" doxygen
 .PHONY: doc
+
+# Amalgamation of src/main.c
+doc/api/main.c: src/* $(CEDROCC)
+	mkdir -p doc/api
+	CEDRO_CC='' $(CEDROCC) src/main.c >$@
 
 Doxyfile:
 	doxygen -g
@@ -73,11 +78,11 @@ Doxyfile:
 	sed --in-place 's:^\(OPTIMIZE_OUTPUT_FOR_C\s\+\)=\s*NO:\1= YES:g' Doxyfile
 	sed --in-place 's:^\(EXTRACT_ALL\s\+\)=\s*NO:\1= YES:g' Doxyfile
 	sed --in-place 's:^\(EXTRACT_STATIC\s\+\)=\s*NO:\1= YES:g' Doxyfile
-	sed --in-place 's:^\(INPUT\s\+\)=\s*:\1= src lib:g' Doxyfile
+	sed --in-place 's:^\(INPUT\s\+\)=\s*:\1= doc/api/main.c lib:g' Doxyfile
 	sed --in-place 's:^\(RECURSIVE\s\+\)=\s*NO:\1= YES:g' Doxyfile
 	sed --in-place 's:^\(STRIP_CODE_COMMENTS\s\+\)=\s*YES:\1= NO:g' Doxyfile
 	sed --in-place 's:^\(GENERATE_HTML\s\+\)=\s*NO:\1= YES:g' Doxyfile
-	sed --in-place 's:^\(HTML_OUTPUT\s\+\)=.*:\1= doc:g' Doxyfile
+	sed --in-place 's:^\(HTML_OUTPUT\s\+\)=.*:\1= doc/api:g' Doxyfile
 	sed --in-place 's:^\(HTML_EXTRA_STYLESHEET\s\+\)=.*:\1= "$(CSS)":g' Doxyfile
 	sed --in-place 's:^\(GENERATE_LATEX\s\+\)=\s*YES:\1= NO:g' Doxyfile
 	sed --in-place 's:^\(MACRO_EXPANSION\s\+\)=\s*NO:\1= YES:g' Doxyfile
@@ -86,6 +91,6 @@ Doxyfile:
 	sed --in-place 's:^\(EXPAND_AS_DEFINED\s\+\)=\s*:\1= DEFINE_HASH_SET_INT DEFINE_HASH_TABLE_INT DEFINE_HASH_SET_INT64 DEFINE_HASH_TABLE_INT64 DEFINE_HASH_SET_STR DEFINE_HASH_TABLE_STR:g' Doxyfile
 
 clean:
-	rm -rf build doc
+	rm -rf build lib/build doc/api
 	rm -f $(CEDRO) $(CEDRO)cc
 .PHONY: clean

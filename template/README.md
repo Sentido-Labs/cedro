@@ -7,9 +7,9 @@ It includes my customized hash table library derived from
 [khash](http://attractivechaos.github.io/klib/#About),
 and also Josh Baker’s [btree.c](https://github.com/tidwall/btree.c).
 
-  - [main](doc/main_8c.html)
-  - [hash-table](doc/hash-table_8h.html)
-  - [btree](doc/btree_8c.html)
+  - [main](doc/api/main_8c.html)
+  - [hash-table](doc/api/hash-table_8h.html)
+  - [btree](doc/api/btree_8c.html)
 
 ## Build
 `make` to build the executable as `bin/{template}`,
