@@ -7,7 +7,7 @@ CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -
 CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
 
 # Loose compilation flags, use for delivery:
-CFLAGS=-g -std=c99
+CFLAGS=-g -DNDEBUG -std=c99
 CFLAGS_MINIZ=-g -std=c99
 
 default: release
@@ -27,19 +27,19 @@ bin/cedro:       src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 
 bin/cedrocc-debug: src/cedrocc.c Makefile bin/cedro-debug
 	@mkdir -p bin
-	bin/cedro --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@
+	bin/cedro-debug --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@
 	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME)cc src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
 bin/cedrocc:       src/cedrocc.c Makefile bin/cedro
 	@mkdir -p bin
-	bin/cedro --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@ -O
+	bin/cedro       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@ -O
 	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME)cc src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
 
-bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc
+bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc-debug
 	@mkdir -p bin
-	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@
+	bin/cedrocc-debug $< -I src $(CFLAGS_MINIZ) -o $@
 bin/cedro-new:       src/cedro-new.c template.zip Makefile bin/cedrocc
 	@mkdir -p bin
-	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ -O
+	bin/cedrocc       $< -I src $(CFLAGS_MINIZ) -o $@ -O
 
 bin/%: src/%.c Makefile bin/cedrocc
 	@mkdir -p bin
