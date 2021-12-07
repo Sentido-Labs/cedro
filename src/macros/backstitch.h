@@ -130,7 +130,9 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   eprintln("Syntax error in line %lu:"
                            " invalid prefix, must be an identifier.",
                            line_number(src, markers, segment_end));
-                  break;
+                  destruct_Marker_array(&replacement);
+                  return;
+                  //break;
                 default:
                   break;
               }
@@ -183,16 +185,40 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             slice.start_p = segment_start;
             slice.end_p   = insertion_point;
             if (prefix || suffix) {
-              while (slice.end_p != segment_start) {
+              while (slice.end_p != slice.start_p) {
                 --slice.end_p;
                 if (slice.end_p->token_type is T_IDENTIFIER) break;
               }
               append_Marker_array(&replacement, slice);
-              if (prefix) {
-                push_Marker_array(&replacement, *prefix);
+              if (slice.end_p == end_of_line) {
+                // Empty backstitch segments.
+                while (object.start_p->token_type == T_OP_2 &&
+                       object.start_p != cursor) ++object.start_p;
+                if (object.start_p->token_type != T_IDENTIFIER) {
+                  eprintln("Syntax error in line %lu."
+                           " (pseudo-)object must start with an identifier.",
+                           line_number(src, markers, segment_end));
+                  destruct_Marker_array(&replacement);
+                  return;
+                }
+                if (prefix) {
+                  push_Marker_array(&replacement, *prefix);
+                } else {
+                  if (slice.end_p == end_of_line) {
+                    object.start_p++;
+                    insertion_point = slice.end_p;
+                  } else {
+                    push_Marker_array(&replacement, *slice.end_p++);
+                  }
+                  push_Marker_array(&replacement, *suffix);
+                }
               } else {
-                push_Marker_array(&replacement, *slice.end_p++);
-                push_Marker_array(&replacement, *suffix);
+                if (prefix) {
+                  push_Marker_array(&replacement, *prefix);
+                } else {
+                  push_Marker_array(&replacement, *slice.end_p++);
+                  push_Marker_array(&replacement, *suffix);
+                }
               }
               slice.start_p = slice.end_p;
               slice.end_p   = insertion_point;

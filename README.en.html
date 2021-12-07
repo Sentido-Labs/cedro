@@ -68,7 +68,7 @@
   For debugging, this writes the code that would be piped into cc,
   into stdout instead:
     CEDRO_CC='' cedrocc …</code>
-      <p>If you get an error message like “embedding a directive within macro arguments is not portable” (GCC) or “embedding a directive within macro arguments has undefined behavior” (clang), it means that you’re using Cedro with `--insert-line-directives` inside the parameters for a macro. You can either expand the code given to the macro manually, or avoid `--insert-line-directives` by replacing `cedrocc -o file file.c` with `cedro file.c | cc -x c - -o file`.</p>
+      <p>If you get an error message like “embedding a directive within macro arguments is not portable” (GCC) or “embedding a directive within macro arguments has undefined behavior” (clang), it means that you’re using Cedro with <code>--insert-line-directives</code> inside the parameters for a macro. You can either expand the code given to the macro manually, or avoid <code>--insert-line-directives</code> by replacing <code>cedrocc -o file file.c</code> with <code>cedro file.c | cc -x c - -o file</code>.</p>
       <p>There is a third executable, <code>cedro-new</code>, that produces a program draft in a similar way to <code>cargo new</code> in Rust. <code>cedro new …</code> will actually run <code>cedro-new …</code>. The content is produced from the template in the <code>template/</code> directory, that gets included in the <code>cedro-new</code> executable at compilation.</p>
       <code>Usage: cedro-new [options] &lt;name&gt;
   Creates a directory named &lt;name&gt;/ with the template.
@@ -110,9 +110,6 @@ prefix_g(object, b);</code></td>
           <td><code>object @..._suffix f(a), g(b);</code></td>
           <td><code>f_suffix(object, a);
 g_suffix(object, b);</code></td>
-        </tr><tr>
-          <td><code>Next(reader) @xmlTextReader...;</code></td>
-          <td><code>xmlTextReaderNext(reader);</code></td>
         </tr><tr>
           <td>
 <code>graphics_context @<a href="https://github.com/memononen/nanovg">nvg</a>...
@@ -171,6 +168,18 @@ nvgFill(graphics_context);</code>
     TOKEN_SPACE, TOKEN_WORD, TOKEN_NUMBER
 } TokenType;</code>
           </td>
+        </tr>
+      </table>
+
+      <p>The segments part can also be left empty
+        to add either a prefix or a suffix to an identifier:</p>
+      <table>
+        <tr>
+          <td><code>Next(reader) @xmlTextReader...;</code></td>
+          <td><code>xmlTextReaderNext(reader);</code></td>
+        </tr><tr>
+          <td><code>get(&amp;vector, index) @..._Byte_vec</code></td>
+          <td><code>get_Byte_vec(&amp;vector, index);</code></td>
         </tr>
       </table>
 

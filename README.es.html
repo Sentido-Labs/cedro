@@ -68,7 +68,7 @@
   Para depuración, esto escribe el código que iría entubado a cc,
   en stdout:
     CEDRO_CC='' cedrocc …</code>
-      <p>Si recibes un mensaje de error como “embedding a directive within macro arguments is not portable” (GCC) o “embedding a directive within macro arguments has undefined behavior” (clang), significa que usas Cedro con `--insert-line-directives` dentro de los parámetros de una macro. Puedes bien expandir el código dado a la macro manualmente, o evitar el `--insert-line-directives` reemplazando `cedrocc -o fichero fichero.c` con `cedro fichero.c | cc -x c - -o fichero`.</p>
+      <p>Si recibes un mensaje de error como «embedding a directive within macro arguments is not portable» (GCC) o «embedding a directive within macro arguments has undefined behavior» (clang), significa que usas Cedro con <code>--insert-line-directives</code> dentro de los parámetros de una macro. Puedes bien expandir el código dado a la macro manualmente, o evitar el <code>--insert-line-directives</code> reemplazando <code>cedrocc -o fichero fichero.c</code> con <code>cedro fichero.c | cc -x c - -o fichero</code>.</p>
       <p>Hay un tercer ejecutable, <code>cedro-new</code>, que produce un borrador de programa de manera similar a <code>cargo new</code> en Rust. <code>cedro new …</code> en realidad ejecuta <code>cedro-new …</code>. El contenido se produce a partir de la plantilla en el directorio <code>template/</code>, que se incluye en el ejecutable <code>cedro-new</code> al compilarlo.</p>
       <code>Uso: cedro-new [opciones] &lt;nombre&gt;
   Crea un directorio llamado &lt;nombre&gt;/ con la plantilla.
@@ -111,9 +111,6 @@ prefijo_g(objeto, b);</code></td>
           <td><code>f_sufijo(objeto, a);
 g_sufijo(objeto, b);</code></td>
         </tr><tr>
-          <td><code>Next(reader) @xmlTextReader...;</code></td>
-          <td><code>xmlTextReaderNext(reader);</code></td>
-        </tr><tr>
           <td>
 <code>contexto_gráfico @<a href="https://github.com/memononen/nanovg">nvg</a>...
     BeginPath(),
@@ -134,10 +131,10 @@ nvgFill(contexto_gráfico);</code>
       </table>
 
       <p>Para cada segmento separado por comas,
-      si empieza con uno de los <em>tókens</em>
-      “<code>[</code>”,
-      “<code>++</code>”, “<code>--</code>”, “<code>.</code>”, “<code>-></code>”,
-      “<code>=</code>”, “<code>+=</code>”, “<code>-=</code>”, “<code>*=</code>”, “<code>/=</code>”, “<code>%=</code>”, “<code>&lt;&lt;=</code>”, “<code>&gt;&gt;=</code>”, “<code>&amp;=</code>”, “<code>^=</code>”, “<code>|=</code>”,
+      si empieza con uno de los <em>tokens</em>
+      «<code>[</code>»,
+      «<code>++</code>», «<code>--</code>», «<code>.</code>», «<code>-></code>»,
+      «<code>=</code>», «<code>+=</code>», «<code>-=</code>», «<code>*=</code>», «<code>/=</code>», «<code>%=</code>», «<code>&lt;&lt;=</code>», «<code>&gt;&gt;=</code>», «<code>&amp;=</code>», «<code>^=</code>», «<code>|=</code>»,
       o si no hay nada que parezca una llamada de función,
       el punto de inserción es el comienzo del segmento:</p>
 
@@ -171,6 +168,18 @@ nvgFill(contexto_gráfico);</code>
     TOKEN_ESPACIO, TOKEN_PALABRA, TOKEN_NUMERO
 } TipoDeToken;</code>
           </td>
+        </tr>
+      </table>
+
+      <p>La parte de los segmentos también se puede omitir
+        para añadir bien un prefijo o un sufijo a un identificador:</p>
+      <table>
+        <tr>
+          <td><code>Next(reader) @xmlTextReader...;</code></td>
+          <td><code>xmlTextReaderNext(reader);</code></td>
+        </tr><tr>
+          <td><code>get(&amp;vector, index) @..._Byte_vec</code></td>
+          <td><code>get_Byte_vec(&amp;vector, index);</code></td>
         </tr>
       </table>
 
@@ -237,7 +246,7 @@ nvgFill(contexto_gráfico);</code>
         <code><a href="https://en.cppreference.com/w/c/program/longjmp">longjmp()</a></code>,
         <code><a href="https://en.cppreference.com/w/c/program/exit">exit()</a></code>,
         <code><a href="https://en.cppreference.com/w/c/thread/thrd_exit">thrd_exit()</a></code> etc.
-        porque sólo podría aplicar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase “<i id="a-defer-mechanism-for-c"><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>” (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
+        porque sólo podría aplicar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase «<i id="a-defer-mechanism-for-c"><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>» (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
       <p>En Cedro, la función de devolución se marca con la
       <a href="https://en.cppreference.com/w/c/language/storage_duration">palabra clave C <b><code>auto</code></b></a>
       que no se necesita en código estándar C porque es implícita.
@@ -411,7 +420,7 @@ int f1(void) {
       <p>Andrew Kelley comparó la gestión de recursos entre C y su
         <a href="https://ziglang.org/es/">lenguaje de programación Zig</a>
         en una presentación de 2019 titulada
-        <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">“The Road to Zig 1.0" a los 29:21″</a>,
+        <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">«The Road to Zig 1.0" a los 29:21″</a>,
         y aquí he re-creado su ejemplo en C usando Cedro para producir
         la función tal cual la mostró, excepto que Cedro no sabe
         que el bucle <code>for</code> al final nunca termina así que añade
@@ -643,12 +652,12 @@ int main(int argc, char **argv) {
         [<a href="#note-defer-2" name="node-defer-2-ref">2</a>].</p>
       <div id="note-defer-1">
         [<a href="#note-defer-1-ref">1</a>]
-        “<em><a href="https://gustedt.gitlabpages.inria.fr/p99/p99-html/utilities.html#blocks">P99 Scope-bound resource management with for-statements</a></em>” del mismo autor (2010), “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), ”<em><a href="https://news.ycombinator.com/item?id=25419916">C compatible scoped locks</a></em>“ (2021), “<em><a href="https://www.youtube.com/watch?v=QpAhX-gsHMs&amp;t=1053s">Modern C and What We Can Learn From It - Luca Sas [ ACCU 2021 ] 00:17:18</a></em>”, 2021
-        <!-- C++: , o “<em><a href="https://stackoverflow.com/questions/48117908/is-the-a-practical-way-to-emulate-go-language-defer-in-c-or-c-destructors">Is there a practical way to emulate GO language defer in C?</a></em>” -->
+        «<em><a href="https://gustedt.gitlabpages.inria.fr/p99/p99-html/utilities.html#blocks">P99 Scope-bound resource management with for-statements</a></em>» del mismo autor (2010), «<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>» (2016), »<em><a href="https://news.ycombinator.com/item?id=25419916">C compatible scoped locks</a></em>« (2021), «<em><a href="https://www.youtube.com/watch?v=QpAhX-gsHMs&amp;t=1053s">Modern C and What We Can Learn From It - Luca Sas [ ACCU 2021 ] 00:17:18</a></em>», 2021
+        <!-- C++: , o «<em><a href="https://stackoverflow.com/questions/48117908/is-the-a-practical-way-to-emulate-go-language-defer-in-c-or-c-destructors">Is there a practical way to emulate GO language defer in C?</a></em>» -->
       </div>
       <div id="note-defer-2">
         [<a href="#note-defer-1-ref">2</a>]
-        “<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>” (2016), “<em><a href="https://github.com/trws/libdefer#limitations">libdefer: Go-style defer for C</a></em>” (2016), “<em><a href="https://github.com/moon-chilled/Defer">A Defer statement for C</a></em>” (2020), “<em><a href="https://gist.github.com/jart/aed0fd7a7fa68385d19e76a63db687ff">Go-like defer for C that works with most optimization flag combinations under GCC/Clang</a></em>” (2021)
+        «<em><a href="https://www.reddit.com/r/C_Programming/comments/46lpna/would_it_be_possible_to_create_a_scoped_lock/">Would it be possible to create a scoped_lock implementation in C?</a></em>» (2016), «<em><a href="https://github.com/trws/libdefer#limitations">libdefer: Go-style defer for C</a></em>» (2016), «<em><a href="https://github.com/moon-chilled/Defer">A Defer statement for C</a></em>» (2020), «<em><a href="https://gist.github.com/jart/aed0fd7a7fa68385d19e76a63db687ff">Go-like defer for C that works with most optimization flag combinations under GCC/Clang</a></em>» (2021)
       </div>
       <p>Compiladores como GCC y clang tienen características no estandarizadas para hacerlo,
         como el <a href="https://echorand.me/site/notes/articles/c_cleanup/cleanup_attribute_c.html">atributo de variables <code>__cleanup__</code> (en inglés)</a>.</p>
@@ -697,8 +706,8 @@ int main(int argc, char **argv) {
       <p>Las macros en C deben escribirse todo en una línea,
         pero a veces hay que partirlas en varias pseudo-líneas
         y se hace tedioso y propenso a errores
-        el mantener todos los escapes de nueva línea  (“<code>\</code>”).</p>
-      <p>Añadiendo llaves (“<code>{</code>” o “<code>}</code>”)
+        el mantener todos los escapes de nueva línea  («<code>\</code>»).</p>
+      <p>Añadiendo llaves («<code>{</code>» o «<code>}</code>»)
         justo tras <code>#define</code>
         podemos hacer que <em>Cedro</em> se encargue de eso por nosotros:</p>
 <code>#define { macro(A, B, C)
