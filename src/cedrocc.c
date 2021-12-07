@@ -137,7 +137,6 @@ static Result_size_t
 find_path_in(IncludePaths_p _, const char* file_name)
 {
   size_t position = 0;
-  size_t error = 0;
 
   Byte_mut_p start = start_of_Byte_array(&_->text);
   while (position is_not _->lengths.len) {
