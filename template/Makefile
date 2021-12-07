@@ -9,7 +9,7 @@ CSS=doc/api.css
 CFLAGS=-g -L build/lib -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion
 
 # Loose compilation flags, use for delivery:
-CFLAGS=-g -L build/lib -I lib -I src -std=c99
+CFLAGS=-g -DNDEBUG -L build/lib -I lib -I src -std=c99
 
 TEST_ARGUMENTS="dummy"
 

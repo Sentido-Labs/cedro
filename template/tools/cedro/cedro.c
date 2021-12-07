@@ -62,7 +62,6 @@ typedef unsigned long uint32_t;
 #define str_eq(a, b)        (0 is strcmp(a, b))
 #define strn_eq(a, b, len)  (0 is strncmp(a, b, len))
 
-#define NDEBUG
 #include <assert.h>
 #include <sys/resource.h>
 #include <errno.h>

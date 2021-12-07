@@ -231,7 +231,8 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     as bit copies.                                                      \
     If `deleted` is not `NULL`, the deleted elements are not destroyed  \
     but copied to that array.                                           \
-    The `insert` slice must belong to a different array or be empty. */ \
+    The `insert` slice must belong to a different array, or be          \
+    empty in which case it can be zero: `(T##_array_slice){0,0}` */     \
 static void                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
@@ -279,6 +280,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
 static void                                                             \
 append_##T##_array(mut_##T##_array_p _, T##_array_slice insert)         \
 {                                                                       \
+  assert(insert.end_p >= insert.start_p);                               \
   splice_##T##_array(_, _->len, 0, NULL, insert);                       \
 }                                                                       \
                                                                         \
