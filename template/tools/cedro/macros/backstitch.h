@@ -22,22 +22,21 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       // Trim space before first segment, or affix declarator.
       first_segment_start = skip_space_forward(first_segment_start, end);
       if (first_segment_start is end) {
-        eprintln("Syntax error in line %lu: unfinished backstitch operator.",
-                 line_number(src, markers, first_segment_start));
+        error_at("unfinished backstitch operator.",
+                 cursor, markers, src);
         return;
       }
       Marker_mut_p prefix = NULL, suffix = NULL;
       if (first_segment_start->token_type is T_ELLIPSIS) {
         first_segment_start = skip_space_forward(first_segment_start + 1, end);
         if (first_segment_start is end) {
-          eprintln("Syntax error in line %lu: unfinished affix declarator.",
-                   line_number(src, markers, first_segment_start));
+          error_at("unfinished affix declarator.",
+                   cursor, markers, src);
           return;
         }
         if (first_segment_start->token_type is_not T_IDENTIFIER) {
-          eprintln("Syntax error in line %lu:"
-                   " invalid suffix, must be an identifier.",
-                   line_number(src, markers, first_segment_start));
+          error_at("invalid suffix, must be an identifier.",
+                   cursor, markers, src);
           return;
         }
         suffix = first_segment_start++;
@@ -54,8 +53,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
       Marker_mut_p start_of_line = find_line_start(cursor, start, &err);
       if (err.message) {
-        eprintln("Error: %lu: %s",
-                 line_number(src, markers, err.position), err.message);
+        error_at(err.message, err.position, markers, src);
         err.message = NULL;
       } else {
         mut_Marker object_indentation =
@@ -92,21 +90,27 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               break;
           }
         } boosted_precedence:
-        // Trim space after object, between it and backstitch operator.
+        // Trim space after object, between it and the backstitch operator.
         object.end_p = skip_space_back(object.start_p, object.end_p);
 
-        cursor = first_segment_start;
-        Marker_mut_p end_of_line = find_line_end(cursor, end, &err);
-        end_of_line = skip_space_back(cursor, end_of_line);
-        cursor = end_of_line;
+        Marker_mut_p end_of_line =
+            find_line_end(first_segment_start, end, &err);
         if (err.message) {
-          eprintln("Error: %lu: %s",
-                   line_number(src, markers, err.position), err.message);
+          error_at(err.message, err.position, markers, src);
           err.message = NULL;
         } else {
+          end_of_line = skip_space_back(first_segment_start, end_of_line);
           bool ends_with_semicolon =
               end_of_line < end &&
               end_of_line->token_type is T_SEMICOLON;
+          bool empty_object = object.start_p == object.end_p;
+          bool empty_segments = first_segment_start == end_of_line;
+          if (empty_object && empty_segments) {
+            error_at("backstitch object and segments can not be both empty.",
+                     cursor, markers, src);
+            return;
+          }
+
           // TODO: check that there is a group opening before the line if
           //       if it is not an statement.
           mut_Marker_array replacement;
@@ -127,9 +131,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   --nesting;// Can not underflow because of find_line_end().
                   break;
                 case T_ELLIPSIS:
-                  eprintln("Syntax error in line %lu:"
-                           " invalid prefix, must be an identifier.",
-                           line_number(src, markers, segment_end));
+                  error_at("invalid prefix, must be an identifier.",
+                           cursor, markers, src);
                   destruct_Marker_array(&replacement);
                   return;
                   //break;
@@ -139,8 +142,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               ++segment_end;
             }
             if (nesting) {
-              eprintln("Error: %lu: unclosed group, syntax error.",
-                       line_number(src, markers, segment_start));
+              error_at("unclosed group, syntax error.",
+                       cursor, markers, src);
               destruct_Marker_array(&replacement);
               return;
             }
@@ -152,8 +155,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             bool is_function_call   = true;
             if (segment_start->token_type is T_INDEX_START ||
                 segment_start->token_type is T_OP_1        ||
-                segment_start->token_type is T_OP_14       ||
-                object.end_p is object.start_p) {
+                segment_start->token_type is T_OP_14) {
               // If the segment starts with “[”, “.”, “->”, or “=”,
               // then this is already the correct insertion point.
             } else {
@@ -190,26 +192,22 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 if (slice.end_p->token_type is T_IDENTIFIER) break;
               }
               append_Marker_array(&replacement, slice);
-              if (slice.end_p == end_of_line) {
-                // Empty backstitch segments.
+              if (empty_segments) {
+                // Modifying object is not a problem because there are
+                // no further segments, so we won’t use it again.
                 while (object.start_p->token_type == T_OP_2 &&
                        object.start_p != cursor) ++object.start_p;
                 if (object.start_p->token_type != T_IDENTIFIER) {
-                  eprintln("Syntax error in line %lu."
-                           " (pseudo-)object must start with an identifier.",
-                           line_number(src, markers, segment_end));
+                  error_at("(pseudo-)object must start with an identifier.",
+                           cursor, markers, src);
                   destruct_Marker_array(&replacement);
                   return;
                 }
                 if (prefix) {
                   push_Marker_array(&replacement, *prefix);
-                } else {
-                  if (slice.end_p == end_of_line) {
-                    object.start_p++;
-                    insertion_point = slice.end_p;
-                  } else {
-                    push_Marker_array(&replacement, *slice.end_p++);
-                  }
+                } else { // suffix
+                  object.start_p++;
+                  insertion_point = slice.end_p;
                   push_Marker_array(&replacement, *suffix);
                 }
               } else {
@@ -217,15 +215,22 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   push_Marker_array(&replacement, *prefix);
                 } else {
                   push_Marker_array(&replacement, *slice.end_p++);
+                  if (empty_object) insertion_point = slice.end_p;
                   push_Marker_array(&replacement, *suffix);
                 }
               }
               slice.start_p = slice.end_p;
               slice.end_p   = insertion_point;
+              if (slice.start_p > slice.end_p) {
+                  error_at("missing object.",
+                           cursor, markers, src);
+                  destruct_Marker_array(&replacement);
+                  return;
+              }
             }
             append_Marker_array(&replacement, slice);
             // Only insert object if not empty, allow elided object.
-            if (object.end_p is_not object.start_p) {
+            if (not empty_object) {
               append_Marker_array(&replacement, object);
               if (inside_parenthesis) {
                 if (insertion_point->token_type is_not T_TUPLE_END) {

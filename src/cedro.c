@@ -1395,6 +1395,8 @@ indentation(Marker_array_p markers, Marker_mut_p cursor,
 static size_t
 line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
 {
+  assert(position >= markers->start &&
+         position <= markers->start + markers->len);
   return 1 + count_appearances('\n', markers->start, position, src);
 }
 
@@ -1402,6 +1404,7 @@ line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
 static size_t
 original_line_number(size_t position, Byte_array_p src)
 {
+  assert(position <= src->len);
   size_t line = 1;
   Byte_p end = get_Byte_array(src, position);
   Byte_mut_p cursor = start_of_Byte_array(src);
@@ -1412,6 +1415,26 @@ original_line_number(size_t position, Byte_array_p src)
     ++line;
   }
   return line;
+}
+
+/** Truncate the markers at the given position
+ * and append a pre-processor error directive.
+ * `src` is needed to create the new marker for `message`,
+ * and `message` can be discarded right after calling this function.
+ */
+static void
+error_at(const char * message, Marker_p cursor, mut_Marker_array_p _, mut_Byte_array_p src)
+{
+  assert(cursor >= _->start and cursor <= _->start + _->len);
+  _->len = index_Marker_array(_, cursor);
+  mut_Byte_array buffer;
+  init_Byte_array(&buffer, 200);
+  push_fmt(&buffer, "\n#line %lu", original_line_number(cursor->start, src));
+  push_str(&buffer, "\n#error ");
+  push_str(&buffer, message);
+  push_str(&buffer, "\n");
+  push_Marker_array(_, Marker_from(src, as_c_string(&buffer), T_PREPROCESSOR));
+  destruct_Byte_array(&buffer);
 }
 
 /** ISO/IEC 9899:TC3 WG14/N1256 §6.7.8 page 126:
