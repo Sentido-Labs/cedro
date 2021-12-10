@@ -10,6 +10,8 @@ CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -We
 CFLAGS=-g -DNDEBUG -std=c99
 CFLAGS_MINIZ=-g -std=c99
 
+OPTIMIZATION=-O -DNDEBUG
+
 default: release
 all: release debug
 debug:   bin/$(NAME)-debug bin/$(NAME)cc-debug bin/$(NAME)-new-debug
@@ -19,10 +21,10 @@ release: bin/$(NAME)       bin/$(NAME)cc       bin/$(NAME)-new
 bin/cedro-debug: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $<
-	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME) src/$(NAME)cc.c >/dev/null; then echo Valgrind check passed: $(NAME); fi; fi
+	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME) src/$(NAME)cc.c >/dev/null; then echo Valgrind check passed: $@; fi; fi
 bin/cedro:       src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
-	$(CC) $(CFLAGS) -o $@ $< -O
+	$(CC) $(CFLAGS) -o $@ $< $(OPTIMIZATION)
 	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME) src/$(NAME)cc.c >/dev/null; then echo Valgrind check passed: $@; fi; fi
 
 bin/cedrocc-debug: src/cedrocc.c Makefile bin/cedro-debug
@@ -31,7 +33,7 @@ bin/cedrocc-debug: src/cedrocc.c Makefile bin/cedro-debug
 	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME)cc src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
 bin/cedrocc:       src/cedrocc.c Makefile bin/cedro
 	@mkdir -p bin
-	bin/cedro       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@ -O
+	bin/cedro       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@  $(OPTIMIZATION)
 	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME)cc src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
 
 bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc-debug
@@ -39,11 +41,11 @@ bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc-debug
 	bin/cedrocc-debug $< -I src $(CFLAGS_MINIZ) -o $@
 bin/cedro-new:       src/cedro-new.c template.zip Makefile bin/cedrocc
 	@mkdir -p bin
-	bin/cedrocc       $< -I src $(CFLAGS_MINIZ) -o $@ -O
+	bin/cedrocc       $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
 bin/%: src/%.c Makefile bin/cedrocc
 	@mkdir -p bin
-	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ -O
+	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
 %.zip: % %/** bin/zip-template
 	bin/zip-template $@ $<
