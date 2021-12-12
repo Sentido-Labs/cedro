@@ -1244,7 +1244,7 @@ find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
   size_t nesting = 0;
   while (end_of_line is_not end) {
     switch (end_of_line->token_type) {
-      case T_SEMICOLON: case T_LABEL_COLON:
+      case T_SEMICOLON: case T_LABEL_COLON: case T_BACKSTITCH:
         if (nesting is 0) goto found;
         break;
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
