@@ -105,7 +105,8 @@ int main(int argc, char* argv[])
 
   if (argc is_not 3) {
     eprintln(LANG("Uso: %s <resultado.zip> <directorio>",
-                  "Usage: %s <result.zip> <directory>"));
+                  "Usage: %s <result.zip> <directory>"),
+             argv[0]);
     return 1;
   }
 

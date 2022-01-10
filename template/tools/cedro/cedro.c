@@ -177,6 +177,7 @@ decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8
 /** Same as `fprintf(stderr, fmt, ...)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
+__attribute__ ((format (printf, 1, 2))) // GCC, typecheck format string args
 static void
 eprint(const char * const fmt, ...)
 {
@@ -419,6 +420,7 @@ push_str(mut_Byte_array_p _, const char * const str)
 /** Append a formatted C string to the end of the given buffer.
  *  It’s similar to `sprintf(...)`, only the result is stored in a byte buffer
  * that grows automatically if needed to hold the complete result. */
+__attribute__ ((format (printf, 2, 3))) // GCC, typecheck format string args
 static void
 push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 {
