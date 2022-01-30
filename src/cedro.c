@@ -174,6 +174,35 @@ decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8
   return cursor;
 }
 
+/** Compute the length in Unicode® code points for a UTF-8 byte buffer.
+ *  Assumes `end` > `cursor`.
+ * @param[in] start byte buffer slice start.
+ * @param[in] end byte buffer slice end.
+ * @param[out] err_p error code variable.
+ * Returns the length in code points decoded from UTF-8 bytes.
+ */
+static inline const size_t
+len_utf8(const uint8_t * const start, const uint8_t * const end,
+         UTF8Error_p err_p)
+{
+  size_t len = 0;
+  const uint8_t* cursor = start;
+  while (cursor is_not end) {
+    uint8_t c = *cursor;
+    if      (0x00 == (c & 0x80)) { cursor += 1; }
+    else if (0xC0 == (c & 0xE0)) { cursor += 2; }
+    else if (0xE0 == (c & 0xF0)) { cursor += 3; }
+    else if (0xF0 == (c & 0xF8)) { cursor += 4; }
+    else cursor = end + 1;
+    if (cursor > end) {
+      *err_p = UTF8_ERROR;
+      break;
+    }
+    ++len;
+  }
+  return len;
+}
+
 /** Same as `fprintf(stderr, fmt, ...)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
  * variable does not contain `UTF-8`. */
@@ -1631,20 +1660,20 @@ unparse(Marker_array_slice markers,
       previous_marker_end        = m->start + m->len;
       previous_marker_token_type = m->token_type;
     }
-    Byte_mut_p text = slice_for_marker(src, m).start_p;
+    Byte_array_mut_slice text = slice_for_marker(src, m);
     if (options.discard_space) {
       if (m->token_type is T_SPACE) {
-        Byte_mut_p eol = text;
+        Byte_mut_p eol = text.start_p;
         size_t len = m->len;
         if (eol_pending) {
           while ((eol = memchr(eol, '\n', len))) {
-            if (eol is text || *(eol-1) is_not '\\') {
+            if (eol is text.start_p || *(eol-1) is_not '\\') {
               fputc('\n', out);
               eol_pending = false;
               break;
             }
             ++eol; // Skip the LF character we just found.
-            len = m->len - (size_t)(eol - text);
+            len = m->len - (size_t)(eol - text.start_p);
           }
           if (not eol_pending) continue;
         }
@@ -1654,55 +1683,68 @@ unparse(Marker_array_slice markers,
         eol_pending = true;
       } else if (m->token_type is T_COMMENT) {
         // If not eol_pending, set it if this is a line comment.
-        eol_pending = eol_pending || (m->len > 1 && '/' is text[1]);
+        eol_pending = eol_pending || (m->len > 1 && '/' is text.start_p[1]);
       }
     }
 
     if (m->token_type is T_PREPROCESSOR) {
       size_t len = 9; // = strlen("#define {");
-      if (m->len >= len and strn_eq("#define {", (char*)text, len)) {
+      UTF8Error err = UTF8_NO_ERROR;
+      if (m->len >= len and strn_eq("#define {", (char*)text.start_p, len)) {
+        Byte_mut_p rest = text.start_p + len;
         size_t line_length;
-        text += len;
-        if (text is_not end_of_Byte_array(src) && *text == ' ') {
+        if (rest is_not end_of_Byte_array(src) && *rest == ' ') {
           fputs("#define", out);
           line_length = 7;
         } else {
           fputs("#define ", out);
           line_length = 8;
         }
-        fwrite(text, sizeof(src->start[0]), m->len - len, out);
+        fwrite(rest, sizeof(rest[0]), m->len - len, out);
         line_length += m->len - len;
         for (++m; m is_not m_end; ++m) {
           if (options.discard_comments && m->token_type is T_COMMENT) {
             continue;
           } else if (m->token_type is T_PREPROCESSOR) {
-            text = slice_for_marker(src, m).start_p;
-            if (m->len >= 9 and strn_eq("#define }", (char*)text, 9)) {
+            text = slice_for_marker(src, m);
+            rest = text.start_p;
+            if (m->len >= 9 and strn_eq("#define }", (char*)rest, 9)) {
               fputs("/* End #define */", out);
               // Not needed: line_length += strlen("/* End #define */");
               break;
             }
-            fwrite(text, sizeof(src->start[0]), m->len, out);
-            line_length += m->len;
+            fwrite(rest, sizeof(rest[0]), m->len, out);
+            line_length += len_utf8(text.start_p, text.end_p, &err);
+            if (utf8_error(err)) {
+              fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
+              error_buffer[0] = 0;
+              return;
+            }
           } else {
-            text = slice_for_marker(src, m).start_p;
+            text = slice_for_marker(src, m);
+            rest = text.start_p;
             len = m->len;
             bool is_line_comment = false;
             if (m->token_type is T_COMMENT and len > 2) {
               // Valid comment tokens will always be at least 2 chars long,
               // but we need to check in case this one is not.
-              if ('/' == text[1]) {
-                fputc('/', out); ++text; --len; ++line_length;
-                while ('/' == *text and len) {
-                  fputc('*', out); ++text; --len; ++line_length;
+              if ('/' == rest[1]) {
+                fputc('/', out); ++rest; --len; ++line_length;
+                while ('/' == *rest and len) {
+                  fputc('*', out); ++rest; --len; ++line_length;
                 }
                 is_line_comment = true;
               }
             }
             Byte_mut_p eol;
-            while ((eol = memchr(text, '\n', len))) {
-              fwrite(text, sizeof(src->start[0]), (size_t)(eol - text), out);
-              line_length += (size_t)(eol - text);
+            while ((eol = memchr(rest, '\n', len))) {
+              fwrite(rest, sizeof(rest[0]), (size_t)(eol - rest), out);
+              line_length += len_utf8(rest, eol, &err);
+              if (utf8_error(err)) {
+                fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
+                error_buffer[0] = 0;
+                return;
+              }
               if (is_line_comment) {
                 fputs(" */", out);
                 line_length += 3;
@@ -1717,11 +1759,16 @@ unparse(Marker_array_slice markers,
               fputs("\\\n", out);
               line_length = 0;
 
-              len -= (size_t)(eol + 1 - text);
-              text = eol + 1;
+              len -= (size_t)(eol + 1 - rest);
+              rest = eol + 1;
             }
-            fwrite(text, sizeof(src->start[0]), len, out);
-            line_length += len;
+            fwrite(rest, sizeof(rest[0]), len, out);
+            line_length += len_utf8(rest, rest + len, &err);
+            if (utf8_error(err)) {
+              fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
+              error_buffer[0] = 0;
+              return;
+            }
             if (is_line_comment) {
               fputs(" */", out);
               line_length += 3;
@@ -1731,9 +1778,10 @@ unparse(Marker_array_slice markers,
         continue;
       }
       len = 10; // = strlen("#include {");
-      if (m->len >= len and strn_eq("#include {", (char*)text, len)) {
-        size_t end;
-        for (end = len; end < m->len; ++end) if (text[end] is '}') break;
+      if (m->len >= len and strn_eq("#include {", (char*)text.start_p, len)) {
+        Byte_mut_p rest = text.start_p + len;
+        Byte_mut_p end  = rest;
+        while (end < text.end_p) { if (*end is '}') break; ++end; }
         mut_Byte_array file_name = {0};
         push_str(&file_name, src_file_name);
         Byte_array_mut_slice dirname = bounds_of_Byte_array(&file_name);
@@ -1744,10 +1792,7 @@ unparse(Marker_array_slice markers,
           }
         } found_path_separator:
         file_name.len = len_Byte_array_slice(dirname);
-        append_Byte_array(&file_name, (Byte_array_slice){
-            .start_p = text + len,
-            .end_p   = text + end
-        });
+        append_Byte_array(&file_name, (Byte_array_slice){ rest, end });
         const char* included_file = as_c_string(&file_name);
         mut_Byte_array bin;
         int err = read_file(&bin, included_file);
@@ -1774,8 +1819,8 @@ unparse(Marker_array_slice markers,
     }
 
     if (options.escape_ucn and m->token_type is T_IDENTIFIER) {
-      Byte_p end = text + m->len;
-      Byte_mut_p p = text;
+      Byte_mut_p p = text.start_p;
+      Byte_p   end = text.start_p + m->len;
       while (p is_not end) {
         uint32_t u = 0;
         UTF8Error err = UTF8_NO_ERROR;
@@ -1796,7 +1841,7 @@ unparse(Marker_array_slice markers,
           // So far, there is only one token handled this way:
           putc('@', out);
     } else {
-      fwrite(text, sizeof(src->start[0]), m->len, out);
+      fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
     }
   }
 }
