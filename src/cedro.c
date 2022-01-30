@@ -1838,8 +1838,8 @@ unparse(Marker_array_slice markers,
         else                            fprintf(out, "\\U%08X", u);
       }
     } else if (m->token_type is T_OTHER and m->len is 6) {
-          // So far, there is only one token handled this way:
-          putc('@', out);
+      // So far, there is only one token handled this way:
+      putc('@', out);
     } else {
       fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
     }
