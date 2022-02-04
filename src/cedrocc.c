@@ -250,7 +250,9 @@ include(const char* file_name,
     print_file_error(err, file_name, &src);
     return err;
   } else {
-    parse(&src, &markers);
+    Byte_array_mut_slice region = bounds_of_Byte_array(&src);
+    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
+    parse(&src, region, &markers);
     if (level is_not 0) {
       if (markers.len is 1) {
         // Included file is not a Cedro file.

@@ -94,6 +94,18 @@ error(const char * const fmt, ...)
   assert(len < error_buffer_size);
   va_end(args);
 }
+static void
+error_append(const char* const start, const char* const end)
+{
+  size_t len = (size_t)(end - start);
+  size_t previous_len = strlen(error_buffer);
+  assert(previous_len + len < error_buffer_size);
+  if (previous_len + len + 1 > error_buffer_size) {
+    len = error_buffer_size - 1 - previous_len;
+  }
+  memcpy(error_buffer + previous_len, start, len);
+  error_buffer[previous_len + len] = 0;
+}
 
 #define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
@@ -223,7 +235,7 @@ eprint(const char * const fmt, ...)
       buffer = &small[0];
     } else {
       buffer = malloc(needed);
-      if (!buffer) {
+      if (not buffer) {
         fprintf(stderr,
                 LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
                      "Out of memory error. %lu bytes needed.\n"),
@@ -262,7 +274,7 @@ eprint(const char * const fmt, ...)
         }
       }
     }
-    if (buffer != &small[0]) free(buffer);
+    if (buffer is_not &small[0]) free(buffer);
   }
 
   va_end(args);
@@ -437,6 +449,7 @@ TYPEDEF(Byte, uint8_t);
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
  * for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
+//DEFINE_ARRAY_OF(Byte_array_slice, 0, {});
 
 /** Append the C string bytes to the end of the given buffer. */
 static void
@@ -465,7 +478,7 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
     available = _->capacity - _->len;
     vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   }
-  _->len += needed;
+  _->len += (needed > available? available: needed);
 
   va_end(args);
 }
@@ -499,7 +512,7 @@ read_file(mut_Byte_array_p _, FilePath path)
 {
   int err = 0; // No error.
   mut_File_p input = fopen(path, "r");
-  if (!input) {
+  if (not input) {
     init_Byte_array(_, 0);
     return errno;
   }
@@ -545,6 +558,18 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
   _->start      = index_Byte_array(src, start);
   _->len        = (size_t)(end - start);
   _->token_type = token_type;
+}
+
+/** Check whether two markers represent the same token. */
+static bool
+is_same_token(Marker_p a, Marker_p b, Byte_array_p src)
+{
+  return (a->token_type is b->token_type and
+          a->len        is b->len        and
+          mem_eq(get_Byte_array(src, a->start),
+                 get_Byte_array(src, b->start),
+                 a->len)
+          );
 }
 
 /** Build a new marker for the given string,
@@ -1042,7 +1067,7 @@ comment(Byte_p start, Byte_p end)
   if (*cursor is '/') {
     do {
       cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
-      if (!cursor) { cursor = end; break; }
+      if (not cursor) { cursor = end; break; }
     } while ('\\' == *(cursor - 1));
     return cursor; // The newline is not part of the token.
   } else if (*cursor is_not '*') {
@@ -1052,8 +1077,8 @@ comment(Byte_p start, Byte_p end)
   if (cursor is end) return NULL;
   do {
     cursor = memchr(cursor + 1, '/', (size_t)(end - cursor));
-    if (!cursor) { cursor = end; break; }
-  } while ('*' != *(cursor - 1));
+    if (not cursor) { cursor = end; break; }
+  } while (*(cursor - 1) is_not '*');
   return (cursor is end)? end: cursor + 1;// Token includes the closing symbol.
 }
 
@@ -1067,7 +1092,7 @@ preprocessor(Byte_p start, Byte_p end)
   if (cursor is_not end and *cursor is '#') return cursor + 1;
   do {
     cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
-    if (!cursor) { cursor = end; break; }
+    if (not cursor) { cursor = end; break; }
   } while ('\\' == *(cursor - 1));
   return cursor; // The newline is not part of the token.
 }
@@ -1468,6 +1493,21 @@ error_at(const char * message, Marker_p cursor, mut_Marker_array_p _, mut_Byte_a
   destruct_Byte_array(&buffer);
 }
 
+/** Similar to error_at() but instead of modifying the marker array
+ * it writes the message immediately to the output stream.
+ * This one is meant for the `unparse*()` functions.
+ */
+static void
+write_error_at(const char * message,
+               Marker_p cursor, Byte_array_p src,
+               FILE* out)
+{
+  fprintf(out, "\n#line %lu", original_line_number(cursor->start, src));
+  fprintf(out, "\n#error ");
+  fprintf(out, message);
+  fprintf(out, "\n");
+}
+
 /** ISO/IEC 9899:TC3 WG14/N1256 §6.7.8 page 126:
  * “14 An array of character type may be initialized by a character string
  *     literal, optionally enclosed in braces. Successive characters of the
@@ -1500,6 +1540,49 @@ tabulate_eprint(size_t skip, size_t tabulator)
 {
   if (skip > tabulator) skip = tabulator;
   while (skip++ is_not tabulator) eprint(" ");
+}
+
+/** Print a human-legible dump of the given marker to stderr.
+ * If you want to print several consecutive markers,
+ * `print_markers()` is much more efficient because this function
+ * requires one heap allocation for each call, which is done only once
+ * in `print_markers()` for all the markers.
+ *  @param[in] marker for a token.
+ *  @param[in] src original source code.
+ */
+static void
+print_marker(Marker_p m, Byte_array_p src)
+{
+  mut_Byte_array token_text;
+  init_Byte_array(&token_text, 80);
+  extract_src(m, m+1, src, &token_text);
+  const char * const token = as_c_string(&token_text);
+  switch (m->token_type) {
+    case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+      eprint("“%s”", token);
+      break;
+    case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+      eprint("“%s”", token);
+      break;
+    case T_SPACE:
+      eprint("“");
+      for (size_t i = 0; i is_not token_text.len; ++i) {
+        Byte c = *get_mut_Byte_array(&token_text, i);
+        switch (c) {
+          case '\n': eprint("\\n"); break;
+          case '\r': eprint("\\r"); break;
+          case '\t': eprint("\\t"); break;
+          default:   eprint("%c", c);
+        }
+      }
+      eprint("”");
+      break;
+    default:
+      eprint("“%s”", token);
+  }
+  tabulate_eprint(m->len, markers_tabulator);
+  eprintln(" ← %s", TokenType_STRING[m->token_type]);
+  destruct_Byte_array(&token_text);
 }
 
 /** Print a human-legible dump of the markers array to stderr.
@@ -1595,7 +1678,7 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
 static void
 debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p markers, Byte_array_p src) {
   eprintln("%s:", label);
-  size_t i = (size_t)(cursor - start_of_Marker_array(markers));
+  size_t i = index_Marker_array(markers, cursor);
   size_t start = i > radius? i - radius: 0;
   size_t end   = i+1 + radius;
   if (start > markers->len) start = markers->len;
@@ -1605,245 +1688,6 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
   print_markers(markers, src, "  ", start, i    );
   print_markers(markers, src, "* ", i    , i + 1);
   print_markers(markers, src, "  ", i + 1, end  );
-}
-
-/** Format the markers back into source code form.
- *  @param[in] markers tokens for the current form of the program.
- *  @param[in] src original source code, with any new tokens appended.
- *  @param[in] original_src_len original source code length.
- *  @param[in] src_file_name file name corresponding to `src`.
- *  @param[in] options formatting options.
- *  @param[out] out FILE pointer where the source code will be written.
- */
-static void
-unparse(Marker_array_slice markers,
-        Byte_array_p src, size_t original_src_len, const char* src_file_name,
-        Options options, FILE* out)
-{
-  assert(markers.end_p >= markers.start_p);
-  Marker_p m_end = markers.end_p;
-  bool eol_pending = false;
-  size_t previous_marker_end        = 0;
-  size_t previous_marker_token_type = T_NONE;
-  bool line_directive_pending = false;
-  for (Marker_mut_p m = markers.start_p; m is_not m_end; ++m) {
-    if (options.discard_comments && m->token_type is T_COMMENT) {
-      if (options.discard_space && not eol_pending &&
-          m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
-      continue;
-    }
-    if (options.insert_line_directives) {
-      if (m->start is_not previous_marker_end) {
-        if (m->token_type is T_SPACE) {
-          line_directive_pending = true;
-        } else if (m->start >= original_src_len) {
-          // Skip it if m did not come from the original src.
-        } else {
-          // If both this and the previous tokens were identifiers,
-          // it means a new identifier made by concatenation in a macro,
-          // so do not put a #line directive inbetween.
-          // Same for numbers, in case they are built by some future macro.
-          if (not(previous_marker_token_type is m->token_type and
-                  (previous_marker_token_type is T_IDENTIFIER or
-                   previous_marker_token_type is T_NUMBER)
-                  )) {
-            fprintf(out, "\n#line %lu \"%s\"\n",
-                    original_line_number(m->start, src), src_file_name);
-            line_directive_pending = false;
-          }
-        }
-      } else if (line_directive_pending) {
-        fprintf(out, "\n#line %lu \"%s\"\n",
-                original_line_number(m->start, src), src_file_name);
-        line_directive_pending = false;
-      }
-      previous_marker_end        = m->start + m->len;
-      previous_marker_token_type = m->token_type;
-    }
-    Byte_array_mut_slice text = slice_for_marker(src, m);
-    if (options.discard_space) {
-      if (m->token_type is T_SPACE) {
-        Byte_mut_p eol = text.start_p;
-        size_t len = m->len;
-        if (eol_pending) {
-          while ((eol = memchr(eol, '\n', len))) {
-            if (eol is text.start_p || *(eol-1) is_not '\\') {
-              fputc('\n', out);
-              eol_pending = false;
-              break;
-            }
-            ++eol; // Skip the LF character we just found.
-            len = m->len - (size_t)(eol - text.start_p);
-          }
-          if (not eol_pending) continue;
-        }
-        fputc(' ', out);
-        continue;
-      } else if (m->token_type is T_PREPROCESSOR) {
-        eol_pending = true;
-      } else if (m->token_type is T_COMMENT) {
-        // If not eol_pending, set it if this is a line comment.
-        eol_pending = eol_pending || (m->len > 1 && '/' is text.start_p[1]);
-      }
-    }
-
-    if (m->token_type is T_PREPROCESSOR) {
-      size_t len = 9; // = strlen("#define {");
-      UTF8Error err = UTF8_NO_ERROR;
-      if (m->len >= len and strn_eq("#define {", (char*)text.start_p, len)) {
-        Byte_mut_p rest = text.start_p + len;
-        size_t line_length;
-        if (rest is_not end_of_Byte_array(src) && *rest == ' ') {
-          fputs("#define", out);
-          line_length = 7;
-        } else {
-          fputs("#define ", out);
-          line_length = 8;
-        }
-        fwrite(rest, sizeof(rest[0]), m->len - len, out);
-        line_length += m->len - len;
-        for (++m; m is_not m_end; ++m) {
-          if (options.discard_comments && m->token_type is T_COMMENT) {
-            continue;
-          } else if (m->token_type is T_PREPROCESSOR) {
-            text = slice_for_marker(src, m);
-            rest = text.start_p;
-            if (m->len >= 9 and strn_eq("#define }", (char*)rest, 9)) {
-              fputs("/* End #define */", out);
-              // Not needed: line_length += strlen("/* End #define */");
-              break;
-            }
-            fwrite(rest, sizeof(rest[0]), m->len, out);
-            line_length += len_utf8(text.start_p, text.end_p, &err);
-            if (utf8_error(err)) {
-              fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
-              error_buffer[0] = 0;
-              return;
-            }
-          } else {
-            text = slice_for_marker(src, m);
-            rest = text.start_p;
-            len = m->len;
-            bool is_line_comment = false;
-            if (m->token_type is T_COMMENT and len > 2) {
-              // Valid comment tokens will always be at least 2 chars long,
-              // but we need to check in case this one is not.
-              if ('/' == rest[1]) {
-                fputc('/', out); ++rest; --len; ++line_length;
-                while ('/' == *rest and len) {
-                  fputc('*', out); ++rest; --len; ++line_length;
-                }
-                is_line_comment = true;
-              }
-            }
-            Byte_mut_p eol;
-            while ((eol = memchr(rest, '\n', len))) {
-              fwrite(rest, sizeof(rest[0]), (size_t)(eol - rest), out);
-              line_length += len_utf8(rest, eol, &err);
-              if (utf8_error(err)) {
-                fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
-                error_buffer[0] = 0;
-                return;
-              }
-              if (is_line_comment) {
-                fputs(" */", out);
-                line_length += 3;
-                is_line_comment = false;
-              }
-              fputc(' ', out);
-              line_length += 1;
-
-              fwrite(spacing, sizeof(spacing[0]),
-                     line_length < right_margin? right_margin - line_length: 0,
-                     out);
-              fputs("\\\n", out);
-              line_length = 0;
-
-              len -= (size_t)(eol + 1 - rest);
-              rest = eol + 1;
-            }
-            fwrite(rest, sizeof(rest[0]), len, out);
-            line_length += len_utf8(rest, rest + len, &err);
-            if (utf8_error(err)) {
-              fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
-              error_buffer[0] = 0;
-              return;
-            }
-            if (is_line_comment) {
-              fputs(" */", out);
-              line_length += 3;
-            }
-          }
-        }
-        continue;
-      }
-      len = 10; // = strlen("#include {");
-      if (m->len >= len and strn_eq("#include {", (char*)text.start_p, len)) {
-        Byte_mut_p rest = text.start_p + len;
-        Byte_mut_p end  = rest;
-        while (end < text.end_p) { if (*end is '}') break; ++end; }
-        mut_Byte_array file_name = {0};
-        push_str(&file_name, src_file_name);
-        Byte_array_mut_slice dirname = bounds_of_Byte_array(&file_name);
-        while (dirname.end_p is_not dirname.start_p) {
-          switch (*(dirname.end_p-1)) {
-            case '/': case '\\': goto found_path_separator;
-            default: --dirname.end_p;
-          }
-        } found_path_separator:
-        file_name.len = len_Byte_array_slice(dirname);
-        append_Byte_array(&file_name, (Byte_array_slice){ rest, end });
-        const char* included_file = as_c_string(&file_name);
-        mut_Byte_array bin;
-        int err = read_file(&bin, included_file);
-        if (err) {
-          print_file_error(err, included_file, &bin);
-          fprintf(out, ";\n#error %s: %s\n", strerror(errno), included_file);
-          break;
-        }
-        const char*    basename = strrchr(included_file, '/');
-        if (!basename) basename = strrchr(included_file, '\\');
-        if (basename) ++basename; else basename = included_file;
-        fprintf(out, "[%lu] = { /* %s */\n0x%2X",
-                bin.len, basename, bin.start[0]);
-        for (size_t i = 1; i is_not bin.len; ++i) {
-          fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
-        }
-        fputs("\n}", out);
-        destruct_Byte_array(&bin);
-        destruct_Byte_array(&file_name);
-
-        if (m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
-        continue;
-      }
-    }
-
-    if (options.escape_ucn and m->token_type is T_IDENTIFIER) {
-      Byte_mut_p p = text.start_p;
-      Byte_p   end = text.start_p + m->len;
-      while (p is_not end) {
-        uint32_t u = 0;
-        UTF8Error err = UTF8_NO_ERROR;
-        p = decode_utf8(p, end, &u, &err);
-        if (utf8_error(err)) {
-          fprintf(out, "%s\n", error_buffer);
-          error_buffer[0] = 0;
-          return;
-        }
-        if      ((u & 0xFFFFFF80) is 0 and
-                 u is_not 0x0024 and
-                 u is_not 0x0040 and
-                 u is_not 0x0060)       fputc((unsigned char)u, out);
-        else if ((u & 0xFFFF0000) is 0) fprintf(out, "\\u%04X", u);
-        else                            fprintf(out, "\\U%08X", u);
-      }
-    } else if (m->token_type is T_OTHER and m->len is 6) {
-      // So far, there is only one token handled this way:
-      putc('@', out);
-    } else {
-      fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
-    }
-  }
 }
 
 /** Match a keyword or identifier.
@@ -1963,30 +1807,30 @@ keyword_or_identifier(Byte_p start, Byte_p end)
 #define TOKEN2(token) ++token_end;    TOKEN1(token)
 #define TOKEN3(token) token_end += 2; TOKEN1(token)
 
-/** Parse the given source code into the `markers` array,
- * appending the new markers to whatever was already there.
- *
- *  The file must contain `#pragma Cedro x.y`
- * with `x` as the major and `y` as the minor revision.
+/** Wrap everything in the input up to `#pragma Cedro x.y` into a single token
+ * for efficiency.
  *  Everything up to that marker is output verbatim without any processing,
  * so standard C files are by default not modified.
- *
- *  Remember to empty the `markers` array before calling this function
- * if you are re-parsing from scratch.
  *
  *  Example:
  * ```
  * mut_Marker_array markers;
  * init_Marker_array(&markers, 8192);
- * parse(&src, &markers);
+ * mut_Byte_array src;
+ * init_Byte_array(&src, 80);
+ * push_str(&src, "#pragma Cedro 1.0\nprintf(\"hello\\n\", i);");
+ * Byte_array_mut_slice region = bounds_of_Byte_array(&src);
+ * region.start_p = parse_skip_until_cedro_pragma(&src, region, markers);
+ * parse(&src, region, &markers);
+ * print_markers(&markers, &src, "", 0, markers.len);
  * ```
  */
 static Byte_p
-parse(Byte_array_p src, mut_Marker_array_p markers)
+parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
 {
   assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
-  Byte_mut_p cursor = start_of_Byte_array(src);
-  Byte_p     end    =   end_of_Byte_array(src);
+  Byte_mut_p cursor = region.start_p;
+  Byte_p     end    = region.end_p;
   Byte_mut_p prev_cursor = NULL;
   bool previous_token_is_value = false;
 
@@ -2035,9 +1879,36 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
     init_Marker(&inert,
                 start_of_Byte_array(src), end_of_Byte_array(src), src, T_NONE);
     push_Marker_array(markers, inert);
-
-    return cursor;
   }
+
+  return cursor;
+}
+
+/** Parse the given source code into the `markers` array,
+ * appending the new markers to whatever was already there.
+ *
+ *  Remember to empty the `markers` array before calling this function
+ * if you are re-parsing from scratch.
+ *
+ *  Example:
+ * ```
+ * mut_Marker_array markers;
+ * init_Marker_array(&markers, 8192);
+ * mut_Byte_array src;
+ * init_Byte_array(&src, 80);
+ * push_str(&src, "printf(\"hello\\n\", i);");
+ * parse(&src, bounds_of_Byte_array(&src), &markers);
+ * print_markers(&markers, &src, "", 0, markers.len);
+ * ```
+ */
+static Byte_p
+parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
+{
+  assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
+  Byte_mut_p cursor = region.start_p;
+  Byte_p     end    = region.end_p;
+  Byte_mut_p prev_cursor = NULL;
+  bool previous_token_is_value = false;
 
   while (cursor is_not end) {
     assert(cursor is_not prev_cursor);
@@ -2303,6 +2174,718 @@ parse(Byte_array_p src, mut_Marker_array_p markers)
   return cursor;
 }
 
+static inline bool
+write_token(Marker_p m, Marker_p m_end, Byte_array_p src,
+            Options options, FILE* out)
+{
+  // Default token output:
+  Byte_array_slice text = slice_for_marker(src, m);
+  if (options.escape_ucn and m->token_type is T_IDENTIFIER) {
+    Byte_mut_p p = text.start_p;
+    Byte_p   end = text.end_p;
+    while (p is_not end) {
+      uint32_t u = 0;
+      UTF8Error err = UTF8_NO_ERROR;
+      p = decode_utf8(p, end, &u, &err);
+      if (utf8_error(err)) {
+        write_error_at(error_buffer, m, src, out);
+        error_buffer[0] = 0;
+        return false;
+      }
+      if      ((u & 0xFFFFFF80) is 0 and
+               u is_not 0x0024 and
+               u is_not 0x0040 and
+               u is_not 0x0060)       fputc((unsigned char)u, out);
+      else if ((u & 0xFFFF0000) is 0) fprintf(out, "\\u%04X", u);
+      else                            fprintf(out, "\\U%08X", u);
+    }
+  } else if (m->token_type is T_OTHER and m->len is 6) {
+    // So far, there is only one token handled this way:
+    putc('@', out);
+  } else {
+    fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
+  }
+
+  return true;
+}
+
+TYPEDEF_STRUCT(Replacement, {
+    Marker_mut_p marker;
+    Marker_array_mut_slice replacement;
+  });
+DEFINE_ARRAY_OF(Replacement, 0, {});
+
+/* Prototype, defined after unparse_foreach(). */
+static Marker_p
+unparse_fragment(mut_Replacement_array_p replacements,
+                 Marker_mut_p m, Marker_p m_end,
+                 Byte_array_p src, size_t original_src_len,
+                 const char* src_file_name, Options options, FILE* out);
+/**
+ * There is no single-line variant `#foreach T {a_t, b_t, c_t} ...`.
+ * Any `#foreach { ...` must be paired with another line `#foreach }`.
+ * Assumes that the caller has already checked that `m`
+ * starts with `#foreach {` exactly.
+ * Therefore, `markers` can not be empty, but must contain at least one token.
+ *
+ * #foreach { {T, N} {{unsigned char*, Byte}, {size_t, Index}}
+ * ...
+ * #foreach }
+ */
+static Marker_p
+unparse_foreach(Marker_array_slice markers,
+                mut_Replacement_array_mut_p replacements,
+                Byte_array_p src, size_t original_src_len,
+                const char* src_file_name, Options options, FILE* out)
+{
+  assert(markers.end_p > markers.start_p);
+  Marker_mut_p m = markers.start_p;
+  Marker_p m_end = markers.end_p;
+
+  Byte_array_mut_slice text = slice_for_marker(src, m);
+  Byte_mut_p rest = text.start_p + 10; // = strlen("#foreach {");
+  mut_Byte_array msg;
+  init_Byte_array(&msg, 100);
+  append_Byte_array(&msg, (Byte_array_slice){rest, text.end_p});
+
+  if (not replacements) replacements = new_Replacement_array_p(2);
+  size_t initial_replacements_len = replacements->len;
+
+  mut_Marker_array arguments;
+  init_Marker_array(&arguments, 32);
+  parse(src, (Byte_array_slice){rest, text.end_p}, &arguments);
+
+  Marker_array_mut_slice arg = bounds_of_Marker_array(&arguments);
+  arg.start_p = skip_space_forward(arg.start_p, arg.end_p);
+  if (arg.start_p is arg.end_p) {
+    write_error_at(LANG("error sintáctico.",
+                        "syntax error."),
+                   arg.start_p, src, out);
+    m = markers.end_p;
+    goto exit;
+  }
+  switch (arg.start_p->token_type) {
+    case T_IDENTIFIER:
+      push_Replacement_array(replacements, (Replacement){
+          arg.start_p, {0}
+        });
+      ++arg.start_p;
+      break;
+    case T_BLOCK_START:
+      ++arg.start_p;
+      while (arg.start_p is_not arg.end_p) {
+        arg.start_p = skip_space_forward(arg.start_p, arg.end_p);
+        if (arg.start_p is arg.end_p) {
+          write_error_at(LANG("error sintáctico.",
+                              "syntax error."),
+                         arg.start_p, src, out);
+          m = markers.end_p;
+          goto exit;
+        }
+        if (arg.start_p->token_type is T_BLOCK_END) {
+          if (replacements->len - initial_replacements_len < 2) {
+            write_error_at(
+                LANG("no se permiten llaves con una sóla variable.",
+                     "braces are not allowed with a single variable."),
+                arg.start_p, src, out);
+            m = markers.end_p;
+            goto exit;
+          }
+          ++arg.start_p;
+          break;
+        }
+        if (arg.start_p->token_type is T_IDENTIFIER) {
+          for (size_t i = 0; i < replacements->len; ++i) {
+            if (is_same_token(arg.start_p,
+                              replacements->start[i].marker,
+                              src)) {
+              write_error_at(LANG("argumento duplicado.",
+                                  "duplicated argument."),
+                             arg.start_p, src, out);
+              m = markers.end_p;
+              goto exit;
+            }
+          }
+          push_Replacement_array(replacements, (Replacement){arg.start_p, {0}});
+          ++arg.start_p;
+          continue;
+        }
+        if (arg.start_p->token_type is_not T_COMMA) {
+          write_error_at(LANG("error sintáctico, se esperaba una coma.",
+                              "syntax error, expected a comma."),
+                         arg.start_p, src, out);
+          m = markers.end_p;
+          goto exit;
+        }
+        ++arg.start_p;
+      }
+      break;
+    default:
+      write_error_at(LANG("error sintáctico.",
+                          "syntax error."),
+                     arg.start_p, src, out);
+      m = markers.end_p;
+      goto exit;
+  }
+
+  arg.start_p = skip_space_forward(arg.start_p, arg.end_p);
+  if (arg.start_p is arg.end_p or
+      arg.start_p->token_type is_not T_BLOCK_START) {
+    write_error_at(LANG("error sintáctico en lista de valores.",
+                        "syntax error in value list."),
+                   arguments.start, src, out);
+    m = markers.end_p;
+    goto exit;
+  }
+
+  // Skip initial `{` and any spaces after it.
+  arg.start_p = skip_space_forward(arg.start_p + 1, arg.end_p);
+  if (arg.start_p is arg.end_p) {
+    write_error_at(LANG("error sintáctico en argumento.",
+                        "syntax error in argument."),
+                   arg.start_p, src, out);
+    m = m_end;
+    goto exit;
+  }
+
+  Marker_mut_p fragment_end = m_end;
+
+  while (arg.start_p is_not arg.end_p) {
+    Marker_array_mut_slice value = (Marker_array_mut_slice){
+      arg.start_p, arg.start_p
+    };
+    // Look for segment end.
+    size_t nesting = 0;
+    while (value.end_p < arg.end_p) {
+      switch (value.end_p->token_type) {
+        case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+          ++nesting;
+          break;
+        case T_BLOCK_END:
+          if (nesting is 0) goto found_args_end;
+          --nesting;
+          break;
+        case T_TUPLE_END: case T_INDEX_END:
+          if (nesting is 0) {
+            write_error_at(LANG("paréntisis desparejados en argumento.",
+                                "unpaired parentheses in argument."),
+                           arg.start_p, src, out);
+            m = markers.end_p;
+            goto exit;
+          }
+          --nesting;
+          break;
+        case T_COMMA:
+          if (not nesting) goto found_args_end;
+          break;
+        default:
+          break;
+      }
+      ++value.end_p;
+    } found_args_end:
+    if (nesting) {
+      write_error_at(LANG("grupo sin cerrar, error sintáctico",
+                          "unclosed group, syntax error."),
+                     value.start_p, src, out);
+      m = markers.end_p;
+      goto exit;
+    }
+
+    if (value.end_p is arg.end_p) {
+      write_error_at(LANG("lista de valores inconclusa",
+                          "unfinished value list"),
+                     value.start_p, src, out);
+      m = m_end;
+      goto exit;
+    }
+    // Skip ending `,` or `}` and spaces after it.
+    arg.start_p = skip_space_forward(value.end_p + 1, arg.end_p);
+    // Trim space after segment.
+    value.end_p = skip_space_back(value.start_p, value.end_p);
+
+    if (value.start_p == value.end_p) {
+      write_error_at(LANG("valor vacío",
+                          "empty value"),
+                     value.end_p, src, out);
+      m = m_end;
+      goto exit;
+    }
+
+    size_t valueIndex = initial_replacements_len;
+    if (replacements->len - initial_replacements_len is 1) {
+      replacements->start[valueIndex].replacement = value;
+    } else {
+      // Look for segment end.
+      Marker_array_mut_slice valueList = {
+        skip_space_forward(value.start_p + 1, value.end_p - 1),
+        skip_space_back   (value.start_p + 1, value.end_p - 1)
+      };
+
+      value.start_p = valueList.start_p;
+      value.end_p   = valueList.start_p;
+      nesting = 0;
+      while (value.end_p < valueList.end_p) {
+        switch (value.end_p->token_type) {
+          case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+            ++nesting;
+            break;
+          case T_BLOCK_END:
+            if (nesting is 0) {
+              // This can not happen if the code above is correct.
+              write_error_at(LANG("ERROR INTERNO 0x01 EN CEDRO",
+                                  "INTERNAL ERROR 0x01 IN CEDRO"),
+                             arg.start_p, src, out);
+              m = markers.end_p;
+              goto exit;
+            }
+            --nesting;
+            break;
+          case T_TUPLE_END: case T_INDEX_END:
+            if (nesting is 0) {
+              write_error_at(LANG("paréntisis desparejados en argumento.",
+                                  "unpaired parentheses in argument."),
+                             arg.start_p, src, out);
+              m = markers.end_p;
+              goto exit;
+            }
+            --nesting;
+            break;
+          case T_COMMA:
+            if (valueIndex is replacements->len) {
+              write_error_at(LANG("mas valores que variables",
+                                  "more values than variables"),
+                             value.start_p, src, out);
+              m = markers.end_p;
+              goto exit;
+            }
+            replacements->start[valueIndex++].replacement = value;
+            value.start_p = skip_space_forward(value.end_p+1, valueList.end_p);
+            break;
+          default:
+            break;
+        }
+        ++value.end_p;
+      }
+      if (nesting) {
+        // This can not happen if the code above is correct.
+        write_error_at(LANG("ERROR INTERNO 0x02 EN CEDRO",
+                            "INTERNAL ERROR 0x02 IN CEDRO"),
+                       value.start_p, src, out);
+        m = markers.end_p;
+        goto exit;
+      }
+      if (valueIndex is replacements->len) {
+        write_error_at(LANG("mas valores que variables",
+                            "more values than variables"),
+                       value.start_p, src, out);
+        m = markers.end_p;
+        goto exit;
+      }
+      replacements->start[valueIndex++].replacement = value;
+      if (valueIndex is_not replacements->len) {
+        write_error_at(LANG("menos valores que variables",
+                            "fewer values than variables"),
+                       value.start_p, src, out);
+        m = markers.end_p;
+        goto exit;
+      }
+      value.start_p = skip_space_forward(value.end_p+1, valueList.end_p);
+    }
+    fragment_end = unparse_fragment(replacements,
+                                    m, m_end,
+                                    src, original_src_len,
+                                    src_file_name, options, out);
+    if (error_buffer[0]) {
+      m = m_end;
+      goto exit;
+    }
+
+    value.start_p = arg.start_p;
+    value.end_p = value.start_p;
+  }
+
+  m = fragment_end;
+
+exit:
+  destruct_Byte_array(&msg);
+  destruct_Marker_array(&arguments);
+  truncate_Replacement_array(replacements, initial_replacements_len);
+  if (initial_replacements_len is 0) destruct_Replacement_array(replacements);
+
+  return m;
+}
+static Marker_p
+unparse_fragment(mut_Replacement_array_p replacements,
+                 Marker_mut_p m, Marker_p m_end,
+                 Byte_array_p src, size_t original_src_len,
+                 const char* src_file_name, Options options, FILE* out)
+{
+  Byte_array_mut_slice text;
+  Byte_mut_p rest;
+  mut_Byte_array msg;
+  init_Byte_array(&msg, 100);
+  // #foreach { {T, S} {{Byte, 1}, {Index, 8}, ...}
+  Marker_mut_p pending_space = NULL;
+  for (++m; m is_not m_end; ++m) {
+    text = slice_for_marker(src, m);
+    rest = text.start_p;
+    if (options.discard_comments && m->token_type is T_COMMENT) {
+      // Skipping the following T_SPACE token would work for a comment that
+      // were alone in this line, but not if there is something in front of it.
+      continue;
+    } else if (m->token_type is T_PREPROCESSOR) {
+      if (m->len >= 10) {
+        if        (strn_eq("#foreach }", (char*)rest, 10)) {
+          pending_space = NULL;
+          ++m; // Skip this token, point to T_SPACE newline after it.
+          break;
+        } else if (strn_eq("#foreach {", (char*)rest, 10)) {
+          pending_space = NULL;
+          rest += 10;
+          msg.len = 0;
+          append_Byte_array(&msg, (Byte_array_slice){rest, text.end_p});
+          m = unparse_foreach((Marker_array_slice){ m, m_end },
+                              replacements,
+                              src, original_src_len,
+                              src_file_name, options, out);
+          --m; // Loop will increase m for next iteration.
+          continue;
+        }
+      }
+    } else if (m->token_type is T_IDENTIFIER) {
+      // If token needs replacement, output replacement here instead.
+      Replacement_array_mut_slice r =
+          bounds_of_Replacement_array(replacements);
+      Marker_mut_p placeholder = NULL;
+      Marker_array_mut_slice value = {0};
+      while (r.start_p is_not r.end_p) {
+        if (is_same_token(r.start_p->marker, m, src)) {
+          placeholder = r.start_p->marker;
+          value       = r.start_p->replacement;
+          if (value.start_p is 0) {
+            error(LANG("falta el valor para la variable ",
+                       "missing value for variable "));
+            text = slice_for_marker(src, placeholder);
+            error_append((const char*)text.start_p, (const char*)text.end_p);
+            write_error_at(error_buffer, m, src, out);
+            error_buffer[0] = 0;
+            m = m_end;
+            goto exit;
+          }
+          break;
+        }
+        ++r.start_p;
+      }
+      if (placeholder) {
+        if (pending_space) {
+          if (not
+              write_token(pending_space, m_end, src, options, out)) goto exit;
+          pending_space = NULL;
+        }
+        for (Marker_mut_p m = value.start_p; m is_not value.end_p; ++m) {
+          if (not write_token(m, m_end, src, options, out)) goto exit;
+        }
+        continue;
+      }
+    }
+
+    // Default token output:
+    if (pending_space) {
+      if (not write_token(pending_space, m_end, src, options, out)) goto exit;
+      pending_space = NULL;
+    }
+    if (m->token_type is T_SPACE) {
+      pending_space = m;
+      continue;
+    }
+    if (not write_token(m, m_end, src, options, out)) goto exit;
+  }
+
+  if (pending_space) {
+    if (not write_token(pending_space, m_end, src, options, out)) goto exit;
+    pending_space = NULL;
+  }
+
+exit:
+  destruct_Byte_array(&msg);
+  return m;
+}
+
+/** Format the markers back into source code form.
+ *  @param[in] markers tokens for the current form of the program.
+ *  @param[in] src original source code, with any new tokens appended.
+ *  @param[in] original_src_len original source code length.
+ *  @param[in] src_file_name file name corresponding to `src`.
+ *  @param[in] options formatting options.
+ *  @param[out] out FILE pointer where the source code will be written.
+ */
+static void
+unparse(Marker_array_slice markers,
+        Byte_array_p src, size_t original_src_len, const char* src_file_name,
+        Options options, FILE* out)
+{
+  assert(markers.end_p >= markers.start_p);
+  Marker_p m_end = markers.end_p;
+  bool eol_pending = false;
+  size_t previous_marker_end        = 0;
+  size_t previous_marker_token_type = T_NONE;
+  bool line_directive_pending = false;
+  Marker_mut_p pending_space = NULL;
+  for (Marker_mut_p m = markers.start_p; m is_not m_end; ++m) {
+    if (options.discard_comments && m->token_type is T_COMMENT) {
+      if (options.discard_space && not eol_pending &&
+          m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
+      if (pending_space) {
+        if (not write_token(pending_space, m_end, src, options, out)) m = m_end;
+        pending_space = NULL;
+      }
+      continue;
+    }
+    if (options.insert_line_directives) {
+      if (m->start is_not previous_marker_end) {
+        if (pending_space) {
+          if (not write_token(pending_space, m_end, src, options, out)) {
+            m = m_end;
+            break;
+          }
+          pending_space = NULL;
+        }
+        if (m->token_type is T_SPACE) {
+          line_directive_pending = true;
+        } else if (m->start >= original_src_len) {
+          // Skip it if m did not come from the original src.
+        } else {
+          // If both this and the previous tokens were identifiers,
+          // it means a new identifier made by concatenation in a macro,
+          // so do not put a #line directive inbetween.
+          // Same for numbers, in case they are built by some future macro.
+          if (not(previous_marker_token_type is m->token_type and
+                  (previous_marker_token_type is T_IDENTIFIER or
+                   previous_marker_token_type is T_NUMBER)
+                  )) {
+            fprintf(out, "\n#line %lu \"%s\"\n",
+                    original_line_number(m->start, src), src_file_name);
+            line_directive_pending = false;
+          }
+        }
+      } else if (line_directive_pending) {
+        fprintf(out, "\n#line %lu \"%s\"",
+                original_line_number(m->start, src), src_file_name);
+        if (not pending_space or not has_byte('\n', pending_space, src)) {
+          putc('\n', out);
+        }
+        line_directive_pending = false;
+      }
+      previous_marker_end        = m->start + m->len;
+      previous_marker_token_type = m->token_type;
+    }
+    Byte_array_mut_slice text = slice_for_marker(src, m);
+    if (options.discard_space) {
+      if (m->token_type is T_SPACE) {
+        Byte_mut_p eol = text.start_p;
+        size_t len = m->len;
+        if (eol_pending) {
+          while ((eol = memchr(eol, '\n', len))) {
+            if (eol is text.start_p || *(eol-1) is_not '\\') {
+              fputc('\n', out);
+              eol_pending = false;
+              break;
+            }
+            ++eol; // Skip the LF character we just found.
+            len = m->len - (size_t)(eol - text.start_p);
+          }
+          if (not eol_pending) continue;
+        }
+        fputc(' ', out);
+        pending_space = NULL;
+        continue;
+      } else if (m->token_type is T_PREPROCESSOR) {
+        eol_pending = true;
+      } else if (m->token_type is T_COMMENT) {
+        // If not eol_pending, set it if this is a line comment.
+        eol_pending = eol_pending || (m->len > 1 && '/' is text.start_p[1]);
+      }
+    }
+
+    if (m->token_type is T_PREPROCESSOR and options.apply_macros) {
+      size_t len = 9; // = strlen("#define {");
+      UTF8Error err = UTF8_NO_ERROR;
+      if (m->len >= len and strn_eq("#define {", (char*)text.start_p, len)) {
+        if (pending_space) {
+          if (not write_token(pending_space, m_end, src, options, out)) {
+            m = m_end;
+            break;
+          }
+          pending_space = NULL;
+        }
+        Byte_mut_p rest = text.start_p + len;
+        size_t line_length;
+        if (rest is_not end_of_Byte_array(src) && *rest == ' ') {
+          fputs("#define", out);
+          line_length = 7;
+        } else {
+          fputs("#define ", out);
+          line_length = 8;
+        }
+        fwrite(rest, sizeof(rest[0]), m->len - len, out);
+        line_length += m->len - len;
+        for (++m; m is_not m_end; ++m) {
+          if (options.discard_comments && m->token_type is T_COMMENT) {
+            continue;
+          } else if (m->token_type is T_PREPROCESSOR) {
+            text = slice_for_marker(src, m);
+            rest = text.start_p;
+            if (m->len >= 9 and strn_eq("#define }", (char*)rest, 9)) {
+              fputs("/* End #define */", out);
+              // Not needed: line_length += strlen("/* End #define */");
+              break;
+            }
+            fwrite(rest, sizeof(rest[0]), m->len, out);
+            line_length += len_utf8(text.start_p, text.end_p, &err);
+            if (utf8_error(err)) {
+              fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
+              error_buffer[0] = 0;
+              return;
+            }
+          } else {
+            text = slice_for_marker(src, m);
+            rest = text.start_p;
+            len = m->len;
+            bool is_line_comment = false;
+            if (m->token_type is T_COMMENT and len > 2) {
+              // Valid comment tokens will always be at least 2 chars long,
+              // but we need to check in case this one is not.
+              if ('/' == rest[1]) {
+                fputc('/', out); ++rest; --len; ++line_length;
+                while ('/' == *rest and len) {
+                  fputc('*', out); ++rest; --len; ++line_length;
+                }
+                is_line_comment = true;
+              }
+            }
+            Byte_mut_p eol;
+            while ((eol = memchr(rest, '\n', len))) {
+              fwrite(rest, sizeof(rest[0]), (size_t)(eol - rest), out);
+              line_length += len_utf8(rest, eol, &err);
+              if (utf8_error(err)) {
+                fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
+                error_buffer[0] = 0;
+                return;
+              }
+              if (is_line_comment) {
+                fputs(" */", out);
+                line_length += 3;
+                is_line_comment = false;
+              }
+              fputc(' ', out);
+              line_length += 1;
+
+              fwrite(spacing, sizeof(spacing[0]),
+                     line_length < right_margin? right_margin - line_length: 0,
+                     out);
+              fputs("\\\n", out);
+              line_length = 0;
+
+              len -= (size_t)(eol + 1 - rest);
+              rest = eol + 1;
+            }
+            fwrite(rest, sizeof(rest[0]), len, out);
+            line_length += len_utf8(rest, rest + len, &err);
+            if (utf8_error(err)) {
+              fprintf(out, ";\n#error UTF-8: %s\n", error_buffer);
+              error_buffer[0] = 0;
+              return;
+            }
+            if (is_line_comment) {
+              fputs(" */", out);
+              line_length += 3;
+            }
+          }
+        }
+        --m; // Loop will increase m for next iteration.
+        continue;
+      }
+
+      len = 10; // = strlen("#include {");
+      if (m->len >= len and strn_eq("#include {", (char*)text.start_p, len)) {
+        Byte_mut_p rest = text.start_p + len;
+        Byte_mut_p end  = rest;
+        while (end < text.end_p) { if (*end is '}') break; ++end; }
+        mut_Byte_array file_name = {0};
+        push_str(&file_name, src_file_name);
+        Byte_array_mut_slice dirname = bounds_of_Byte_array(&file_name);
+        while (dirname.end_p is_not dirname.start_p) {
+          switch (*(dirname.end_p-1)) {
+            case '/': case '\\': goto found_path_separator;
+            default: --dirname.end_p;
+          }
+        } found_path_separator:
+        file_name.len = len_Byte_array_slice(dirname);
+        append_Byte_array(&file_name, (Byte_array_slice){ rest, end });
+        const char* included_file = as_c_string(&file_name);
+        mut_Byte_array bin;
+        int err = read_file(&bin, included_file);
+        if (err) {
+          print_file_error(err, included_file, &bin);
+          fprintf(out, ";\n#error %s: %s\n", strerror(errno), included_file);
+          break;
+        }
+        const char*    basename = strrchr(included_file, '/');
+        if (not basename) basename = strrchr(included_file, '\\');
+        if (basename) ++basename; else basename = included_file;
+        fprintf(out, "[%lu] = { /* %s */\n0x%2X",
+                bin.len, basename, bin.start[0]);
+        for (size_t i = 1; i is_not bin.len; ++i) {
+          fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+        }
+        fputs("\n}", out);
+        destruct_Byte_array(&bin);
+        destruct_Byte_array(&file_name);
+
+        if (m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
+        continue;
+      }
+
+      len = 10; // = strlen("#foreach {");
+      if (m->len >= len and strn_eq("#foreach {", (char*)text.start_p, len)) {
+        m = unparse_foreach((Marker_array_slice){ m, m_end },
+                            NULL,
+                            src, original_src_len,
+                            src_file_name, options, out);
+        pending_space = NULL;
+        --m; // Loop will increase m for next iteration.
+        continue;
+      }
+    } else if (m->token_type is T_SPACE) {
+      if (pending_space) {
+        if (not write_token(pending_space, m_end, src, options, out)) {
+          m = m_end;
+          break;
+        }
+      }
+      pending_space = m;
+      continue;
+    }
+
+    // Default token output:
+    if (pending_space) {
+      if (not write_token(pending_space, m_end, src, options, out)) break;
+      pending_space = NULL;
+    }
+    if (not write_token(m, m_end, src, options, out)) m = m_end;
+  }
+
+  if (pending_space) {
+    write_token(pending_space, m_end, src, options, out);
+    pending_space = NULL;
+  }
+
+  if (error_buffer[0]) {
+    fprintf(out, "\n#error %s\n", error_buffer);
+    error_buffer[0] = 0;
+  }
+}
+
 typedef void (*MacroFunction_p)(mut_Marker_array_p markers,
                                 mut_Byte_array_p src);
 typedef const struct Macro {
@@ -2331,7 +2914,9 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
   for (size_t i = repetitions + 1; i; --i) {
     delete_Marker_array(&markers, 0, markers.len);
 
-    parse(src_p, &markers);
+    Byte_array_mut_slice region = bounds_of_Byte_array(src_p);
+    region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers);
+    parse(src_p, region, &markers);
 
     if (options->apply_macros) {
       Macro_p macro = macros;
@@ -2508,7 +3093,9 @@ int main(int argc, char** argv)
 
     markers.len = 0;
 
-    parse(&src, &markers);
+    Byte_array_mut_slice region = bounds_of_Byte_array(&src);
+    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
+    parse(&src, region, &markers);
 
     size_t original_src_len = src.len;
 
