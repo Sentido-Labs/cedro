@@ -1887,6 +1887,7 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
       if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
         if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
           if (cursor is_not start_of_Byte_array(src)) {
+            if (*(cursor-1) is '\n') --cursor;
             mut_Marker inert;
             init_Marker(&inert, start_of_Byte_array(src), cursor, src, T_NONE);
             push_Marker_array(markers, inert);
