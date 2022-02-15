@@ -3198,28 +3198,27 @@ int main(int argc, char** argv)
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
     if (arg[0] is '-') {
-      bool flag_value = true;
-      if (strn_eq("--no-", arg, 6)) flag_value = false;
-      if (str_eq("--apply-macros", arg) ||
-          str_eq("--not-apply-macros", arg)) {
+      bool flag_value = !strn_eq("--no-", arg, 6);
+      if        (str_eq("--apply-macros", arg) ||
+                 str_eq("--no-apply-macros", arg)) {
         options.apply_macros = flag_value;
       } else if (str_eq("--escape-ucn", arg) ||
-                 str_eq("--not-escape-ucn", arg)) {
+                 str_eq("--no-escape-ucn", arg)) {
         options.escape_ucn = flag_value;
       } else if (str_eq("--discard-comments", arg) ||
-                 str_eq("--not-discard-comments", arg)) {
+                 str_eq("--no-discard-comments", arg)) {
         options.discard_comments = flag_value;
       } else if (str_eq("--discard-space", arg) ||
-                 str_eq("--not-discard-space", arg)) {
+                 str_eq("--no-discard-space", arg)) {
         options.discard_space = flag_value;
       } else if (str_eq("--insert-line-directives", arg) ||
-                 str_eq("--not-insert-line-directives", arg)) {
+                 str_eq("--no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
       } else if (str_eq("--print-markers", arg) ||
-                 str_eq("--not-print-markers", arg)) {
+                 str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
       } else if (str_eq("--enable-core-dump", arg) ||
-                 str_eq("--not-enable-core-dump", arg)) {
+                 str_eq("--no-enable-core-dump", arg)) {
         opt_enable_core_dump = flag_value;
       } else if (str_eq("--benchmark", arg)) {
         opt_run_benchmark = true;
