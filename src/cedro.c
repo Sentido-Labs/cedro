@@ -511,7 +511,7 @@ static int
 read_file(mut_Byte_array_p _, FilePath path)
 {
   int err = 0; // No error.
-  mut_File_p input = fopen(path, "r");
+  mut_File_p input = path[0]? fopen(path, "r"): stdin;
   if (not input) {
     init_Byte_array(_, 0);
     return errno;
@@ -530,6 +530,32 @@ read_file(mut_Byte_array_p _, FilePath path)
            (_->capacity - _->len) * sizeof(_->start[0]));
   }
   fclose(input);
+  return err;
+}
+
+/** Read into the given buffer. Returns error code, 0 if it succeeds. */
+static int
+read_stream(mut_Byte_array_p _, FILE* input)
+{
+  int err = 0; // No error.
+  if (not input) {
+    init_Byte_array(_, 0);
+    return errno;
+  }
+  size_t offset = 0;
+  init_Byte_array(_, 4096); // 4 KB, for instance.
+  while (not feof(input)) {
+    ensure_capacity_Byte_array(_, _->len + 4096);
+    size_t read = fread(_->start + _->len, sizeof(_->start[0]), 4096, input);
+    if (read is 0) break;
+    _->len += read;
+  }
+  if (ferror(input)) {
+    err = errno;
+  } else {
+    memset(_->start + _->len, 0,
+           (_->capacity - _->len) * sizeof(_->start[0]));
+  }
   return err;
 }
 
@@ -3107,6 +3133,7 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 static const char* const
 usage_es =
     "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
+    "  Usa - en vez de fichero.c para leer desde stdin.\n"
     "  El resultado va a stdout, para entregarlo al compilador:\n"
     " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
@@ -3138,6 +3165,7 @@ usage_es =
 static const char* const
 usage_en =
     "Usage: cedro [options] file.c [file2.c … ]\n"
+    "  Use - instead of file.c to read from stdin.\n"
     "  The result goes to stdout, to be fed into the compiler:\n"
     " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"
@@ -3197,7 +3225,7 @@ int main(int argc, char** argv)
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
-    if (arg[0] is '-') {
+    if (arg[0] is '-' and arg[1] is_not '\0') {
       bool flag_value = !strn_eq("--no-", arg, 6);
       if        (str_eq("--apply-macros", arg) ||
                  str_eq("--no-apply-macros", arg)) {
@@ -3244,18 +3272,28 @@ int main(int argc, char** argv)
   mut_Marker_array markers;
   init_Marker_array(&markers, 8192);
 
+  FILE* out = stdout;
+
   for (int i = 1; i < argc; ++i) {
     char* file_name = argv[i];
-    if (file_name[0] is '-') continue;
+    if (file_name[0] is '-') {
+      if (file_name[1] is_not '\0') continue;
+      file_name[0] = '\0'; // Make file_name the empty string.
+    } else if (file_name[0] is '\0') {
+      // Do not allow `cedro ""` as alternative for `cedro -` because it is
+      // likely to be a mistake, e.g. an undefined variable in a shell script.
+      fprintf(out, "#error The file name is the empty string.\n");
+      break;
+    }
 
-    FILE* out = stdout;
-
-    mut_Byte_array src;
-    int err = read_file(&src, file_name);
+    mut_Byte_array src = {0};
+    int err = file_name[0]?
+        read_file(&src, file_name):
+        read_stream(&src, stdin);
     if (err) {
       print_file_error(err, file_name, &src);
-      fprintf(out, ";\n#error %s: %s\n", strerror(errno), file_name);
-      break;
+      fprintf(out, "#error The file name is the empty string.\n");
+      return 11;
     }
 
     markers.len = 0;
