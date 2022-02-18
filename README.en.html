@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8"/>
     <title>C programming language extension: Cedro pre-processor</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -198,7 +198,7 @@ nvgFill(graphics_context);</code>
       <p>Note: the <code>@</code> symbol is not recognized
         when written as <code>\u0040</code>,
         but it gets converted to <code>@</code> in the output.
-        This can be used to escape it when chaining Cedro with another
+        This serves to escape it when chaining Cedro with another
         pre-processor that uses it.</p>
 
       <h3 id="backstitch-operator-related-work">Related work <a class="anchor" href="#backstitch-operator-related-work">#…-related-work</a></h3>
@@ -345,7 +345,7 @@ int main(void)
       <table>
         <tr>
 <td><code>$ cedro repeat.c | cc -o repeat -x c -
-$ ./repeat 
+$ ./repeat
 Repeated 6 times: AAAAAA
 $ cat aaaaaa.txt
 AAAAAA
@@ -431,7 +431,7 @@ int f1(void) {
       <p>Andrew Kelley compared resource management between C and his
         <a href="https://ziglang.org/">Zig programming language</a>
         in a 2019 presentation titled
-        <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">“The Road to Zig 1.0" at 29:21″</a>,
+        <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">“The Road to Zig 1.0” at 29:21s</a>,
         and here I’ve re-created his C example using Cedro to produce
         the function as he showed it, except that Cedro does not know
         that the final <code>for</code> loop never ends so it adds
@@ -722,12 +722,19 @@ int main(int argc, char **argv) {
       <p>By adding braces (“<code>{</code>” or “<code>}</code>”)
         right after <code>#define</code>
         we can have <em>Cedro</em> do that for us:</p>
-<code>#define { macro(A, B, C)
-f_##A(B, C); /// Specialized version of f() for type A.
+      <table>
+        <tr>
+          <td>
+            <code>#define { macro(A, B, C)
+f_##A(B, C); /// Version of f() for type A.
 #define }</code>
-<code>#define macro(A, B, C)                                                        \
-f_##A(B, C); /** Specialized version of f() for type A. */                    \
+          </td><td>
+            <code>#define macro(A, B, C)                                            \
+f_##A(B, C); /** Version of f() for type A. */                    \
 /* End #define */</code>
+          </td>
+        </tr>
+      </table>
       <p>Preprocessor directives are still not allowed
         inside macros, so you can not use
         <code>#if</code>, <code>#include</code>, etc.</p>
@@ -741,17 +748,24 @@ f_##A(B, C); /** Specialized version of f() for type A. */                    \
     <section id="binary-include">
       <h2>Binary inclusion: <a class="anchor" href="#binary-include">#binary-include</a></h2>
       <p>Inserts a file as a byte array.</p>
-      <code>#include &lt;stdint.h&gt;
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
 const uint8_t image
 #include {images/cedro-32x32.png}
 ;</code>
-      <code>#include &lt;stdint.h&gt;
+          </td><td>
+            <code>#include &lt;stdint.h&gt;
 const uint8_t image
 [1480] = { /* cedro-32x32.png */
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮
 };</code>
+          </td>
+        </tr>
+      </table>
       <p>The file name is relative to the including C file.</p>
       <p>Note: the directive must start exactly with “<code>#include {</code>”,
         with no more or less space between
