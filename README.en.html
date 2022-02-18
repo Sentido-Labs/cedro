@@ -12,12 +12,14 @@
         <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
         <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><img alt="Sentido-Labs.com" src="doc/sentido-labs-mono.svg" style="width:5em" width="157" height="33"/></a>
       </h1>
-      <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with four features:</p>
+      <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with six features:</p>
       <ol>
         <li>The <a href="#backstitch-operator"><em>backstitch</em> <code>@</code> operator</a>.</li>
-        <li><a href="#deferred-resource-release"><em>Deferred</em> resource release</a>.</li>
-        <li><a href="#block-macros"><em>Block macros</em></a>.</li>
-        <li><a href="#binary-include"><em>Binary inclusion</em></a>.</li>
+        <li><a href="#deferred-resource-release"><em>Deferred</em> resource release <code>auto ...</code></a>.</li>
+        <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a>.</li>
+        <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a>.</li>
+        <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a>.</li>
+        <li><a href="#binary-include"><em>Binary</em> inclusion <code>#include {...}</code></a>.</li>
       </ol>
       <p>To activate it, the source file must contain this line:
         <code>#pragma Cedro 1.0</code><br/>
@@ -743,6 +745,441 @@ f_##A(B, C); /** Version of f() for type A. */                    \
         with no more or less space between
         “<code>#define</code>” and the brace
         “<code>{</code>” or “<code>}</code>”.</p>
+    </section>
+
+    <section id="loop-macros">
+      <h2>Loop macros: <a class="anchor" href="#loop-macros">#loop-macros</a></h2>
+      <p>Repeat the lines between
+        <code>#foreach { ...</code> y <code>#foreach }</code>
+        replacing the given variables.</p>
+      <p>As in <code>#define</code>,
+        the «<code>##</code>» serves to
+         <a href="https://gcc.gnu.org/onlinedocs/cpp/Concatenation.html#Concatenation">join <em>tokens</em></a>
+        so that if, for example,
+        <code>T</code> is <code>float</code>,
+        <code>Vec_##T</code> produces <code>Vec_float</code>.</p>
+      <p>Inside the loop,
+        any operator following a <code>#</code>
+        (e.g. <code>#,</code>) gets omitted in the last iteration.</p>
+      <table>
+        <tr>
+          <td>
+            <code>typedef enum {
+#foreach { <b>V</b> {<b>SPACE</b>, <b>NUMBER</b>, \
+              <b>KEYWORD</b>, <b>IDENTIFIER</b>, <b>OPERATOR</b>}
+  T_##<b>V</b>#,
+#foreach }
+} TokenType;</code>
+          </td><td>
+            <code>typedef enum {
+  T_<b>SPACE</b>,
+  T_<b>NUMBER</b>,
+  T_<b>KEYWORD</b>,
+  T_<b>IDENTIFIER</b>,
+  T_<b>OPERATOR</b>
+} TokenType;</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>If a variable has the prefix <code>#</code>,
+        <a href="https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing">the result is a string with its contents</a>.
+        if <code>T</code> is <code>float</code>,
+        <code>char* name = #T;</code> produces
+        <code>char* name = <b>"float"</b>;</code>.</p>
+      <p>Loops can be nested,
+        and the list of values can come from
+        a variable defined in an outer loop.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#foreach { <b>VALUES</b> {{<b>SPACE</b>, <b>NUMBER</b>, \
+                    <b>KEYWORD</b>, <b>IDENTIFIER</b>, <b>OPERATOR</b>}}
+typedef enum {
+#foreach { <b>V</b> <b>VALUES</b>
+  T_##<b>V</b>#,
+#foreach }
+} TokenType;
+const char* const TokenType_STRING[] = {
+#foreach { <b>V</b> <b>VALUES</b>
+  #<b>V</b>#,
+#foreach }
+};
+#foreach }
+</code>
+          </td><td>
+            <code>typedef enum {
+  T_<b>SPACE</b>,
+  T_<b>NUMBER</b>,
+  T_<b>KEYWORD</b>,
+  T_<b>IDENTIFIER</b>,
+  T_<b>OPERATOR</b>
+} TokenType;
+const char* const TokenType_STRING[] = {
+  "<b>SPACE</b>",
+  "<b>NUMBER</b>",
+  "<b>KEYWORD</b>",
+  "<b>IDENTIFIER</b>",
+  "<b>OPERATOR</b>"
+};</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>It is possible to iterate several variables in parallel
+        using tuples of variables and values,
+        that must have the same number of elements:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#foreach { {<b>TYPE</b>, <b>VALUES</b>} {                       \
+  { <b>TokenType</b>, {<b>SPACE</b>, <b>NUMBER</b>,                    \
+                <b>KEYWORD</b>, <b>IDENTIFIER</b>, <b>OPERATOR</b>} }, \
+  { <b>PinConfig</b>, {<b>INPUT</b>, <b>OUTPUT</b>} }                  \
+  }
+typedef enum {
+#foreach { <b>V</b> <b>VALUES</b>
+  T_##<b>V</b>#,
+#foreach }
+} <b>TYPE</b>;
+const char* const <b>TYPE</b>##_STRING[] = {
+#foreach { <b>V</b> <b>VALUES</b>
+  #<b>V</b>#,
+#foreach }
+};
+
+#foreach }</code>
+          </td><td>
+            <code>typedef enum {
+  T_<b>SPACE</b>,
+  T_<b>NUMBER</b>,
+  T_<b>KEYWORD</b>,
+  T_<b>IDENTIFIER</b>,
+  T_<b>OPERATOR</b>
+} <b>TokenType</b>;
+const char* const <b>TokenType</b>_STRING[] = {
+  "<b>SPACE</b>",
+  "<b>NUMBER</b>",
+  "<b>KEYWORD</b>",
+  "<b>IDENTIFIER</b>",
+  "<b>OPERATOR</b>"
+};
+
+typedef enum {
+  T_<b>INPUT</b>,
+  T_<b>OUTPUT</b>
+} <b>PinConfig</b>;
+const char* const <b>PinConfig</b>_STRING[] = {
+  "<b>INPUT</b>",
+  "<b>OUTPUT</b>"
+};
+
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>This example iterates over a list of fields
+        to build a <code>struct</code>
+        and the corresponding <code>print_...()</code> function.</p>
+      <table>
+        <tr>
+          <td>
+            <code>void print_double(double n, FILE* out)
+{
+  fprintf(out, "%f", n);
+}
+void print_colour(uint32_t c, FILE* out)
+{
+  fprintf(out, "#%.6X", c);
+}
+
+#foreach { <b>FIELDS</b> {{                  \
+  { <b>double</b>,   <b>x</b>,      <b>print_double</b> }, \
+  { <b>double</b>,   <b>y</b>,      <b>print_double</b> }, \
+  { <b>uint32_t</b>, <b>colour</b>, <b>print_colour</b> }  \
+  }}
+typedef struct Point {
+#foreach { {<b>TYPE</b>, <b>NAME</b>, <b>PRINT</b>} <b>FIELDS</b>
+  <b>TYPE</b> <b>NAME</b>;
+#foreach }
+} Point;
+
+void print_Point(Point point, FILE* out)
+{
+#foreach { {<b>TYPE</b>, <b>NAME</b>, <b>PRINT</b>} <b>FIELDS</b>
+  <b>PRINT</b>(point.<b>NAME</b>, out); putc('\n', out);
+#foreach }
+}
+#foreach }
+</code>
+          </td><td>
+            <code>void print_double(double n, FILE* out)
+{
+  fprintf(out, "%f", n);
+}
+void print_colour(uint32_t c, FILE* out)
+{
+  fprintf(out, "#%.6X", c);
+}
+
+typedef struct Point {
+  <b>double</b> <b>x</b>;
+  <b>double</b> <b>y</b>;
+  <b>uint32_t</b> <b>colour</b>;
+} Point;
+
+void print_Point(Point p, FILE* out)
+{
+  <b>print_double(point.x, out)</b>; putc('\n', out);
+  <b>print_double(point.y, out)</b>; putc('\n', out);
+  <b>print_colour(point.colour, out)</b>; putc('\n', out);
+}
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>This complete example defines variants for the types
+        «<code>float</code>», «<code>str</code>», y «<code>cstr</code>»
+        of an array/vector of variable length
+        with a function called «append».
+        It then uses C11’s
+        <code><a href="https://en.cppreference.com/w/c/language/generic">_Generic</a></code>
+        to define a pseudo-<a href="https://en.wikipedia.org/wiki/Polymorphism_(computer_science)">polymorphic</a>
+        <code>append()</code> function.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt; // For memcpy().
+
+typedef struct str { uint8_t* start; uint8_t* end; } str;
+typedef char* cstr; // Type names must be single words.
+
+#pragma Cedro 1.0
+
+#foreach { <b>TYPES_LIST</b> {{<b>float</b>, <b>str</b>, <b>cstr</b>}}
+#foreach { <b>T</b> <b>TYPES_LIST</b>
+/** Vector (resizeable array) type. */
+typedef struct {
+  <b>T</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_##<b>T</b>;
+
+/** Append a slice to a vector of elements of this type. */
+bool
+append_Vec_##<b>T</b>(Vec_##<b>T</b> *v, const <b>T</b> *start, const <b>T</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>T</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>T</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>T</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+#foreach }
+#foreach { <b>DEFINE</b> {<b>#define</b>} // Keep lines separate.
+<b>DEFINE</b> append(VEC, START, END) _Generic((VEC), \
+#foreach { <b>T</b> <b>TYPES_LIST</b>
+  Vec_##<b>T</b>*: append_Vec_##<b>T</b>#, \
+#foreach }
+  )(VEC, START, END)
+#foreach }
+#foreach }
+
+#include &lt;stdio.h&gt;
+int main(void)
+{
+  Vec_cstr words = {0};
+  cstr animals[] = { "horse", "cat", "chicken", "dog" };
+  cstr plants [] = { "radish", "wheat", "tomato" };
+  append(&amp;words, &amp;animals[0], &amp;animals[2]);
+  append(&amp;words, &amp;plants[0], &amp;plants[3]);
+  append(&amp;words, &amp;animals[2], &amp;animals[4]);
+  for (cstr *w = words._, *end = words._ + words.len;
+       w != end; ++w) {
+    fprintf(stderr, "Word: \"%s\"\n", *w);
+  }
+  return 0;
+}</code>
+          </td><td>
+            <code>#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt; // For memcpy().
+
+typedef struct str { uint8_t* start; uint8_t* end; } str;
+typedef char* cstr; // Type names must be single words.
+
+/** Vector (resizeable array) type. */
+typedef struct {
+  <b>float</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_<b>float</b>;
+
+/** Append a slice to a vector of elements of this type. */
+bool
+append_Vec_<b>float</b>(Vec_<b>float</b> *v, const <b>float</b> *start, const <b>float</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>float</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>float</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>float</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+/** Vector (resizeable array) type. */
+typedef struct {
+  <b>str</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_<b>str</b>;
+
+/** Append a slice to a vector of elements of this type. */
+bool
+append_Vec_<b>str</b>(Vec_<b>str</b> *v, const <b>str</b> *start, const <b>str</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>str</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>str</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>str</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+/** Vector (resizeable array) type. */
+typedef struct {
+  <b>cstr</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_<b>cstr</b>;
+
+/** Append a slice to a vector of elements of this type. */
+bool
+append_Vec_<b>cstr</b>(Vec_<b>cstr</b> *v, const <b>cstr</b> *start, const <b>cstr</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>cstr</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>cstr</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>cstr</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+#define append(VEC, START, END) _Generic((VEC), \
+  Vec_<b>float</b>*: append_Vec_<b>float</b>, \
+  Vec_<b>str</b>*: append_Vec_<b>str</b>, \
+  Vec_<b>cstr</b>*: append_Vec_<b>cstr</b> \
+  )(VEC, START, END)
+
+#include &lt;stdio.h&gt;
+int main(void)
+{
+  Vec_cstr words = {0};
+  cstr animals[] = { "horse", "cat", "chicken", "dog" };
+  cstr plants [] = { "radish", "wheat", "tomato" };
+  append(&amp;words, &amp;animals[0], &amp;animals[2]);
+  append(&amp;words, &amp;plants[0], &amp;plants[3]);
+  append(&amp;words, &amp;animals[2], &amp;animals[4]);
+  for (cstr *w = words._, *end = words._ + words.len;
+       w != end; ++w) {
+    fprintf(stderr, "Word: \"%s\"\n", *w);
+  }
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
+    </section>
+
+    <section id="slice-notation">
+      <h2>Notation for array slices: <a class="anchor" href="#slice-notation">#slice-notation</a></h2>
+      <p>Converts <code><b>array</b>[<b>start</b>..<b>end</b>]</code> into <code>&amp;<b>array</b>[<b>start</b>], &amp;<b>array</b>[<b>end</b>]</code>. The array/pointer value <code>array</code> can be just an identifier or in general an expression which, as it will be evaluated twice, must not have any side effects, just <a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Duplication-of-Side-Effects.html#Duplication-of-Side-Effects">like standard C preprocessor macros</a>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  append(&amp;words, <b>animals</b>[<b>0</b>..<b>2</b>]);
+  append(&amp;words, <b>plants</b>[<b>0</b>..<b>3</b>]);
+  append(&amp;words, <b>animals</b>[<b>2</b>..<b>4</b>]);
+</code>
+          </td><td>
+            <code>  append(&amp;words, &amp;<b>animals</b>[<b>0</b>], &amp;<b>animals</b>[<b>2</b>]);
+  append(&amp;words, &amp;<b>plants</b>[<b>0</b>], &amp;<b>plants</b>[<b>3</b>]);
+  append(&amp;words, &amp;<b>animals</b>[<b>2</b>], &amp;<b>animals</b>[<b>4</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>The end of the slice can have a positive sign to indicate that
+        it is a relative position to the start of the slice:
+        <code><b>array</b>[<b>start</b>..+<b>end</b>]</code> becomes
+        <code>&amp;<b>array</b>[<b>start</b>], &amp;<b>array</b>[<b>start</b>+<b>end</b>]</code>.
+        In this case, the advice about double execution of side effects applies to
+        <code>start</code> in addition to <code>array</code>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  append(&amp;words, <b>animals</b>[<b>0</b>..<b>+2</b>]);
+  append(&amp;words, <b>plants</b>[<b>0</b>..<b>3</b>]);
+  append(&amp;words, <b>animals</b>[<b>2</b>..<b>+2</b>]);
+</code>
+          </td><td>
+            <code>  append(&amp;words, &amp;<b>animals</b>[<b>0</b>], &amp;<b>animals</b>[<b>0+2</b>]);
+  append(&amp;words, &amp;<b>plants</b>[<b>0</b>], &amp;<b>plants</b>[<b>3</b>]);
+  append(&amp;words, &amp;<b>animals</b>[<b>2</b>], &amp;<b>animals</b>[<b>2+2</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <h3 id="slice-notation-related-work">Related work <a class="anchor" href="#slice-notation-related-work">#…-related-work</a></h3>
+      <p>The notation <code>[a..b]</code> for array slices was
+        <a href="https://en.wikipedia.org/wiki/Array_slicing#1968:_Algol_68">first defined in Algol 68</a>
+        where it was an alternative to the primary notation <code>[a:b]</code>, and
+        both have been adopted by other languages since then.
+        The <code>[a..b]</code> form is used in <a href="https://www.adaic.org/">Ada</a>,
+        <a href="https://www.perl.org/">Perl</a>, <a href="https://dlang.org/">D</a>, and
+        <a href="https://www.rust-lang.org/">Rust</a>, for example.</p>
     </section>
 
     <section id="binary-include">
