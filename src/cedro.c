@@ -390,7 +390,7 @@ typedef enum TokenType {
   /** End of line: `;`                               */ T_SEMICOLON,
   /** Colon after label: `:`                         */ T_LABEL_COLON,
   /** Backstitch: `@`                                */ T_BACKSTITCH,
-  /** Ellipsis: `...`                                */ T_ELLIPSIS,
+  /** Ellipsis: `...`, or non-standard `..`          */ T_ELLIPSIS,
   /** Other token that is not part of the C grammar. */ T_OTHER
 } mut_TokenType, * const mut_TokenType_p, *  mut_TokenType_mut_p;
 typedef const enum TokenType
@@ -1000,7 +1000,11 @@ number(Byte_p start, Byte_p end)
     ++cursor;
     while (cursor is_not end) {
       c = *cursor;
-      if (in('0',c,'9') or c is '.') {
+      if (in('0',c,'9')) {
+        ++cursor;
+        continue;
+      } else if (c is '.') {
+        if (*(cursor - 1) is '.') return cursor - 1;
         ++cursor;
         continue;
       } else if (c is 'e' or c is 'E' or c is 'p' or c is 'P') {
@@ -2037,6 +2041,7 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
         case ';': TOKEN1(T_SEMICOLON);   break;
         case '.':
           if (c2 is '.' && c3 is '.') { TOKEN3(T_ELLIPSIS); }
+          else if (c2 is '.')         { TOKEN2(T_ELLIPSIS); }
           else                        { TOKEN1(T_OP_1);     }
           break;
         case '~': TOKEN1(T_OP_2);        break;
