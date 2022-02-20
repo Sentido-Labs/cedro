@@ -542,7 +542,6 @@ read_stream(mut_Byte_array_p _, FILE* input)
     init_Byte_array(_, 0);
     return errno;
   }
-  size_t offset = 0;
   init_Byte_array(_, 4096); // 4 KB, for instance.
   while (not feof(input)) {
     ensure_capacity_Byte_array(_, _->len + 4096);
@@ -1903,7 +1902,6 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
   Byte_mut_p cursor = region.start_p;
   Byte_p     end    = region.end_p;
   Byte_mut_p prev_cursor = NULL;
-  bool previous_token_is_value = false;
 
   // First look for the pragma.
   // We need to do some tokenization to avoid false positives if it appears
