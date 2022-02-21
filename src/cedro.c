@@ -640,43 +640,51 @@ static inline Byte_p
 identifier(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
+  // No need to check bounds thanks to PADDING_Byte_array:
+  while (*cursor is '\\' and *(cursor+1) is '\n') {
+    // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
+    // Section 5.1.1.2 paragraph 30, at PDF page 18:
+    // A backslash immediately before a newline has long been used to
+    // continue string literals, as well as preprocessing command lines.
+    // In the interest of easing machine generation of C, and of
+    // transporting code to machines with restrictive physical line lengths,
+    // the C89 Committee generalized this mechanism to permit any token
+    // to be continued by interposing a backslash/newline sequence.
+    cursor += 2;
+    if (cursor is end) return NULL;
+  }
   uint32_t u = 0;
   UTF8Error err = UTF8_NO_ERROR;
   cursor = decode_utf8(cursor, end, &u, &err);
   if (utf8_error(err)) return NULL;
-  mut_Byte c;
-  size_t len;
   if (u is '\\') {
-    if (cursor is_not end) {
-      switch(*cursor) {
-        case 'U': len = 8; u = 0; break;
-        case 'u': len = 4; u = 0; break;
-        default:
-          --cursor;
-          return cursor is start? NULL: cursor;
-      }
-      if (cursor + len >= end) {
-        error(LANG("Nombre de carácter universal incompleto.",
-                   "Incomplete universal character name."));
+    if (cursor is end) return NULL;
+    size_t len;
+    switch(*cursor) {
+      case 'U': len = 8; u = 0; break;
+      case 'u': len = 4; u = 0; break;
+      default:
+        return NULL;
+    }
+    if (cursor + len >= end) {
+      error(LANG("Nombre de carácter universal incompleto.",
+                 "Incomplete universal character name."));
+      return NULL;
+    }
+    while (len is_not 0) {
+      --len;
+      mut_Byte c = *(++cursor);
+      Byte value =
+          in('0',c,'9')? c-'0':
+          in('A',c,'F')? c-'A'+10:
+          in('a',c,'f')? c-'a'+10:
+          0xFF;
+      if (value is 0xFF) {
+        error(LANG("Nombre de carácter universal mal formado.",
+                   "Malformed universal character name."));
         return NULL;
       }
-      while (len is_not 0) {
-        --len;
-        c = *(++cursor);
-        Byte value =
-            in('0',c,'9')? c-'0':
-            in('A',c,'F')? c-'A'+10:
-            in('a',c,'f')? c-'a'+10:
-            0xFF;
-        if (value is 0xFF) {
-          error(LANG("Nombre de carácter universal mal formado.",
-                     "Malformed universal character name."));
-          return NULL;
-        }
-        u = (u << 4) | value;
-      }
-    } else {
-      return cursor is start? NULL: cursor;
+      u = (u << 4) | value;
     }
   }
   if (u >= 0xD800 and u < 0xE000) {
@@ -812,10 +820,21 @@ identifier(Byte_p start, Byte_p end)
           in(0x3021,u,0x3029)
        )) {
     while (cursor < end) {
+      // Use `p` here because we need to return `cursor`
+      // if `*p` is no longer part of the identifier.
       Byte_mut_p p = decode_utf8(cursor, end, &u, &err);
       if (utf8_error(err)) return NULL;
       if (u is '\\') {
-        if (p is_not end) {
+        if (p is end) {
+          // `cursor` can not be `start` if we reached this point.
+          return cursor;
+        }
+        if (*p is '\n') {
+          // See above about n897.pdf “C9X Rationale”.
+          cursor = p + 1;
+          continue;
+        } else {
+          size_t len;
           switch(*p) {
             case 'U': len = 8; u = 0; break;
             case 'u': len = 4; u = 0; break;
@@ -829,7 +848,7 @@ identifier(Byte_p start, Byte_p end)
           }
           while (len is_not 0) {
             --len;
-            c = *(++p);
+            mut_Byte c = *(++p);
             Byte value =
                 in('0',c,'9')? c-'0':
                 in('A',c,'F')? c-'A':
@@ -995,6 +1014,8 @@ number(Byte_p start, Byte_p end)
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
   if (c is '.') { ++cursor; if (cursor is end) return NULL; c = *cursor; }
+  // No need to check bounds thanks to PADDING_Byte_array:
+  if (c is '\\' and *(cursor+1) is '\n') { cursor += 2; c = *cursor; }
   if (in('0',c,'9')) {
     ++cursor;
     while (cursor is_not end) {
@@ -1013,6 +1034,11 @@ number(Byte_p start, Byte_p end)
           ++cursor;
           continue;
         }
+      } else if (c is '\\' and *(cursor+1) is '\n') {
+        // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
+        // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
+        cursor += 2;
+        continue;
       }
       Byte_p identifier_nondigit = identifier(cursor, end);
       if (not identifier_nondigit) break;
@@ -1074,7 +1100,7 @@ space(Byte_p start, Byte_p end)
         ++cursor;
         break;
       case '\\':
-        // No need to check bounds thanks to PADDING_Byte_array.
+        // No need to check bounds thanks to PADDING_Byte_array:
         if (*(cursor + 1) is_not '\n') goto exit;
         ++cursor;
         break;
@@ -2201,6 +2227,8 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
           if (cursor + 6 <= end and mem_eq(cursor, "\\u0040", 6)) {
             token_end += 5;
             token_type = T_OTHER;
+          } else {
+            TOKEN1(T_OTHER);
           }
           break;
       }
@@ -2272,8 +2300,8 @@ write_token(Marker_p m, Marker_p m_end, Byte_array_p src,
       else if ((u & 0xFFFF0000) is 0) fprintf(out, "\\u%04X", u);
       else                            fprintf(out, "\\U%08X", u);
     }
-  } else if (m->token_type is T_OTHER and m->len is 6) {
-    // So far, there is only one token handled this way:
+  } else if (m->token_type is T_OTHER and m->len is 6 and
+             mem_eq(get_Byte_array(src, m->start), "\\u0040", 6)) {
     putc('@', out);
   } else {
     fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
