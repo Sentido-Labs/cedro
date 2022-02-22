@@ -1123,7 +1123,7 @@ comment(Byte_p start, Byte_p end)
     do {
       cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
       if (not cursor) { cursor = end; break; }
-    } while ('\\' == *(cursor - 1));
+    } while ('\\' is *(cursor - 1));
     return cursor; // The newline is not part of the token.
   } else if (*cursor is_not '*') {
     return NULL;
@@ -1188,7 +1188,7 @@ preprocessor(Byte_p start, Byte_p end)
       if (cursor is end) break;
       cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
       if (not cursor) { cursor = end; break; }
-    } while ('\\' == *(cursor - 1));
+    } while ('\\' is *(cursor - 1));
   }
   return cursor; // The newline is not part of the token.
 }
@@ -1200,10 +1200,10 @@ static inline Byte_p
 other(Byte_p start, Byte_p end)
 {
   mut_Byte c = *start;
-  if      (0x00 == (c & 0x80)) { return start + 1; }
-  else if (0xC0 == (c & 0xE0)) { return start + 2; }
-  else if (0xE0 == (c & 0xF0)) { return start + 3; }
-  else if (0xF0 == (c & 0xF8)) { return start + 4; }
+  if      (0x00 is (c & 0x80)) { return start + 1; }
+  else if (0xC0 is (c & 0xE0)) { return start + 2; }
+  else if (0xE0 is (c & 0xF0)) { return start + 3; }
+  else if (0xF0 is (c & 0xF8)) { return start + 4; }
   else                           return NULL;
 }
 
@@ -1532,7 +1532,7 @@ indentation(Marker_array_p markers, Marker_mut_p cursor,
     Byte_array_slice slice = slice_for_marker(src, &indentation);
     Byte_mut_p b = slice.end_p;
     while (b is_not slice.start_p) {
-      if ('\n' == *(--b)) {
+      if ('\n' is *(--b)) {
         indentation.start = (size_t)(b - start_of_Byte_array(src));
         indentation.len   = (size_t)(slice.end_p - b);
         break;
@@ -1948,7 +1948,7 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
           }
           cursor = token_end;
           // Skip LF and empty lines after line.
-          while (cursor is_not end and '\n' == *cursor) ++cursor;
+          while (cursor is_not end and '\n' is *cursor) ++cursor;
           break;
         }
       }
@@ -2508,7 +2508,7 @@ unparse_foreach(Marker_array_slice markers,
     };
     // Look for segment end.
     size_t nesting = 0;
-    while (value.end_p < arg.end_p) {
+    while (value.end_p is_not arg.end_p) {
       switch (value.end_p->token_type) {
         case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
           ++nesting;
@@ -2558,7 +2558,7 @@ unparse_foreach(Marker_array_slice markers,
     while (value.end_p is_not value.start_p and
            (value.end_p - 1)->token_type is T_SPACE) --value.end_p;
 
-    if (value.start_p == value.end_p) {
+    if (value.start_p is value.end_p) {
       write_error_at(LANG("valor vacío",
                           "empty value"),
                      value.end_p, src, out);
@@ -2614,7 +2614,7 @@ unparse_foreach(Marker_array_slice markers,
             // Skip spaces, but not comments.
             while (value.start_p is_not value.end_p and
                    value.start_p->token_type is T_SPACE) ++value.start_p;
-            if (value.start_p == value.end_p) {
+            if (value.start_p is value.end_p) {
               write_error_at(LANG("valor vacío",
                                   "empty value"),
                              value.end_p, src, out);
