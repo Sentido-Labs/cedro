@@ -2390,7 +2390,7 @@ unparse_foreach(Marker_array_slice markers,
   if (parse(src, (Byte_array_slice){rest, text.end_p}, &arguments)
       is_not text.end_p) {
     // The error was printed in parse().
-    m = markers.end_p;
+    m = m_end;
     goto exit;
   }
 
@@ -2400,7 +2400,7 @@ unparse_foreach(Marker_array_slice markers,
     write_error_at(LANG("error sintáctico.",
                         "syntax error."),
                    arg.start_p, src, out);
-    m = markers.end_p;
+    m = m_end;
     goto exit;
   }
   switch (arg.start_p->token_type) {
@@ -2418,7 +2418,7 @@ unparse_foreach(Marker_array_slice markers,
           write_error_at(LANG("error sintáctico.",
                               "syntax error."),
                          arg.start_p, src, out);
-          m = markers.end_p;
+          m = m_end;
           goto exit;
         }
         if (arg.start_p->token_type is T_BLOCK_END) {
@@ -2427,7 +2427,7 @@ unparse_foreach(Marker_array_slice markers,
                 LANG("no se permiten llaves con una sola variable.",
                      "braces are not allowed with a single variable."),
                 arg.start_p, src, out);
-            m = markers.end_p;
+            m = m_end;
             goto exit;
           }
           ++arg.start_p;
@@ -2441,7 +2441,7 @@ unparse_foreach(Marker_array_slice markers,
               write_error_at(LANG("argumento duplicado.",
                                   "duplicated argument."),
                              arg.start_p, src, out);
-              m = markers.end_p;
+              m = m_end;
               goto exit;
             }
           }
@@ -2453,7 +2453,7 @@ unparse_foreach(Marker_array_slice markers,
           write_error_at(LANG("error sintáctico, se esperaba una coma.",
                               "syntax error, expected a comma."),
                          arg.start_p, src, out);
-          m = markers.end_p;
+          m = m_end;
           goto exit;
         }
         ++arg.start_p;
@@ -2463,7 +2463,7 @@ unparse_foreach(Marker_array_slice markers,
       write_error_at(LANG("error sintáctico.",
                           "syntax error."),
                      arg.start_p, src, out);
-      m = markers.end_p;
+      m = m_end;
       goto exit;
   }
 
@@ -2481,7 +2481,7 @@ unparse_foreach(Marker_array_slice markers,
     write_error_at(LANG("error sintáctico en lista de valores.",
                         "syntax error in value list."),
                    arguments.start, src, out);
-    m = markers.end_p;
+    m = m_end;
     goto exit;
   }
 
