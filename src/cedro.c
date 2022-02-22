@@ -2649,7 +2649,17 @@ unparse_foreach(Marker_array_slice markers,
         m = markers.end_p;
         goto exit;
       }
+
+      if (value.start_p is value.end_p) {
+        write_error_at(LANG("valor vacío",
+                            "empty value"),
+                       value.end_p, src, out);
+        m = m_end;
+        goto exit;
+      }
+
       replacements->start[valueIndex++].replacement = value;
+
       if (valueIndex is_not replacements->len) {
         write_error_at(LANG("menos valores que variables",
                             "fewer values than variables"),
