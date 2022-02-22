@@ -2475,6 +2475,7 @@ unparse_foreach(Marker_array_slice markers,
     m = markers.end_p;
     goto exit;
   }
+
   if (arg.start_p->token_type is T_IDENTIFIER) {
     arg = get_replacement_value(replacements, arg.start_p, src);
   } else if (arg.start_p->token_type is_not T_BLOCK_START) {
@@ -2485,7 +2486,7 @@ unparse_foreach(Marker_array_slice markers,
     goto exit;
   }
 
-  // Skip initial `{`:
+  // Skip identifier or initial `{`:
   ++arg.start_p;
   // Skip spaces after it, but keep comments in the value:
   while (arg.start_p is_not arg.end_p and
@@ -2494,7 +2495,7 @@ unparse_foreach(Marker_array_slice markers,
   if (arg.start_p is arg.end_p) {
     write_error_at(LANG("error sintáctico en argumento.",
                         "syntax error in argument."),
-                   arg.start_p, src, out);
+                   m, src, out);
     m = m_end;
     goto exit;
   }
@@ -2518,9 +2519,9 @@ unparse_foreach(Marker_array_slice markers,
           break;
         case T_TUPLE_END: case T_INDEX_END:
           if (not nesting) {
-            write_error_at(LANG("paréntisis desparejados en argumento.",
+            write_error_at(LANG("paréntesis desparejados en argumento.",
                                 "unpaired parentheses in argument."),
-                           arg.start_p, src, out);
+                           value.start_p, src, out);
             m = markers.end_p;
             goto exit;
           }
@@ -2595,7 +2596,7 @@ unparse_foreach(Marker_array_slice markers,
             if (not nesting) {
               write_error_at(LANG("paréntisis desparejados en argumento.",
                                   "unpaired parentheses in argument."),
-                             arg.start_p, src, out);
+                             value.start_p, src, out);
               m = markers.end_p;
               goto exit;
             }
