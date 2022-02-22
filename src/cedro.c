@@ -2344,9 +2344,27 @@ unparse_fragment(mut_Replacement_array_p replacements, bool is_last,
  * starts with `#foreach {` exactly.
  * Therefore, `markers` can not be empty, but must contain at least one token.
  *
+ * ```
  * #foreach { {T, N} {{unsigned char*, Byte}, {size_t, Index}}
  * ...
  * #foreach }
+ * ```
+ * Line continuations works as in other preprocessor directives:
+ * ```
+ * #foreach { {T, N} {{unsigned char*, Byte}, \
+ *                    {size_t, Index}}
+ * ...
+ * #foreach }
+ * ```
+ * The values can also be put in lines below the directive:
+ * ```
+ * #foreach { {T, N}
+ *   {{unsigned char*, Byte}, {size_t, Index}}
+ * ...
+ * #foreach }
+ * ```
+ * In that case, the values must start in that next line, not be split
+ * between the directive line and the rest.
  */
 static Marker_p
 unparse_foreach(Marker_array_slice markers,
@@ -2467,8 +2485,12 @@ unparse_foreach(Marker_array_slice markers,
     goto exit;
   }
 
-  // Skip initial `{` and any spaces after it.
-  arg.start_p = skip_space_forward(arg.start_p + 1, arg.end_p);
+  // Skip initial `{`:
+  ++arg.start_p;
+  // Skip spaces after it, but keep comments in the value:
+  while (arg.start_p is_not arg.end_p and
+         arg.start_p->token_type is T_SPACE) ++arg.start_p;
+
   if (arg.start_p is arg.end_p) {
     write_error_at(LANG("error sintáctico en argumento.",
                         "syntax error in argument."),
@@ -2531,8 +2553,9 @@ unparse_foreach(Marker_array_slice markers,
     // Skip ending `,` or `}` and spaces after it.
     arg.start_p = skip_space_forward(value.end_p + 1, arg.end_p);
 
-    // Trim space after segment.
-    value.end_p = skip_space_back(value.start_p, value.end_p);
+    // Trim space after segment, but not comments.
+    while (value.end_p is_not value.start_p and
+           (value.end_p - 1)->token_type is T_SPACE) --value.end_p;
 
     if (value.start_p == value.end_p) {
       write_error_at(LANG("valor vacío",
@@ -2547,10 +2570,7 @@ unparse_foreach(Marker_array_slice markers,
       replacements->start[valueIndex].replacement = value;
     } else {
       // Look for segment end.
-      Marker_array_mut_slice valueList = {
-        skip_space_forward(value.start_p + 1, value.end_p - 1),
-        skip_space_back   (value.start_p + 1, value.end_p - 1)
-      };
+      Marker_array_mut_slice valueList = { value.start_p + 1, value.end_p - 1 };
 
       value.start_p = valueList.start_p;
       value.end_p   = valueList.start_p;
@@ -2590,8 +2610,23 @@ unparse_foreach(Marker_array_slice markers,
               m = markers.end_p;
               goto exit;
             }
+            // Skip spaces, but not comments.
+            while (value.start_p is_not value.end_p and
+                   value.start_p->token_type is T_SPACE) ++value.start_p;
+            if (value.start_p == value.end_p) {
+              write_error_at(LANG("valor vacío",
+                                  "empty value"),
+                             value.end_p, src, out);
+              m = m_end;
+              goto exit;
+            }
+
             replacements->start[valueIndex++].replacement = value;
-            value.start_p = skip_space_forward(value.end_p+1, valueList.end_p);
+
+            value.start_p = value.end_p + 1;
+            // Skip spaces, but not comments.
+            while (value.start_p is_not valueList.end_p and
+                   value.start_p->token_type is T_SPACE) ++value.start_p;
             break;
           default:
             break;
