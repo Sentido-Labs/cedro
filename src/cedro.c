@@ -2667,9 +2667,6 @@ unparse_foreach(Marker_array_slice markers,
       m = m_end;
       goto exit;
     }
-
-    value.start_p = arg.start_p;
-    value.end_p = value.start_p;
   }
 
   m = fragment_end;
