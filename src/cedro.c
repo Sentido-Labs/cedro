@@ -37,6 +37,9 @@
  * Created: 2020-11-25 22:41
  */
 
+// Uncomment this to use `defer` instead of `auto`:
+//#define USE_DEFER_AS_KEYWORD
+
 /* In Solaris 8, we need __EXTENSIONS__ for vsnprintf(). */
 #define __EXTENSIONS__
 
@@ -391,6 +394,7 @@ typedef enum TokenType {
   /** Colon after label: `:`                         */ T_LABEL_COLON,
   /** Backstitch: `@`                                */ T_BACKSTITCH,
   /** Ellipsis: `...`, or non-standard `..`          */ T_ELLIPSIS,
+  /** Keyword for deferred resource release          */ T_CONTROL_FLOW_DEFER,
   /** Other token that is not part of the C grammar. */ T_OTHER
 } mut_TokenType, * const mut_TokenType_p, *  mut_TokenType_mut_p;
 typedef const enum TokenType
@@ -419,6 +423,7 @@ TokenType_STRING[1+T_OTHER] = {
   B("Comma (op 15)"), B("Semicolon"), B("Colon after label"),
   B("Backstitch"),
   B("Ellipsis"),
+  B("Defer"),
   B("OTHER")
 };
 
@@ -1828,7 +1833,11 @@ keyword_or_identifier(Byte_p start, Byte_p end)
         return T_TYPE;
       }
       if (mem_eq(start, "auto", 4)) {
+#ifdef USE_DEFER_AS_KEYWORD
         return T_TYPE_QUALIFIER_AUTO;
+#else
+        return T_CONTROL_FLOW_DEFER;
+#endif
       }
       break;
     case 5:
@@ -1845,6 +1854,11 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       if (mem_eq(start, "const", 5)) {
         return T_TYPE_QUALIFIER;
       }
+#ifdef USE_DEFER_AS_KEYWORD
+      if (mem_eq(start, "defer", 5)) {
+        return T_CONTROL_FLOW_DEFER;
+      }
+#endif
       break;
     case 6:
       if (mem_eq(start, "return", 6)) {
