@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8"/>
     <title>Extensión del lenguaje de programación C: pre-procesador Cedro</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadoorw:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadoorw:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:baseline; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th { font-weight:normal; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -14,12 +14,12 @@
       </h1>
       <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con seis prestaciones:</p>
       <ol>
-        <li>El <a href="#backstitch-operator">operador <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>].</li>
-        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> [«<em>defer</em>»].</li>
-        <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a>.</li>
-        <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a>.</li>
-        <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code>ristra[inicio..fin]</code></a>.</li>
-        <li><a href="#binary-include">Inclusión <em>binaria</em> <code>#include {...}</code></a>.</li>
+        <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>] (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
+        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> [«<em>defer</em>»] (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
+        <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">obras relacionadas</a>)-->.</li>
+        <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">obras relacionadas</a>)-->.</li>
+        <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code>ristra[inicio..fin]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
+        <li><a href="#binary-include">Inclusión <em>binaria</em> <code>#include {...}</code></a> (<a href="#binary-include-related-work">obras relacionadas</a>).</li>
       </ol>
       <p>Para activarlo, el fichero fuente debe contener esta línea:
         <code>#pragma Cedro 1.0</code><br/>
@@ -79,8 +79,8 @@
                     Si no, se eligen a partir del nombre del directorio.</code>
     </section>
 
-    <section id="backstitch-operator">
-      <h2>Operador <a href="https://es.wikipedia.org/wiki/Pespunte">pespunte</a>: @ <a class="anchor" href="#backstitch-operator">#backstitch-operator</a></h2>
+    <section id="backstitch-macro">
+      <h2>Macro <a href="https://es.wikipedia.org/wiki/Pespunte">pespunte</a>: @ <a class="anchor" href="#backstitch-macro">#backstitch-macro</a></h2>
       <p>Hilvana un valor a través de una secuencia de llamadas de función,
         como primer parámetro para cada una.</p>
       <p>Es una versión explícita de lo que hacen otros lenguajes de programación
@@ -134,9 +134,9 @@ nvgFill(contexto_gráfico);</code>
 
       <p>Para cada segmento separado por comas,
       si empieza con una de las piezas
-      «<code>[</code>»,
-      «<code>++</code>», «<code>--</code>», «<code>.</code>», «<code>-></code>»,
-      «<code>=</code>», «<code>+=</code>», «<code>-=</code>», «<code>*=</code>», «<code>/=</code>», «<code>%=</code>», «<code>&lt;&lt;=</code>», «<code>&gt;&gt;=</code>», «<code>&amp;=</code>», «<code>^=</code>», «<code>|=</code>»,
+      <code>[</code>,
+      <code>++</code>, <code>--</code>, <code>.</code>, <code>-></code>,
+      <code>=</code>, <code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, <code>%=</code>, <code>&lt;&lt;=</code>, <code>&gt;&gt;=</code>, <code>&amp;=</code>, <code>^=</code>, <code>|=</code>,
       o si no hay nada que parezca una llamada de función,
       el punto de inserción es el comienzo del segmento:</p>
 
@@ -203,7 +203,7 @@ nvgFill(contexto_gráfico);</code>
         Esto sirve para encapsularlo al encadenar Cedro con otro
         pre-procesador que lo use.</p>
 
-      <h3 id="backstitch-operator-related-work">Obras relacionadas <a class="anchor" href="#backstitch-operator-related-work">#…-related-work</a></h3>
+      <h3 id="backstitch-macro-related-work">Obras relacionadas <a class="anchor" href="#backstitch-macro-related-work">#…-related-work</a></h3>
       <p>Buscando realizaciones anteriores de esta idea he encontrado
         <a href="https://github.com/eudoxia0/magma">magma</a> (2014),
         donde se llama
@@ -211,18 +211,19 @@ nvgFill(contexto_gráfico);</code>
         Es una macro para el pre-procesador
         <a href="https://github.com/eudoxia0/cmacro">cmacro</a>
         que tiene el inconveniente de necesitar el compilador Common Lisp
-        <a href="http://www.sbcl.org/">SBCL</a>.</p>
+        <a href="http://www.sbcl.org/">SBCL</a>
+        además del compilador C.</p>
       <p>Los lenguajes funcionales suelen tener un operador similar
         sin la capacidad de hilvanar un mismo valor
         a través de varias funciones.
         Por ejemplo, el equivalente de <code>f₃(f₂(f₁(x)))</code>:</p>
-      <ul>
-        <li><a href="https://es.wikipedia.org/wiki/Thompson_shell">Shell</a>: operador <a href="http://doc.cat-v.org/unix/pipes/"><code>|</code></a> (tubería), <code>echo x | f₁ | f₂ | f₃</code></li>
-        <li><a href="https://www.haskell.org/">Haskell</a>: operador <a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-"><code>&</code></a> (aplicación inversa), <code>x & f₁ & f₂ & f₃</code></li>
-        <li><a href="https://elixir-lang.org/">Elixir</a>: operador <a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2"><code>|&gt;</code></a> (tubería), <code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code>
-        <li><a href="https://clojure.org/guides/threading_macros">Clojure</a>: macro <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-&gt;</code></a> (hilvanado), <code>(-&gt; x f₁ f₂ f₃)</code></li>
-        <li><a>Cedro</a>: operador <code>@</code> (pespunte), <code>x @ f₁() @ f₂() @ f₃()</code></li>
-      </ul>
+      <table>
+        <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code><a href="http://doc.cat-v.org/unix/pipes/">|</a></code></td><td>operador <em>tubería</em></td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
+        <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">&</a></code></td><td>operador <em>aplicación inversa</em></td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
+        <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">|&gt;</a></code></td><td>operador <em>tubería</em></td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
+        <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">-></a></code></td><td>macro <em>hilvanado</em></td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
+        <tr><th><a>Cedro</a></th><td><code>@</code></td><td>macro <em>pespunte</em></td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
+      </table>
       <p>Ada 2005 introdujo una prestación llamada
         <a href="https://www.adaic.org/resources/add_content/standards/05rat/html/Rat-2-3.html">notación prefija [«prefixed-view notation»]</a>
         que es más parecida al C++
@@ -720,8 +721,8 @@ int main(int argc, char **argv) {
       <p>Las macros en C deben escribirse todo en una línea,
         pero a veces hay que partirlas en varias pseudo-líneas
         y se hace tedioso y propenso a errores
-        el mantener todos los escapes de nueva línea  («<code>\</code>»).</p>
-      <p>Añadiendo llaves («<code>{</code>» o «<code>}</code>»)
+        el mantener todos los escapes de nueva línea  (<code>\</code>).</p>
+      <p>Añadiendo llaves (<code>{</code> o <code>}</code>)
         justo tras <code>#define</code>
         podemos hacer que <em>Cedro</em> se encargue de eso por nosotros:</p>
       <table>
@@ -742,10 +743,10 @@ f_##A(B, C); /** Versión de f() para el tipo A. */                \
         dentro de macros, de manera que no se puede usar
         <code>#if</code>, <code>#include</code>, etc.</p>
       <p>Nota: la directiva debe empezar exactamente con
-        «<code>#define {</code>» o «<code>#define }</code>»,
+        <code>#define {</code> o <code>#define }</code>,
         ni más ni menos espacio entre
-        «<code>#define</code>» y la llave
-        «<code>{</code>» o «<code>}</code>».</p>
+        <code>#define</code> y la llave
+        <code>{</code> o <code>}</code>.</p>
     </section>
 
     <section id="loop-macros">
@@ -756,7 +757,7 @@ f_##A(B, C); /** Versión de f() para el tipo A. */                \
         Esas líneas pueden contener definiciones de macro (<code>#define</code>)
         pero las variables del bucle no se expandirán dentro de ellas.</p>
       <p>Como en <code>#define</code>,
-        el «<code>##</code>» sirve para
+        el <code>##</code> sirve para
          <a href="https://gcc.gnu.org/onlinedocs/cpp/Concatenation.html#Concatenation">juntar piezas</a>
         de forma que si por ejemplo
         <code>T</code> es <code>float</code>,
@@ -803,6 +804,7 @@ typedef enum {
   T_##<b>V</b>#,
 #foreach }
 } TipoDePieza;
+
 const char* const TipoDePieza_CADENA[] = {
 #foreach { <b>V</b> <b>VALORES</b>
   #<b>V</b>#,
@@ -818,6 +820,7 @@ const char* const TipoDePieza_CADENA[] = {
   T_<b>IDENTIFICADOR</b>,
   T_<b>OPERADOR</b>
 } TipoDePieza;
+
 const char* const TipoDePieza_CADENA[] = {
   "<b>ESPACIO</b>",
   "<b>NÚMERO</b>",
@@ -845,6 +848,7 @@ typedef enum {
   T_##<b>V</b>#,
 #foreach }
 } <b>TIPO</b>;
+
 const char* const <b>TIPO</b>##_CADENA[] = {
 #foreach { <b>V</b> <b>VALORES</b>
   #<b>V</b>#,
@@ -860,6 +864,7 @@ const char* const <b>TIPO</b>##_CADENA[] = {
   T_<b>IDENTIFICADOR</b>,
   T_<b>OPERADOR</b>
 } <b>TipoDePieza</b>;
+
 const char* const <b>TipoDePieza</b>_CADENA[] = {
   "<b>ESPACIO</b>",
   "<b>NÚMERO</b>",
@@ -872,6 +877,7 @@ typedef enum {
   T_<b>ENTRADA</b>,
   T_<b>SALIDA</b>
 } <b>ConfDePúa</b>;
+
 const char* const <b>ConfDePúa</b>_CADENA[] = {
   "<b>ENTRADA</b>",
   "<b>SALIDA</b>"
@@ -892,26 +898,27 @@ const char* const <b>ConfDePúa</b>_CADENA[] = {
 {
   fprintf(salida, "%f", n);
 }
-void imprime_color(uint32_t c, FILE* salida)
+typedef uint32_t Color_hex;
+void imprime_Color_hex(Color_hex c, FILE* salida)
 {
   fprintf(salida, "#%.6X", c);
 }
 
-#foreach { <b>CAMPOS</b> {{                   \
-  { <b>double</b>,   <b>x</b>,     <b>imprime_double</b> }, \
-  { <b>double</b>,   <b>y</b>,     <b>imprime_double</b> }, \
-  { <b>uint32_t</b>, <b>color</b>, <b>imprime_colour</b> }  \
+#foreach { <b>CAMPOS</b> {{                        \
+  { <b>double</b>,    <b>x</b>,     <b>/** Posición X. */</b> }, \
+  { <b>double</b>,    <b>y</b>,     <b>/** Posición Y. */</b> }, \
+  { <b>Color_hex</b>, <b>color</b>, <b>/** Color. */</b>      }  \
   }}
 typedef struct Punto {
-#foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>IMPRIME</b>} <b>CAMPOS</b>
-  <b>TIPO</b> <b>NOMBRE</b>;
+#foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>COMENTARIO</b>} <b>CAMPOS</b>
+  <b>TIPO</b> <b>NOMBRE</b>; <b>COMENTARIO</b>
 #foreach }
 } Punto;
 
-void print_Punto(Punto punto, FILE* salida)
+void imprime_Punto(Punto punto, FILE* salida)
 {
-#foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>IMPRIME</b>} <b>CAMPOS</b>
-  <b>IMPRIME</b>(punto.<b>NOMBRE</b>, salida); putc('\n', salida);
+#foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>COMENTARIO</b>} <b>CAMPOS</b>
+  <b>imprime_##TIPO</b>(punto.<b>NOMBRE</b>, salida); putc('\n', salida);
 #foreach }
 }
 #foreach }
@@ -927,9 +934,9 @@ void imprime_color(uint32_t c, FILE* salida)
 }
 
 typedef struct Punto {
-  <b>double</b> <b>x</b>;
-  <b>double</b> <b>y</b>;
-  <b>uint32_t</b> <b>color</b>;
+  <b>double</b> <b>x</b>; /** Posición X. */
+  <b>double</b> <b>y</b>; /** Posición Y. */
+  <b>uint32_t</b> <b>color</b>; /** Color. */
 } Punto;
 
 void imprime_Punto(Punto p, FILE* salida)
@@ -944,7 +951,7 @@ void imprime_Punto(Punto p, FILE* salida)
       </table>
 
       <p>Este ejemplo completo define variantes para los tipos
-        «<code>float</code>», «<code>str</code>», y «<code>cstr</code>»
+        <code>float</code>, <code>str</code>, y <code>cstr</code>
         de una ristra/vector de capacidad variable
         con una función llamada «añade».
         Luego usa el
@@ -1207,9 +1214,9 @@ const uint8_t imagen
         </tr>
       </table>
       <p>El nombre de fichero es relativo al fichero C incluyente.</p>
-      <p>Nota: la directiva debe empezar exactamente con «<code>#include {</code>»,
+      <p>Nota: la directiva debe empezar exactamente con <code>#include {</code>,
         ni más ni menos espacio entre
-        «<code>#include</code>» y la llave «<code>{</code>».</p>
+        <code>#include</code> y la llave <code>{</code>.</p>
       <h3 id="binary-include-related-work">Obras relacionadas <a class="anchor" href="#binary-include-related-work">#…-related-work</a></h3>
       <p>Esta característica es una vieja idea
         y hay varias implementaciones anteriores, por ejemplo

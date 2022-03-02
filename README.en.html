@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8"/>
     <title>C programming language extension: Cedro pre-processor</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadoorw:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:baseline; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th { font-weight:normal; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -14,12 +14,12 @@
       </h1>
       <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with six features:</p>
       <ol>
-        <li>The <a href="#backstitch-operator"><em>backstitch</em> <code>@</code> operator</a>.</li>
-        <li><a href="#deferred-resource-release"><em>Deferred</em> resource release <code>auto ...</code></a>.</li>
-        <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a>.</li>
-        <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a>.</li>
-        <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a>.</li>
-        <li><a href="#binary-include"><em>Binary</em> inclusion <code>#include {...}</code></a>.</li>
+        <li>The <a href="#backstitch-macro"><em>backstitch</em> <code>@</code> macro</a> (<a href="#backstitch-macro-related-work">related work</a>).</li>
+        <li><a href="#deferred-resource-release"><em>Deferred</em> resource release <code>auto ...</code></a> (<a href="#deferred-resource-release-related-work">related work</a>).</li>
+        <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">related work</a>)-->.</li>
+        <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">related work</a>)-->.</li>
+        <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a> (<a href="#slice-notation-related-work">related work</a>).</li>
+        <li><a href="#binary-include"><em>Binary</em> inclusion <code>#include {...}</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
       </ol>
       <p>To activate it, the source file must contain this line:
         <code>#pragma Cedro 1.0</code><br/>
@@ -79,8 +79,8 @@
                     Otherwise, they will be derived from the directory name.</code>
     </section>
 
-    <section id="backstitch-operator">
-      <h2><a href="https://en.wikipedia.org/wiki/Backstitch">Backstitch</a> operator: @ <a class="anchor" href="#backstitch-operator">#backstitch-operator</a></h2>
+    <section id="backstitch-macro">
+      <h2><a href="https://en.wikipedia.org/wiki/Backstitch">Backstitch</a> macro: @ <a class="anchor" href="#backstitch-macro">#backstitch-macro</a></h2>
       <p>Threads a value through a sequence of function calls,
         as first parameter for each of them.</p>
       <p>It is an explicit version of what other programming languages
@@ -134,9 +134,9 @@ nvgFill(graphics_context);</code>
 
       <p>For each comma-separated segment,
       if it starts with any of the tokens
-      “<code>[</code>”,
-      “<code>++</code>”, “<code>--</code>”, “<code>.</code>”, “<code>-></code>”,
-      “<code>=</code>”, “<code>+=</code>”, “<code>-=</code>”, “<code>*=</code>”, “<code>/=</code>”, “<code>%=</code>”, “<code>&lt;&lt;=</code>”, “<code>&gt;&gt;=</code>”, “<code>&amp;=</code>”, “<code>^=</code>”, “<code>|=</code>”,
+      <code>[</code>,
+      <code>++</code>, <code>--</code>, <code>.</code>, <code>-></code>,
+      <code>=</code>, <code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, <code>%=</code>, <code>&lt;&lt;=</code>, <code>&gt;&gt;=</code>, <code>&amp;=</code>, <code>^=</code>, <code>|=</code>,
       or there is nothing that looks like a function call,
       the insertion point is the beginning of the segment:</p>
 
@@ -203,27 +203,28 @@ nvgFill(graphics_context);</code>
         This serves to escape it when chaining Cedro with another
         pre-processor that uses it.</p>
 
-      <h3 id="backstitch-operator-related-work">Related work <a class="anchor" href="#backstitch-operator-related-work">#…-related-work</a></h3>
+      <h3 id="backstitch-macro-related-work">Related work <a class="anchor" href="#backstitch-macro-related-work">#…-related-work</a></h3>
       <p>Looking for prior implementations of this idea I’ve found
         <a href="https://github.com/eudoxia0/magma">magma</a> (2014),
         where it is called
-        <a href="https://github.com/eudoxia0/magma#doto"><code>doto</code></a>.
+        <code><a href="https://github.com/eudoxia0/magma#doto">doto</a></code>.
         It is a macro for the
         <a href="https://github.com/eudoxia0/cmacro">cmacro</a>
         pre-processor
         which has the inconvenient of needing the Common Lisp
-        <a href="http://www.sbcl.org/">SBCL</a> compiler.</p>
+        <a href="http://www.sbcl.org/">SBCL</a> compiler
+        in addition to the C compiler.</p>
       <p>Functional languages often have a similar operator
         without the ability to thread a same value
         through several functions.
         For instance, the equivalent of <code>f₃(f₂(f₁(x)))</code>:</p>
-      <ul>
-        <li><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a>: <a href="http://doc.cat-v.org/unix/pipes/"><code>|</code></a> (pipe) operator, <code>echo x | f₁ | f₂ | f₃</code></li>
-        <li><a href="https://www.haskell.org/">Haskell</a>: <a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-"><code>&</code></a> (reverse application) operator, <code>x & f₁ & f₂ & f₃</code></li>
-        <li><a href="https://elixir-lang.org/">Elixir</a>: <a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2"><code>|&gt;</code></a> (pipe) operator, <code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code>
-        <li><a href="https://clojure.org/guides/threading_macros">Clojure</a>: <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-></code></a> (threading) macro, <code>(-&gt; x f₁ f₂ f₃)</code></li>
-        <li><a>Cedro</a>: <code>@</code> (backstitch) operator, <code>x @ f₁() @ f₂() @ f₃()</code></li>
-      </ul>
+      <table>
+        <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code><a href="http://doc.cat-v.org/unix/pipes/">|</a></code></td><td><em>pipe</em> operator</td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
+        <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">&</a></code></td><td><em>reverse application</em> operator</td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
+        <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">|&gt;</a></code></td><td><em>pipe</em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
+        <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">-></a></code></td><td><em>threading</em> macro</td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
+        <tr><th><a>Cedro</a></th><td><code>@</code></td><td><em>backstitch</em> macro</td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
+      </table>
       <p>Ada 2005 introduced a feature called
         <a href="https://www.adaic.org/resources/add_content/standards/05rat/html/Rat-2-3.html">prefixed-view notation</a>
         that is more similar to C++
@@ -720,8 +721,8 @@ int main(int argc, char **argv) {
       <p>C macros must be written all in one line,
         but some times you need to split them in several pseudo-lines
         and it gets tedious and error-prone
-        to maintain all the newline escapes (“<code>\</code>”).</p>
-      <p>By adding braces (“<code>{</code>” or “<code>}</code>”)
+        to maintain all the newline escapes (<code>\</code>).</p>
+      <p>By adding braces (<code>{</code> or <code>}</code>)
         right after <code>#define</code>
         we can have <em>Cedro</em> do that for us:</p>
       <table>
@@ -741,10 +742,10 @@ f_##A(B, C); /** Version of f() for type A. */                    \
         inside macros, so you can not use
         <code>#if</code>, <code>#include</code>, etc.</p>
       <p>Note: the directive must start exactly with
-        “<code>#define {</code>” or “<code>#define }</code>”,
+        <code>#define {</code> or <code>#define }</code>,
         with no more or less space between
-        “<code>#define</code>” and the brace
-        “<code>{</code>” or “<code>}</code>”.</p>
+        <code>#define</code> and the brace
+        <code>{</code> or <code>}</code>.</p>
     </section>
 
     <section id="loop-macros">
@@ -753,7 +754,7 @@ f_##A(B, C); /** Version of f() for type A. */                    \
         <code>#foreach { ...</code> y <code>#foreach }</code>
         replacing the given variables.</p>
       <p>As in <code>#define</code>,
-        the «<code>##</code>» serves to
+        the <code>##</code> serves to
          <a href="https://gcc.gnu.org/onlinedocs/cpp/Concatenation.html#Concatenation">join <em>tokens</em></a>
         so that if, for example,
         <code>T</code> is <code>float</code>,
@@ -800,6 +801,7 @@ typedef enum {
   T_##<b>V</b>#,
 #foreach }
 } TokenType;
+
 const char* const TokenType_STRING[] = {
 #foreach { <b>V</b> <b>VALUES</b>
   #<b>V</b>#,
@@ -815,6 +817,7 @@ const char* const TokenType_STRING[] = {
   T_<b>IDENTIFIER</b>,
   T_<b>OPERATOR</b>
 } TokenType;
+
 const char* const TokenType_STRING[] = {
   "<b>SPACE</b>",
   "<b>NUMBER</b>",
@@ -842,6 +845,7 @@ typedef enum {
   T_##<b>V</b>#,
 #foreach }
 } <b>TYPE</b>;
+
 const char* const <b>TYPE</b>##_STRING[] = {
 #foreach { <b>V</b> <b>VALUES</b>
   #<b>V</b>#,
@@ -857,6 +861,7 @@ const char* const <b>TYPE</b>##_STRING[] = {
   T_<b>IDENTIFIER</b>,
   T_<b>OPERATOR</b>
 } <b>TokenType</b>;
+
 const char* const <b>TokenType</b>_STRING[] = {
   "<b>SPACE</b>",
   "<b>NUMBER</b>",
@@ -869,6 +874,7 @@ typedef enum {
   T_<b>INPUT</b>,
   T_<b>OUTPUT</b>
 } <b>PinConfig</b>;
+
 const char* const <b>PinConfig</b>_STRING[] = {
   "<b>INPUT</b>",
   "<b>OUTPUT</b>"
@@ -941,7 +947,7 @@ void print_Point(Point p, FILE* out)
       </table>
 
       <p>This complete example defines variants for the types
-        «<code>float</code>», «<code>str</code>», y «<code>cstr</code>»
+        <code>float</code>, <code>str</code>, y <code>cstr</code>
         of an array/vector of variable length
         with a function called «append».
         It then uses C11’s
@@ -1204,9 +1210,9 @@ const uint8_t image
         </tr>
       </table>
       <p>The file name is relative to the including C file.</p>
-      <p>Note: the directive must start exactly with “<code>#include {</code>”,
+      <p>Note: the directive must start exactly with <code>#include {</code>,
         with no more or less space between
-        “<code>#include</code>” and the brace “<code>{</code>”.</p>
+        <code>#include</code> and the brace <code>{</code>.</p>
       <h3 id="binary-include-related-work">Related work <a class="anchor" href="#binary-include-related-work">#…-related-work</a></h3>
       <p>This feature is an old idea
         and there are several implementations, for instance
@@ -1214,7 +1220,7 @@ const uint8_t image
         (as <code>xxd -i</code>, <a href="http://manpages.ubuntu.com/manpages/bionic/man1/xxd.1.html">man page</a>)
         which I used many years ago and has it since 1994.</p>
       <p>More recently,
-        the <a href="https://doc.rust-lang.org/std/macro.include_bytes.html"><code>include_bytes!()</code></a> macro
+        the <code><a href="https://doc.rust-lang.org/std/macro.include_bytes.html">include_bytes!()</a></code> macro
         has been very useful to me in my Rust programs.</p>
     </section>
 
