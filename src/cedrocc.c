@@ -208,6 +208,81 @@ find_include_file(IncludePaths_p _, Byte_array_slice path,
   return found;
 }
 
+typedef struct IncludeContext {
+  size_t level;
+  mut_IncludePaths paths;
+  mut_IncludePaths paths_quote;
+} mut_IncludeContext, *mut_IncludeContext_p;
+typedef const struct IncludeContext IncludeContext,
+  * const IncludeContext_p, * IncludeContext_mut_p;
+
+static int
+include(const char* file_name,
+        mut_IncludeContext_p context,
+        FILE* cc_stdin);
+
+/**
+ * @param[in] m marker for the `#include` line.
+ */
+static int
+include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
+                 void* context)
+{
+  mut_IncludeContext_p _ = context;
+
+  int return_code = EXIT_SUCCESS;
+
+  Byte_array_mut_slice content = slice_for_marker(src, m);
+  Byte_mut_p text = content.start_p;
+  bool quoted_include = false;
+  const size_t len = 10; // = strlen("#include <");
+  if        (m->len >= len and strn_eq("#include <",  (char*)text, len)) {
+    content.start_p += len;
+    // TODO: check whether the C standard allows escaped '>' here.
+    content.end_p = memchr(text + len, '>', m->len - len);
+  } else if (m->len >= len and strn_eq("#include \"", (char*)text, len)) {
+    quoted_include = true;
+    content.start_p += len;
+    // TODO: check whether the C standard allows escaped '"' here.
+    content.end_p = memchr(text + len, '"', m->len - len);
+  }
+
+  if (content.end_p > content.start_p) {
+    ++_->level;
+    mut_Byte_array s = {0};
+    auto destruct_Byte_array(&s);
+    if ((quoted_include &&
+         find_include_file(&_->paths_quote, content, &s)) ||
+        find_include_file(&_->paths, content, &s)) {
+      // TODO: check #define guards?
+      size_t previous_len = len_IncludePaths(&_->paths_quote);
+      const char* file_dir_name_end = strrchr(as_c_string(&s), '/');
+      if (file_dir_name_end) {
+        append_path(&_->paths_quote, as_c_string(&s),
+                    (size_t)(file_dir_name_end - as_c_string(&s)));
+      }
+      return_code = include(as_c_string(&s), _, cc_stdin);
+      truncate_IncludePaths(&_->paths_quote, previous_len);
+      if (return_code is EXIT_SUCCESS) {
+        fprintf(cc_stdin, "\n#line %lu \"",
+                original_line_number(m->start, src));
+        fwrite(content.start_p, sizeof(content.start_p[0]),
+               (size_t)(content.end_p - content.start_p), cc_stdin);
+        fprintf(cc_stdin, "\"\n");
+      }
+    } else {
+      // The file was not found, assume it’s not a Cedro file.
+      return_code = -1;
+    }
+    --_->level;
+  } else {
+    fprintf(cc_stdin, LANG("\n#error #include vacío.\n",
+                           "\n#error empty #include.\n"));
+  }
+
+  return return_code;
+}
+
 /**
    Returns either `EXIT_SUCCESS` (that is, `0`),
    an error code as defined in errno.h
@@ -217,14 +292,12 @@ find_include_file(IncludePaths_p _, Byte_array_slice path,
  */
 static int
 include(const char* file_name,
-        Byte level,
-        mut_IncludePaths_p include_paths,
-        mut_IncludePaths_p include_paths_quote,
+        mut_IncludeContext_p context,
         FILE* cc_stdin)
 {
-  if (level > 10) {
+  if (context->level > 10) {
     eprintln(LANG("Error: demasiada recursión de «include» en: %s",
-                  "Error: too much include recursion at: %s"),
+                  "Error: too much “include” recursion at: %s"),
              file_name);
     return EINVAL;
   }
@@ -253,7 +326,7 @@ include(const char* file_name,
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
     parse(&src, region, &markers);
-    if (level is_not 0) {
+    if (context->level is_not 0) {
       if (markers.len is 1) {
         // Included file is not a Cedro file.
         return -1;
@@ -273,67 +346,15 @@ include(const char* file_name,
     fflush(stderr);
     fflush(stdout);
 
-    size_t a = 0, b = 0;
-    mut_Marker_mut_p m = start_of_mut_Marker_array(&markers);
-    mut_Marker_mut_p end = end_of_mut_Marker_array(&markers);
-    while (m is_not end and return_code is EXIT_SUCCESS) {
-      if (m->token_type is T_PREPROCESSOR) {
-        Byte_array_mut_slice content = slice_for_marker(&src, m);
-        Byte_mut_p text = content.start_p;
-        bool quoted_include = false;
-        const size_t len = 10; // = strlen("#include <");
-        if        (m->len >= len and strn_eq("#include <",  (char*)text, len)) {
-          content.start_p += len;
-          // TODO: check whether the C standard allows escaped '>' here.
-          content.end_p = memchr(text + len, '>', m->len - len);
-        } else if (m->len >= len and strn_eq("#include \"", (char*)text, len)) {
-          quoted_include = true;
-          content.start_p += len;
-          // TODO: check whether the C standard allows escaped '"' here.
-          content.end_p = memchr(text + len, '"', m->len - len);
-        } else {
-          content.end_p = content.start_p;
-        }
-
-        if (content.end_p > content.start_p) {
-          b = index_Marker_array(&markers, m);
-          unparse(Marker_array_slice_from(&markers, a, b),
-                  &src, original_src_len, file_name, options, cc_stdin);
-          a = b;
-          mut_Byte_array s = {0};
-          auto destruct_Byte_array(&s);
-          if ((quoted_include &&
-               find_include_file(include_paths_quote, content, &s)) ||
-              find_include_file(include_paths, content, &s)) {
-            // TODO: check #define guards?
-            size_t previous_len = len_IncludePaths(include_paths_quote);
-            const char* file_dir_name_end = strrchr(as_c_string(&s), '/');
-            if (file_dir_name_end) {
-              append_path(include_paths_quote, as_c_string(&s),
-                          (size_t)(file_dir_name_end - as_c_string(&s)));
-            }
-            return_code = include(as_c_string(&s),
-                                  level + 1,
-                                  include_paths,
-                                  include_paths_quote,
-                                  cc_stdin);
-            truncate_IncludePaths(include_paths_quote, previous_len);
-            if (return_code is -1) {
-              // No error, but the included file is a plain C file.
-              return_code = EXIT_SUCCESS;
-            } else {
-              fprintf(cc_stdin, "\n#line %lu \"%s\"\n",
-                      original_line_number(m->start, &src), file_name);
-              a += (a + 1 < markers.len)? 2: 1;// Skip LF if present.
-            }
-          }
-        }
-      }
-      ++m;
-    }
-    b = index_Marker_array(&markers, end);
-    unparse(Marker_array_slice_from(&markers, a, b),
-            &src, original_src_len, file_name, options, cc_stdin);
+    IncludeCallback include = {
+      &include_callback,
+      context
+    };
+    unparse_fragment(markers.start, end_of_Marker_array(&markers),
+                     &src, original_src_len,
+                     file_name, &include,
+                     NULL, false,
+                     options, cc_stdin);
   }
 
   return return_code;
@@ -352,11 +373,11 @@ int main(int argc, char* argv[])
 
   char* file_name = NULL;
 
-  mut_IncludePaths include_paths, include_paths_quote;
-  init_IncludePaths(&include_paths,       10);
-  init_IncludePaths(&include_paths_quote, 10);
-  auto destruct_IncludePaths(&include_paths);
-  auto destruct_IncludePaths(&include_paths_quote);
+  mut_IncludeContext include_context = {0};
+  init_IncludePaths(&include_context.paths,       10);
+  init_IncludePaths(&include_context.paths_quote, 10);
+  auto destruct_IncludePaths(&include_context.paths);
+  auto destruct_IncludePaths(&include_context.paths_quote);
 
   // The number of arguments is either the same if no .c file name given,
   // or one less when extracting the .c file name.
@@ -384,7 +405,7 @@ int main(int argc, char* argv[])
                  arg);
         return EINVAL;
       }
-      append_path(&include_paths, path, strlen(path));
+      append_path(&include_context.paths, path, strlen(path));
     } else if (str_eq(arg, "-iquote")) {
       char* path = (j + 1 < argc)? argv[j + 1]: "";
       if (path[0] is '\0' or path[0] is '-') {
@@ -393,7 +414,7 @@ int main(int argc, char* argv[])
                  arg);
         return EINVAL;
       }
-      append_path(&include_paths_quote, path, strlen(path));
+      append_path(&include_context.paths_quote, path, strlen(path));
     }
     args[i++] = arg;
   }
@@ -406,7 +427,7 @@ int main(int argc, char* argv[])
 
   const char* file_dir_name_end = strrchr(file_name, '/');
   if (file_dir_name_end) {
-    prepend_path(&include_paths_quote,
+    prepend_path(&include_context.paths_quote,
                  file_name,
                  (size_t)(file_dir_name_end - file_name));
   }
@@ -428,11 +449,7 @@ int main(int argc, char* argv[])
 
     FILE* cc_stdin = popen(as_c_string(&cmd), "w");
     if (cc_stdin) {
-      return_code = include(file_name,
-                            0,
-                            &include_paths,
-                            &include_paths_quote,
-                            cc_stdin);
+      return_code = include(file_name, &include_context, cc_stdin);
       if (return_code is_not EXIT_SUCCESS) {
         pclose(cc_stdin);
       } else {
@@ -443,11 +460,7 @@ int main(int argc, char* argv[])
       return_code = errno;
     }
   } else {
-    return_code = include(file_name,
-                          0,
-                          &include_paths,
-                          &include_paths_quote,
-                          stdout);
+    return_code = include(file_name, &include_context, stdout);
   }
 
   fflush(stdout);
