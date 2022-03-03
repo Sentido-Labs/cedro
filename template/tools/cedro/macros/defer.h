@@ -112,7 +112,7 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
     }
   }
   size_t cut_point = index_DeferredAction_array(pending, actions_cursor);
-  // Deleting items does not invalidate pointers in splice_...().
+  // Deleting items at the end does not invalidate pointers in splice_...().
   splice_DeferredAction_array(pending, cut_point, pending->len - cut_point,
                               NULL, (DeferredAction_array_slice){0});
 }
@@ -449,7 +449,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       start = start_of_mut_Marker_array(markers);
       end   =   end_of_mut_Marker_array(markers);
       cursor = start + cursor_position;
-    } else if (cursor->token_type is T_TYPE_QUALIFIER_AUTO) {
+    } else if (cursor->token_type is T_CONTROL_FLOW_DEFER) {
       // Add a new action at the current level.
       // First skip the auto keyword and whitespace:
       Marker_mut_p action_start = skip_space_forward(cursor + 1, end);
