@@ -86,6 +86,11 @@
       <p>Es una versión explícita de lo que hacen otros lenguajes de programación
         para implementar funciones miembro, y el resultado es un patrón habitual
         en bibliotecas en C.</p>
+      <p>Nota: el símbolo <code>@</code> no se reconoce
+        cuando se escribe <code>\u0040</code>,
+        pero se convierte en <code>@</code> en la salida.
+        Esto sirve para encapsularlo al encadenar Cedro con otro
+        pre-procesador que lo use.</p>
       <table>
         <tr>
           <td><code>objeto @ f(a), g(b);</code></td>
@@ -196,12 +201,6 @@ nvgFill(contexto_gráfico);</code>
           <td><code>get_Byte_vec(&amp;vector, índice);</code></td>
         </tr>
       </table>
-
-      <p>Nota: el símbolo <code>@</code> no se reconoce
-        cuando se escribe <code>\u0040</code>,
-        pero se convierte en <code>@</code> en la salida.
-        Esto sirve para encapsularlo al encadenar Cedro con otro
-        pre-procesador que lo use.</p>
 
       <h3 id="backstitch-macro-related-work">Obras relacionadas <a class="anchor" href="#backstitch-macro-related-work">#…-related-work</a></h3>
       <p>Buscando realizaciones anteriores de esta idea he encontrado

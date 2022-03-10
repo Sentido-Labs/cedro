@@ -86,6 +86,11 @@
       <p>It is an explicit version of what other programming languages
         do to implement member functions, and the result is a usual pattern
         in C libraries.</p>
+      <p>Note: the <code>@</code> symbol is not recognized
+        when written as <code>\u0040</code>,
+        but it gets converted to <code>@</code> in the output.
+        This serves to escape it when chaining Cedro with another
+        pre-processor that uses it.</p>
       <table>
         <tr>
           <td><code>object @ f(a), g(b);</code></td>
@@ -196,12 +201,6 @@ nvgFill(graphics_context);</code>
           <td><code>get_Byte_vec(&amp;vector, index);</code></td>
         </tr>
       </table>
-
-      <p>Note: the <code>@</code> symbol is not recognized
-        when written as <code>\u0040</code>,
-        but it gets converted to <code>@</code> in the output.
-        This serves to escape it when chaining Cedro with another
-        pre-processor that uses it.</p>
 
       <h3 id="backstitch-macro-related-work">Related work <a class="anchor" href="#backstitch-macro-related-work">#…-related-work</a></h3>
       <p>Looking for prior implementations of this idea I’ve found
