@@ -120,10 +120,24 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           Marker_mut_p segment_start = first_segment_start;
           Marker_mut_p segment_end   = segment_start;
           do {
+            size_t empty_lines_after_segment = 0;
             // Look for segment end.
             while (segment_end < end_of_line) {
-              if (not nesting and segment_end->token_type is T_COMMA) break;
               switch (segment_end->token_type) {
+                case T_COMMA:
+                  if (not nesting) {
+                    if (segment_end + 1 is_not end_of_line) {
+                      empty_lines_after_segment =
+                          count_appearances('\n',
+                                            segment_end + 1, segment_end + 2,
+                                            src);
+                      if (empty_lines_after_segment) {
+                        --empty_lines_after_segment;
+                      }
+                    }
+                    goto found_segment_end;
+                  }
+                  break;
                 case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
                   ++nesting;
                   break;
@@ -140,7 +154,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   break;
               }
               ++segment_end;
-            }
+            } found_segment_end:
             if (nesting) {
               error_at("unclosed group, syntax error.",
                        cursor, markers, src);
@@ -250,6 +264,9 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             if (segment_end < end_of_line) {
               if (ends_with_semicolon) {
                 push_Marker_array(&replacement, semicolon);
+                for (size_t i = 0; i is_not empty_lines_after_segment; ++i) {
+                  push_Marker_array(&replacement, newline);
+                }
                 push_Marker_array(&replacement, object_indentation);
               } else {
                 push_Marker_array(&replacement, comma);

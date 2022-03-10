@@ -199,6 +199,36 @@ nvgFill(graphics_context);</code>
         </tr><tr>
           <td><code>get(&amp;vector, index) @..._Byte_vec;</code></td>
           <td><code>get_Byte_vec(&amp;vector, index);</code></td>
+        </tr><tr>
+          <td><code>// <a href="http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations">http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations</a>
+// `hare` and `tortoise` are functions.
+int main() {
+    int tracklen = 10;
+    @uv_thread_...
+        t hare_id,
+        t tortoise_id,
+        create(&hare_id, hare, &tracklen),
+        create(&tortoise_id, tortoise, &tracklen),
+
+        join(&hare_id),
+        join(&tortoise_id);
+    return 0;
+}
+</code></td>
+          <td><br/><code>// <a href="http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations">http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations</a>
+// `hare` and `tortoise` are functions.
+int main() {
+    int tracklen = 10;
+    uv_thread_t hare_id;
+    uv_thread_t tortoise_id;
+    uv_thread_create(&amp;hare_id, hare, &amp;tracklen);
+    uv_thread_create(&amp;tortoise_id, tortoise, &amp;tracklen);
+
+    uv_thread_join(&amp;hare_id);
+    uv_thread_join(&amp;tortoise_id);
+    return 0;
+}
+</code></td>
         </tr>
       </table>
 

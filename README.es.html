@@ -199,6 +199,36 @@ nvgFill(contexto_gráfico);</code>
         </tr><tr>
           <td><code>get(&amp;vector, índice) @..._Byte_vec;</code></td>
           <td><code>get_Byte_vec(&amp;vector, índice);</code></td>
+        </tr><tr>
+          <td><code>// <a href="http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations">http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations</a>
+// `liebre` y `tortuga` son funciones.
+int main() {
+    int lon_pista = 10;
+    @uv_thread_...
+        t id_liebre,
+        t id_tortuga,
+        create(&amp;id_liebre, liebre, &amp;lon_pista),
+        create(&amp;id_tortuga, tortuga, &amp;lon_pista),
+
+        join(&amp;id_liebre),
+        join(&amp;id_tortuga);
+    return 0;
+}
+</code></td>
+          <td><br/><code>// <a href="http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations">http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations</a>
+// `liebre` y `tortuga` son funciones.
+int main() {
+    int lon_pista = 10;
+    uv_thread_t id_liebre;
+    uv_thread_t id_tortuga;
+    uv_thread_create(&amp;id_liebre, liebre, &amp;lon_pista);
+    uv_thread_create(&amp;id_tortuga, tortuga, &amp;lon_pista);
+
+    uv_thread_join(&amp;id_liebre);
+    uv_thread_join(&amp;id_tortuga);
+    return 0;
+}
+</code></td>
         </tr>
       </table>
 
