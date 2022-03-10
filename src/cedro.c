@@ -2301,11 +2301,7 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
       uint32_t u = 0;
       UTF8Error err = UTF8_NO_ERROR;
       text.start_p = decode_utf8(text.start_p, text.end_p, &u, &err);
-      if (utf8_error(err)) {
-        write_error_at(error_buffer, m, src, out);
-        error_buffer[0] = 0;
-        return false;
-      }
+      if (utf8_error(err)) return false;
       if      ((u & 0xFFFFFF80) is 0 and
                u is_not 0x0024 and
                u is_not 0x0040 and
