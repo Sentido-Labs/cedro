@@ -1,15 +1,16 @@
 NAME=cedro
 
 # Strict compilation flags, use during development:
-CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wsign-conversion -Wno-unused-function -Wno-unused-const-variable
+CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion
 # miniz has many implicit sign conversions, after removing some it works on
 # some manchines but it is not enough in others, so better ignore it:
 CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
 
-# Loose compilation flags, use for delivery:
-CFLAGS=-g -DNDEBUG -std=c99
+# Loose compilation flags, use for releases:
+CFLAGS=-g -std=c99
 CFLAGS_MINIZ=-g -std=c99
 
+# -DNDEBUG mutes the unused-variable warnings/errors.
 OPTIMIZATION=-O -DNDEBUG
 
 default: release
@@ -47,7 +48,7 @@ bin/%: src/%.c Makefile bin/cedrocc
 	@mkdir -p bin
 	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
-%.zip: % %/** bin/zip-template
+%.zip: % %/** bin/zip-template template
 	bin/zip-template $@ $<
 
 doc:

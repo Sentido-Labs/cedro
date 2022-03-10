@@ -8,7 +8,7 @@ CSS=doc/api.css
 # Strict compilation flags, use during development:
 CFLAGS=-g -L build/lib -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion
 
-# Loose compilation flags, use for delivery:
+# Loose compilation flags, use for releases:
 CFLAGS=-g -DNDEBUG -L build/lib -I lib -I src -std=c99
 
 TEST_ARGUMENTS="dummy"
@@ -37,21 +37,21 @@ $(CEDRO): $(CEDRO).c
 $(CEDROCC): $(CEDROCC).c $(CEDRO)
 	$(CEDRO) --insert-line-directives $< | $(CC) $(CFLAGS) -I `dirname $(CEDRO)` -O -o $@ -x c -
 
-build/$(CMDNAME).o:     src/main.c src/*.c Makefile $(CEDROCC)
+build/$(CMDNAME).o:     src/main.c src/* Makefile $(CEDROCC)
 	@mkdir -p build
 	$(CEDROCC) $< $(CFLAGS) -c           -o $@ -O
 build/$(CMDNAME):       build/$(CMDNAME).o Makefile
 	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
 	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
 
-build/$(CMDNAME)-debug.o: src/main.c src/*.c Makefile $(CEDROCC)
+build/$(CMDNAME)-debug.o: src/main.c src/* Makefile $(CEDROCC)
 	@mkdir -p build
 	$(CEDROCC) $< $(CFLAGS) -c           -o $@
 build/$(CMDNAME)-debug:   build/$(CMDNAME)-debug.o Makefile
 	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
 	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
 
-build/$(CMDNAME)-static: src/main.c src/*.c Makefile $(CEDROCC)
+build/$(CMDNAME)-static: src/main.c src/* Makefile $(CEDROCC)
 	@mkdir -p build
 	$(CEDROCC) $< $(CFLAGS) -o $@ -O -static
 	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
