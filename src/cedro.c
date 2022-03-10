@@ -1492,56 +1492,57 @@ find_block_end(Marker_p cursor, Marker_p end, mut_Error_p err)
 /** Extract the indentation of the line for the marker at `cursor`,
  * including the preceding `LF` character if it exists.
  * @param[in] markers array of markers.
- * @param[in] cursor position.
+ * @param[in] cursor position, must not be NULL.
  * @param[in] already_at_line_start whether the cursor is already at the
  *            start of the line, to avoid searching for it if not needed.
  * @param[in] src source code.
+ * If there is no indentation, that is if `cursor` is at the start of the file,
+ * returns `(Marker){ 0, 0, T_NONE }`.
  */
 static Marker
 indentation(Marker_array_p markers, Marker_mut_p cursor,
             bool already_at_line_start,
             Byte_array_p src)
 {
-  mut_Marker indentation = {0};
+  assert(cursor is_not NULL);
+  mut_Marker indentation = { 0, 0, T_NONE }; // Same as {0}.
   Marker_p start = start_of_Marker_array(markers);
-  if (cursor) {
-    mut_Error err = {0};
-    if (not already_at_line_start) {
-      cursor = find_line_start(cursor, start, &err);
-      if (err.message) {
-        eprintln(LANG("Error: %s",
-                      "Error: %s"),
-                 err.message);
-        return indentation;
-      }
-    }
-    if (cursor->token_type is_not T_SPACE) {
-      // This happens if the cursor was already at the beginning of the file.
+  mut_Error err = {0};
+  if (not already_at_line_start) {
+    cursor = find_line_start(cursor, start, &err);
+    if (err.message) {
+      eprintln(LANG("Error: %s",
+                    "Error: %s"),
+               err.message);
       return indentation;
     }
-    indentation = *cursor;
-    // Prefer space tokens with LF if available, for the case where we have
-    // a comment at the end of the previous line.
-    Marker_p end = end_of_Marker_array(markers);
-    while (cursor is_not end and
-           (cursor->token_type is T_SPACE or cursor->token_type is T_COMMENT)
-           ) {
-      ++cursor;
-      if (cursor->token_type is T_SPACE and has_byte('\n', cursor, src)) {
-        indentation = *cursor;
-      } else if (cursor->token_type is_not T_COMMENT) {
-        break;
-      }
+  }
+  if (cursor->token_type is_not T_SPACE) {
+    // This happens if the cursor was already at the beginning of the file.
+    return indentation;
+  }
+  indentation = *cursor;
+  // Prefer space tokens with LF if available, for the case where we have
+  // a comment at the end of the previous line.
+  Marker_p end = end_of_Marker_array(markers);
+  while (cursor is_not end and
+         (cursor->token_type is T_SPACE or cursor->token_type is T_COMMENT)
+         ) {
+    ++cursor;
+    if (cursor->token_type is T_SPACE and has_byte('\n', cursor, src)) {
+      indentation = *cursor;
+    } else if (cursor->token_type is_not T_COMMENT) {
+      break;
     }
-    // Remove empty lines, and trailing space in previous line.
-    Byte_array_slice slice = slice_for_marker(src, &indentation);
-    Byte_mut_p b = slice.end_p;
-    while (b is_not slice.start_p) {
-      if ('\n' is *(--b)) {
-        indentation.start = (size_t)(b - start_of_Byte_array(src));
-        indentation.len   = (size_t)(slice.end_p - b);
-        break;
-      }
+  }
+  // Remove empty lines, and trailing space in previous line.
+  Byte_array_slice slice = slice_for_marker(src, &indentation);
+  Byte_mut_p b = slice.end_p;
+  while (b is_not slice.start_p) {
+    if ('\n' is *(--b)) {
+      indentation.start = (size_t)(b - start_of_Byte_array(src));
+      indentation.len   = (size_t)(slice.end_p - b);
+      break;
     }
   }
 
