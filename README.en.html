@@ -894,26 +894,28 @@ const char* const <b>PinConfig</b>_STRING[] = {
 {
   fprintf(out, "%f", n);
 }
-void print_colour(uint32_t c, FILE* out)
+
+typedef uint32_t Colour_ARGB;
+void print_Colour_ARGB(Colour_ARGB c, FILE* out)
 {
   fprintf(out, "#%.6X", c);
 }
 
-#foreach { <b>FIELDS</b> {{                  \
-  { <b>double</b>,   <b>x</b>,      <b>print_double</b> }, \
-  { <b>double</b>,   <b>y</b>,      <b>print_double</b> }, \
-  { <b>uint32_t</b>, <b>colour</b>, <b>print_colour</b> }  \
+#foreach { <b>FIELDS</b> {{                              \
+  { <b>double</b>,   <b>x</b>,         <b>/** X position. */</b>    }, \
+  { <b>double</b>,   <b>y</b>,         <b>/** Y position. */</b>    }, \
+  { <b>Colour_ARGB</b>, <b>colour</b>, <b>/** Colour 32 bit. */</b> }  \
   }}
 typedef struct Point {
-#foreach { {<b>TYPE</b>, <b>NAME</b>, <b>PRINT</b>} <b>FIELDS</b>
-  <b>TYPE</b> <b>NAME</b>;
+#foreach { {<b>TYPE</b>, <b>NAME</b>, <b>COMMENT</b>} <b>FIELDS</b>
+  <b>TYPE</b> <b>NAME</b>; <b>COMMENT</b>
 #foreach }
 } Point;
 
 void print_Point(Point point, FILE* out)
 {
-#foreach { {<b>TYPE</b>, <b>NAME</b>, <b>PRINT</b>} <b>FIELDS</b>
-  <b>PRINT</b>(point.<b>NAME</b>, out); putc('\n', out);
+#foreach { {<b>TYPE</b>, <b>NAME</b>, <b>COMMENT</b>} <b>FIELDS</b>
+  print_##<b>TYPE</b>(point.<b>NAME</b>, out); putc('\n', out);
 #foreach }
 }
 #foreach }
@@ -923,22 +925,24 @@ void print_Point(Point point, FILE* out)
 {
   fprintf(out, "%f", n);
 }
-void print_colour(uint32_t c, FILE* out)
+
+typedef uint32_t Colour_ARGB;
+void print_Colour_ARGB(Colour_ARGB c, FILE* out)
 {
   fprintf(out, "#%.6X", c);
 }
 
 typedef struct Point {
-  <b>double</b> <b>x</b>;
-  <b>double</b> <b>y</b>;
-  <b>uint32_t</b> <b>colour</b>;
+  <b>double</b> <b>x</b>; <b>/** X position. */</b>
+  <b>double</b> <b>y</b>; <b>/** Y position. */</b>
+  <b>Colour_ARGB</b> <b>colour</b>; <b>/** Colour 32 bit. */</b>
 } Point;
 
-void print_Point(Point p, FILE* out)
+void print_Point(Point point, FILE* out)
 {
-  <b>print_double(point.x, out)</b>; putc('\n', out);
-  <b>print_double(point.y, out)</b>; putc('\n', out);
-  <b>print_colour(point.colour, out)</b>; putc('\n', out);
+  print_<b>double</b>(point.<b>x</b>, out); putc('\n', out);
+  print_<b>double</b>(point.<b>y</b>, out); putc('\n', out);
+  print_<b>Colour_ARGB</b>(point.<b>colour</b>, out); putc('\n', out);
 }
 </code>
           </td>

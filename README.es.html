@@ -897,16 +897,17 @@ const char* const <b>ConfDePúa</b>_CADENA[] = {
 {
   fprintf(salida, "%f", n);
 }
-typedef uint32_t Color_hex;
-void imprime_Color_hex(Color_hex c, FILE* salida)
+
+typedef uint32_t Color_ARGB;
+void imprime_Color_ARGB(Color_ARGB c, FILE* salida)
 {
   fprintf(salida, "#%.6X", c);
 }
 
-#foreach { <b>CAMPOS</b> {{                        \
-  { <b>double</b>,    <b>x</b>,     <b>/** Posición X. */</b> }, \
-  { <b>double</b>,    <b>y</b>,     <b>/** Posición Y. */</b> }, \
-  { <b>Color_hex</b>, <b>color</b>, <b>/** Color. */</b>      }  \
+#foreach { <b>CAMPOS</b> {{                         \
+  { <b>double</b>,     <b>x</b>,     <b>/** Posición X. */</b>    }, \
+  { <b>double</b>,     <b>y</b>,     <b>/** Posición Y. */</b>    }, \
+  { <b>Color_ARGB</b>, <b>color</b>, <b>/** Color 32 bits. */</b> }  \
   }}
 typedef struct Punto {
 #foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>COMENTARIO</b>} <b>CAMPOS</b>
@@ -917,7 +918,7 @@ typedef struct Punto {
 void imprime_Punto(Punto punto, FILE* salida)
 {
 #foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>COMENTARIO</b>} <b>CAMPOS</b>
-  <b>imprime_##TIPO</b>(punto.<b>NOMBRE</b>, salida); putc('\n', salida);
+  imprime_##<b>TIPO</b>(punto.<b>NOMBRE</b>, salida); putc('\n', salida);
 #foreach }
 }
 #foreach }
@@ -927,22 +928,24 @@ void imprime_Punto(Punto punto, FILE* salida)
 {
   fprintf(salida, "%f", n);
 }
-void imprime_color(uint32_t c, FILE* salida)
+
+typedef uint32_t Color_ARGB;
+void imprime_Color_ARGB(Color_ARGB c, FILE* salida)
 {
   fprintf(salida, "#%.6X", c);
 }
 
 typedef struct Punto {
-  <b>double</b> <b>x</b>; /** Posición X. */
-  <b>double</b> <b>y</b>; /** Posición Y. */
-  <b>uint32_t</b> <b>color</b>; /** Color. */
+  <b>double</b> <b>x</b>; <b>/** Posición X. */</b>
+  <b>double</b> <b>y</b>; <b>/** Posición Y. */</b>
+  <b>Color_ARGB</b> <b>color</b>; <b>/** Color 32 bits. */</b>
 } Punto;
 
-void imprime_Punto(Punto p, FILE* salida)
+void imprime_Punto(Punto punto, FILE* salida)
 {
-  <b>imprime_double(punto.x, out)</b>; putc('\n', salida);
-  <b>imprime_double(punto.y, out)</b>; putc('\n', salida);
-  <b>imprime_color(punto.color, out)</b>; putc('\n', salida);
+  imprime_<b>double</b>(punto.<b>x</b>, salida); putc('\n', salida);
+  imprime_<b>double</b>(punto.<b>y</b>, salida); putc('\n', salida);
+  imprime_<b>Color_ARGB</b>(punto.<b>color</b>, salida); putc('\n', salida);
 }
 </code>
           </td>
