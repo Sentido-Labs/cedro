@@ -125,7 +125,7 @@ static void
 prepend_path(mut_IncludePaths_p _, const char* path, size_t len)
 {
   splice_Byte_array(&_->text, 0, 0, NULL,
-                    (Byte_array_slice){ (Byte_p)path, (Byte_p)path + len });
+                    (Byte_array_slice){ (Byte_p)path[0..len] });
   splice_size_t_array(&_->lengths, 0, 0, NULL,
                       (size_t_array_slice){ &len, (&len) + 1 });
 }
@@ -350,7 +350,7 @@ include(const char* file_name,
       &include_callback,
       context
     };
-    unparse_fragment(markers.start, end_of_Marker_array(&markers),
+    unparse_fragment(markers.start, end_of_Marker_array(&markers), 0,
                      &src, original_src_len,
                      file_name, &include,
                      NULL, false,
