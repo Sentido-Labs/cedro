@@ -350,7 +350,7 @@ include(const char* file_name,
       &include_callback,
       context
     };
-    unparse_fragment(markers.start, end_of_Marker_array(&markers),
+    unparse_fragment(markers.start, end_of_Marker_array(&markers), 0,
                      &src, original_src_len,
                      file_name, &include,
                      NULL, false,

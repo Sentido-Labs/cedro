@@ -2354,7 +2354,7 @@ typedef struct IncludeCallback {
 
 /* Prototype, defined after unparse_foreach(). */
 static Marker_p
-unparse_fragment(Marker_mut_p m, Marker_p m_end,
+unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                  Byte_array_p src, size_t original_src_len,
                  const char* src_file_name, IncludeCallback_p include,
                  mut_Replacement_array_p replacements, bool is_last,
@@ -2389,7 +2389,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
  * between the directive line and the rest.
  */
 static Marker_p
-unparse_foreach(Marker_array_slice markers,
+unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
                 mut_Replacement_array_mut_p replacements,
                 Byte_array_p src, size_t original_src_len,
                 const char* src_file_name, IncludeCallback_p include,
@@ -2492,7 +2492,7 @@ unparse_foreach(Marker_array_slice markers,
     write_error_at(LANG("falta la lista de valores.",
                         "missing value list."),
                    arguments.start, src, out);
-    m = markers.end_p;
+    m = m_end;
     goto exit;
   }
 
@@ -2542,7 +2542,7 @@ unparse_foreach(Marker_array_slice markers,
             write_error_at(LANG("paréntesis desparejados en argumento.",
                                 "unpaired parentheses in argument."),
                            value.start_p, src, out);
-            m = markers.end_p;
+            m = m_end;
             goto exit;
           }
           --nesting;
@@ -2559,7 +2559,7 @@ unparse_foreach(Marker_array_slice markers,
       write_error_at(LANG("grupo sin cerrar, error sintáctico",
                           "unclosed group, syntax error."),
                      value.start_p, src, out);
-      m = markers.end_p;
+      m = m_end;
       goto exit;
     }
 
@@ -2607,7 +2607,7 @@ unparse_foreach(Marker_array_slice markers,
               write_error_at(LANG("ERROR INTERNO EN CEDRO: 0x01",
                                   "INTERNAL ERROR IN CEDRO: 0x01"),
                              arg.start_p, src, out);
-              m = markers.end_p;
+              m = m_end;
               goto exit;
             }
             --nesting;
@@ -2617,7 +2617,7 @@ unparse_foreach(Marker_array_slice markers,
               write_error_at(LANG("paréntisis desparejados en argumento.",
                                   "unpaired parentheses in argument."),
                              value.start_p, src, out);
-              m = markers.end_p;
+              m = m_end;
               goto exit;
             }
             --nesting;
@@ -2628,7 +2628,7 @@ unparse_foreach(Marker_array_slice markers,
               write_error_at(LANG("mas valores que variables",
                                   "more values than variables"),
                              value.start_p, src, out);
-              m = markers.end_p;
+              m = m_end;
               goto exit;
             }
             // Skip spaces, but not comments.
@@ -2659,14 +2659,14 @@ unparse_foreach(Marker_array_slice markers,
         write_error_at(LANG("ERROR INTERNO EN CEDRO: 0x02",
                             "INTERNAL ERROR IN CEDRO: 0x02"),
                        value.start_p, src, out);
-        m = markers.end_p;
+        m = m_end;
         goto exit;
       }
       if (valueIndex is replacements->len) {
         write_error_at(LANG("mas valores que variables",
                             "more values than variables"),
                        value.start_p, src, out);
-        m = markers.end_p;
+        m = m_end;
         goto exit;
       }
 
@@ -2684,13 +2684,13 @@ unparse_foreach(Marker_array_slice markers,
         write_error_at(LANG("menos valores que variables",
                             "fewer values than variables"),
                        value.start_p, src, out);
-        m = markers.end_p;
+        m = m_end;
         goto exit;
       }
       value.start_p = skip_space_forward(value.end_p+1, valueList.end_p);
     }
     assert(m is_not m_end);
-    fragment_end = unparse_fragment(m + 1, m_end,
+    fragment_end = unparse_fragment(m + 1, m_end, previous_marker_end,
                                     src, original_src_len,
                                     src_file_name, include,
                                     replacements, arg.start_p is arg.end_p,
@@ -2710,65 +2710,100 @@ exit:
 
   return m;
 }
+/** Write pending space, and if there is a pending `#line` directive try
+ * to insert it in the first available end of line.
+ * @param line_directive_pending [out] will be set to `false` if it was
+ * `true` and the `#line` directive was written.
+ * @param src_file_name [in] C source file name, needed for `#line`.
+ * @param pending_space [in] pointer to the pending space marker.
+ * Assumes it is not `NULL`, and also not empty (`pending_space->len != 0`).
+ * @param src [in] source code as UTF-8 bytes.
+ * @param options [in] program options.
+ * @param out [in] stream where the result will be written.
+ */
+static bool
+write_pending_space(bool* line_directive_pending, const char* src_file_name,
+                    Marker_p pending_space, Byte_array_p src,
+                    Options options, FILE* out)
+{
+  assert(pending_space->len != 0);
+  if (*line_directive_pending) {
+    Byte_array_mut_slice space = slice_for_marker(src, pending_space);
+    Byte_mut_p eol = space.start_p;
+    if (*eol is_not '\n') {
+      ++eol;
+      if (eol is_not space.end_p) {
+        do {
+          eol = memchr(eol + 1, '\n', (size_t)(space.end_p - eol - 1));
+        } while (eol and *(eol-1) is '\\');
+      } else {
+        eol = NULL;
+      }
+    }
+    if (eol) {
+      ++eol; // Include newline byte.
+      size_t len = (size_t)(eol - space.start_p);
+      if (fwrite(space.start_p, sizeof(space.start_p[0]), len, out)
+          is_not len) {
+        error(LANG("al escribir el espacio pendiente",
+                   "when writing pending space"));
+        return false;
+      }
+      if (fprintf(out, "#line %lu \"%s\"\n",
+                  original_line_number(pending_space->start + len, src),
+                  src_file_name) < 0) {
+        error(LANG("al escribir el espacio pendiente",
+                   "when writing pending space"));
+        return false;
+      }
+      *line_directive_pending = false;
+      len = (size_t)(space.end_p - eol);
+      if (fwrite(eol, sizeof(eol[0]), len, out)
+          is_not len) {
+        error(LANG("al escribir el espacio pendiente",
+                   "when writing pending space"));
+        return false;
+      }
+      return true;
+    } else {
+      return write_token(pending_space, src, options, out);
+    }
+  } else {
+    return write_token(pending_space, src, options, out);
+  }
+}
 static Marker_p
-unparse_fragment(Marker_mut_p m, Marker_p m_end,
+unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                  Byte_array_p src, size_t original_src_len,
                  const char* src_file_name, IncludeCallback_p include,
                  mut_Replacement_array_p replacements, bool is_last,
                  Options options, FILE* out)
 {
+  if (m is m_end) return m_end;
   bool eol_pending = false;
-  size_t previous_marker_end        = 0;
-  size_t previous_marker_token_type = T_NONE;
   bool line_directive_pending = false;
   Marker_mut_p pending_space = NULL;
   for (; m is_not m_end; ++m) {
+    if (options.insert_line_directives) {
+      line_directive_pending |= m->start is_not previous_marker_end;
+      previous_marker_end        = m->start + m->len;
+    }
+
     if (options.discard_comments && m->token_type is T_COMMENT) {
       if (options.discard_space && not eol_pending &&
           m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
       if (pending_space) {
-        if (not write_token(pending_space, src, options, out)) m = m_end;
+        if (not write_pending_space(&line_directive_pending,
+                                    src_file_name,
+                                    pending_space, src, options, out)) {
+          m = m_end;
+          goto exit;
+        }
         pending_space = NULL;
       }
       // Skipping the following T_SPACE token would work for a comment that
       // were alone in this line, but not if there is something in front of it.
       continue;
-    }
-
-    if (options.insert_line_directives) {
-      if (m->start is_not previous_marker_end) {
-        if (m->token_type is T_SPACE) {
-          line_directive_pending = true;
-        } else if (m->start >= original_src_len) {
-          // Skip it if m did not come from the original src.
-        } else {
-          // If both this and the previous tokens were identifiers,
-          // it means a new identifier made by concatenation in a macro,
-          // so do not put a #line directive inbetween.
-          // Same for numbers, in case they are built by some future macro.
-          if (not(previous_marker_token_type is m->token_type and
-                  (previous_marker_token_type is T_IDENTIFIER or
-                   previous_marker_token_type is T_NUMBER)
-                  )) {
-            fprintf(out, "\n#line %lu \"%s\"\n",
-                    original_line_number(m->start, src), src_file_name);
-            line_directive_pending = false;
-          }
-        }
-      } else if (line_directive_pending) {
-        if (pending_space) {
-          if (not write_token(pending_space, src, options, out)) {
-            m = m_end;
-            break;
-          }
-          pending_space = NULL;
-        }
-        fprintf(out, "\n#line %lu \"%s\"\n",
-                original_line_number(m->start, src), src_file_name);
-        line_directive_pending = false;
-      }
-      previous_marker_end        = m->start + m->len;
-      previous_marker_token_type = m->token_type;
     }
 
     Byte_array_mut_slice text = slice_for_marker(src, m);
@@ -2806,7 +2841,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
       size_t len = 9;// = strlen("#define {")
       if (m->len >= len and strn_eq("#define {", (char*)rest, len)) {
         if (pending_space) {
-          if (not write_token(pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending,
+                                      src_file_name,
+                                      pending_space, src, options, out)) {
             m = m_end;
             break;
           }
@@ -2907,7 +2944,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
       len = 10; // = strlen("#include {");
       if (m->len >= len and strn_eq("#include {", (char*)rest, len)) {
         if (pending_space) {
-          if (not write_token(pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending,
+                                      src_file_name,
+                                      pending_space, src, options, out)) {
             m = m_end;
             break;
           }
@@ -2951,10 +2990,12 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
         continue;
       }
 
-      len = 10;// = strlen("#foreach }") == strlen("#foreach {")
+      len = 10;// = strlen("#foreach {") == strlen("#foreach }")
       if (m->len >= len) {
         if        (strn_eq("#foreach {", (char*)rest, len)) {
+          bool insert_line_directives = options.insert_line_directives;
           if (pending_space) {
+            // Similar to write_pending_space():
             Byte_array_mut_slice space = slice_for_marker(src, pending_space);
             while (space.end_p is_not space.start_p) {
               if (*--space.end_p is '\n') break;
@@ -2962,17 +3003,27 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
             fwrite(space.start_p, sizeof(space.start_p[0]),
                    (size_t)(space.end_p-space.start_p), out);
             pending_space = NULL;
+            if (options.insert_line_directives and
+                (space.end_p is_not space.start_p and
+                 *(space.end_p - 1) is '\\')) {
+              options.insert_line_directives = false;
+            }
           }
           rest += len;
+          previous_marker_end = m->start;
           m = unparse_foreach((Marker_array_slice){ m, m_end },
+                              previous_marker_end,
                               replacements,
                               src, original_src_len,
                               src_file_name, include,
                               options, out);
-          pending_space = NULL;
+          previous_marker_end = m->start;
+          line_directive_pending = options.insert_line_directives;
+          options.insert_line_directives = insert_line_directives;
           --m; // Loop will increase m for next iteration.
           continue;
         } else if (strn_eq("#foreach }", (char*)rest, len)) {
+          line_directive_pending = false;
           if (pending_space) {
             Byte_array_mut_slice space = slice_for_marker(src, pending_space);
             while (space.end_p is_not space.start_p) {
@@ -3031,7 +3082,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
         if (m is_not m_end and is_operator(m->token_type)) {
           if (not is_last) {
             if (pending_space) {
-              if (not write_token(pending_space, src, options, out)) {
+              if (not write_pending_space(&line_directive_pending,
+                                          src_file_name,
+                                          pending_space, src, options, out)) {
                 m = m_end;
                 goto exit;
               }
@@ -3067,7 +3120,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
         }
 
         if (pending_space) {
-          if (not write_token(pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending,
+                                      src_file_name,
+                                      pending_space, src, options, out)) {
             m = m_end;
             goto exit;
           }
@@ -3102,7 +3157,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
       }
     } else if (replacements and m->token_type is T_IDENTIFIER) {
       if (pending_space) {
-        if (not write_token(pending_space, src, options, out)) {
+        if (not write_pending_space(&line_directive_pending,
+                                    src_file_name,
+                                    pending_space, src, options, out)) {
           m = m_end;
           goto exit;
         }
@@ -3130,7 +3187,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
 
     // Default token output:
     if (pending_space) {
-      if (not write_token(pending_space, src, options, out)) goto exit;
+      if (not write_pending_space(&line_directive_pending,
+                                  src_file_name,
+                                  pending_space, src, options, out)) goto exit;
       pending_space = NULL;
     }
     if (m->token_type is T_SPACE) {
@@ -3141,7 +3200,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end,
   }
 
   if (pending_space) {
-    if (not write_token(pending_space, src, options, out)) goto exit;
+    if (not write_pending_space(&line_directive_pending,
+                                src_file_name,
+                                pending_space, src, options, out)) goto exit;
     pending_space = NULL;
   }
 
@@ -3166,7 +3227,7 @@ unparse(Marker_array_slice markers,
   assert(markers.end_p >= markers.start_p);
 
   Marker_mut_p m = markers.start_p;
-  m = unparse_fragment(m, markers.end_p,
+  m = unparse_fragment(m, markers.end_p, 0,
                        src, original_src_len,
                        src_file_name, NULL,
                        NULL, false,
