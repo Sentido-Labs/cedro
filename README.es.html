@@ -1214,6 +1214,23 @@ int main(void)
         </tr>
       </table>
 
+      <p>Si la ristra se compone de más de una pieza, se envuelve con paréntesis para asegurar que sea correcto.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  añade(&amp;palabras, <b>(uint8_t*)animales</b>[<b>0</b>..<b>+2</b>]);
+  añade(&amp;palabras, <b>(uint8_t*)plantas</b>[<b>0</b>..<b>3</b>]);
+  añade(&amp;palabras, <b>(uint8_t*)animales</b>[<b>2</b>..<b>+2</b>]);
+</code>
+          </td><td>
+            <code>  añade(&amp;palabras, &amp;<b>((uint8_t*)animales)</b>[<b>0</b>], &amp;<b>((uint8_t*)animales)</b>[<b>0+2</b>]);
+  añade(&amp;palabras, &amp;<b>((uint8_t*)plantas)</b>[<b>0</b>], &amp;<b>((uint8_t*)plantas)</b>[<b>3</b>]);
+  añade(&amp;palabras, &amp;<b>((uint8_t*)animales)</b>[<b>2</b>], &amp;<b>((uint8_t*)animales)</b>[<b>2+2</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
       <h3 id="slice-notation-related-work">Obras relacionadas <a class="anchor" href="#slice-notation-related-work">#…-related-work</a></h3>
       <p>La notación <code>[a..b]</code> para porciones de ristras se
         <a href="https://en.wikipedia.org/wiki/Array_slicing#1968:_Algol_68">definió por primera vez en Algol 68</a>

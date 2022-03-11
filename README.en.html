@@ -1211,6 +1211,23 @@ int main(void)
         </tr>
       </table>
 
+      <p>If the slice is composed of more than one token, it will be wrapped in parentheses to make sure it’s correct.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  append(&amp;words, <b>(uint8_t*)animals</b>[<b>0</b>..<b>+2</b>]);
+  append(&amp;words, <b>(uint8_t*)plants</b>[<b>0</b>..<b>3</b>]);
+  append(&amp;words, <b>(uint8_t*)animals</b>[<b>2</b>..<b>+2</b>]);
+</code>
+          </td><td>
+            <code>  append(&amp;words, &amp;<b>((uint8_t*)animals)</b>[<b>0</b>], &amp;<b>((uint8_t*)animals)</b>[<b>0+2</b>]);
+  append(&amp;words, &amp;<b>((uint8_t*)plants)</b>[<b>0</b>], &amp;<b>((uint8_t*)plants)</b>[<b>3</b>]);
+  append(&amp;words, &amp;<b>((uint8_t*)animals)</b>[<b>2</b>], &amp;<b>((uint8_t*)animals)</b>[<b>2+2</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
       <h3 id="slice-notation-related-work">Related work <a class="anchor" href="#slice-notation-related-work">#…-related-work</a></h3>
       <p>The notation <code>[a..b]</code> for array slices was
         <a href="https://en.wikipedia.org/wiki/Array_slicing#1968:_Algol_68">first defined in Algol 68</a>

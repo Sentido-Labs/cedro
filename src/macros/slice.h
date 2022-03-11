@@ -13,11 +13,13 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
 
   mut_Error err = { .position = NULL, .message = NULL };
 
-  Marker comma         = Marker_from(src, ",", T_COMMA);
-  Marker space         = Marker_from(src, " ", T_SPACE);
-  Marker  openBrackets = Marker_from(src, "[", T_INDEX_START);
-  Marker closeBrackets = Marker_from(src, "]", T_INDEX_END);
-  Marker addressOf     = Marker_from(src, "&", T_OP_2);
+  Marker comma            = Marker_from(src, ",", T_COMMA);
+  Marker space            = Marker_from(src, " ", T_SPACE);
+  Marker  openBrackets    = Marker_from(src, "[", T_INDEX_START);
+  Marker closeBrackets    = Marker_from(src, "]", T_INDEX_END);
+  Marker  openParenthesis = Marker_from(src, "(", T_INDEX_START);
+  Marker closeParenthesis = Marker_from(src, ")", T_INDEX_END);
+  Marker addressOf        = Marker_from(src, "&", T_OP_2);
 
   mut_Marker_array replacement;
   init_Marker_array(&replacement, 30);
@@ -74,16 +76,29 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
         b.end_p   = skip_space_back   (b.start_p, b.end_p);
         array.start_p = skip_space_forward(array.start_p, array.end_p);
         array.end_p   = skip_space_back   (array.start_p, array.end_p);
+        bool array_is_expression = array.end_p - array.start_p > 1;
         replacement.len = 0;
         push_Marker_array(&replacement, addressOf);
-        append_Marker_array(&replacement, array);
+        if (array_is_expression) {
+          push_Marker_array(&replacement, openParenthesis);
+          append_Marker_array(&replacement, array);
+          push_Marker_array(&replacement, closeParenthesis);
+        } else {
+          append_Marker_array(&replacement, array);
+        }
         push_Marker_array(&replacement, openBrackets);
         append_Marker_array(&replacement, a);
         push_Marker_array(&replacement, closeBrackets);
         push_Marker_array(&replacement, comma);
         push_Marker_array(&replacement, space);
         push_Marker_array(&replacement, addressOf);
-        append_Marker_array(&replacement, array);
+        if (array_is_expression) {
+          push_Marker_array(&replacement, openParenthesis);
+          append_Marker_array(&replacement, array);
+          push_Marker_array(&replacement, closeParenthesis);
+        } else {
+          append_Marker_array(&replacement, array);
+        }
         push_Marker_array(&replacement, openBrackets);
         if (b.start_p->token_type is T_OP_2 and
             b.start_p->len is 1 and
