@@ -7,6 +7,11 @@
  * Just an example of using Cedro together with some utility functions,
  * that you can use as base for new programs.
  *
+ * Modify this text to match your program, add your name to the
+ * copyright statement.
+ * This project template is distributed under the MIT license,
+ * so you can change it to any license you want.
+ *
  * It includes my customized hash table library derived from
  * [khash](http://attractivechaos.github.io/klib/#About),
  * and also Josh Baker’s [btree.c](https://github.com/tidwall/btree.c).
