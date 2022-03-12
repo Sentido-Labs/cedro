@@ -263,9 +263,16 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   push_Marker_array(&replacement, comma);
                   push_Marker_array(&replacement, space);
                 }
-              } else if (segment_start != end_of_line &&
-                         (segment_start+1)->token_type == T_SPACE) {
-                push_Marker_array(&replacement, space);
+              } else if (segment_start is_not end_of_line) {
+                TokenType object_end = cursor is_not start?
+                    (cursor-1)->token_type: T_NONE;
+                if (object_end is T_SPACE or
+                    (object_end is T_NUMBER or
+                     object_end is T_IDENTIFIER) and
+                    (segment_start->token_type is T_NUMBER or
+                     segment_start->token_type is T_IDENTIFIER)) {
+                  push_Marker_array(&replacement, space);
+                }
               }
             }
 
