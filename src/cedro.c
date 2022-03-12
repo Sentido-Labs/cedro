@@ -1353,9 +1353,10 @@ find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
 static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
-  Marker_mut_p start_of_line = cursor;
+  Marker_mut_p start_of_line = cursor + 1;
   size_t nesting = 0;
   while (start_of_line is_not start) {
+    --start_of_line;
     switch (start_of_line->token_type) {
       case T_SEMICOLON: case T_LABEL_COLON:
       case T_BLOCK_START: case T_BLOCK_END:
@@ -1379,7 +1380,6 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
       default:
         break;
     }
-    --start_of_line;
   } found:
 
   if (nesting or start_of_line < start) {
@@ -1430,9 +1430,10 @@ find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
 static inline Marker_p
 find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
-  Marker_mut_p start_of_block = cursor;
+  Marker_mut_p start_of_block = cursor + 1;
   size_t nesting = 0;
   while (start_of_block >= start) {
+    --start_of_block;
     switch (start_of_block->token_type) {
       case T_BLOCK_START:
         if (not nesting) {
@@ -1447,7 +1448,6 @@ find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
         break;
       default: break;
     }
-    --start_of_block;
   } found:
 
   if (nesting or start_of_block < start) {
