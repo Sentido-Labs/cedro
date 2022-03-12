@@ -250,7 +250,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
         block_level = block_stack.len;
         if (block_level is 0) {
-          error_at("break outside of block.", cursor - 1, markers, src);
+          error_at(LANG("break fuera de bloque.",
+                        "break outside of block."),
+                   cursor - 1, markers, src);
           err.message = NULL;
           break;
         }
@@ -267,7 +269,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       } else if (cursor->token_type is T_CONTROL_FLOW_CONTINUE) {
         block_level = block_stack.len;
         if (block_level is 0) {
-          error_at("continue outside of block.", cursor - 1, markers, src);
+          error_at(LANG("continue fuera de bloque.",
+                        "continue outside of block."),
+                   cursor - 1, markers, src);
           err.message = NULL;
           break;
         }
@@ -283,7 +287,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       } else if (cursor->token_type is T_CONTROL_FLOW_GOTO) {
         block_level = block_stack.len;
         if (block_level is 0) {
-          error_at("goto outside of block.", cursor - 1, markers, src);
+          error_at(LANG("goto fuera de bloque.",
+                        "goto outside of block."),
+                   cursor - 1, markers, src);
           break;
         }
         size_t function_level = block_level + 1;
@@ -299,7 +305,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
 
         Marker_mut_p label_p = skip_space_forward(cursor + 1, end);
         if (label_p is end or label_p->token_type is_not T_IDENTIFIER) {
-          error_at("goto without label.", cursor - 1, markers, src);
+          error_at(LANG("goto sin etiqueta.",
+                        "goto without label."),
+                   cursor - 1, markers, src);
           break;
         }
         mut_Byte_array label; init_Byte_array(&label, 10);
@@ -329,7 +337,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           ++m;
         }
 
-        if (!label_p) {
+        if (not label_p) {
           // Then backwards:
           m = cursor - 1;
           nesting = block_level;
@@ -386,7 +394,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       marker_buffer.len = 0;
 
       if (line.start_p is_not start and
-          ((line.start_p+1)->token_type is T_CONTROL_FLOW_IF ||
+          ((line.start_p+1)->token_type is T_CONTROL_FLOW_IF or
            (line.start_p+1)->token_type is T_CONTROL_FLOW_LOOP)
           ) {
         // We need to wrap this in a block.
@@ -460,11 +468,12 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         action_end = skip_space_forward(action_end + 1, end);
         size_t nesting = 0;
         while (action_end is_not end) {
-          if (T_TUPLE_START == action_end->token_type) {
+          if (T_TUPLE_START is action_end->token_type) {
             ++nesting;
-          } else if (T_TUPLE_END == action_end->token_type) {
+          } else if (T_TUPLE_END is action_end->token_type) {
             if (not nesting) {
-              error_at("too many closing parenthesis.",
+              error_at(LANG("demasiados cierres de paréntesis.",
+                            "too many closing parenthesis."),
                        action_end, markers, src);
               goto free_all_and_return;
             }
@@ -494,7 +503,9 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
 
       if (action_end is action_start) {
-        error_at("empty auto statement.", action_end, markers, src);
+        error_at(LANG("sentencia auto vacía.",
+                      "empty auto statement."),
+                 action_end, markers, src);
         break;
       }
 
