@@ -1,3 +1,7 @@
+.PHONY: default release debug static bt help doc test check clean
+default: release
+all: release debug
+
 NAME=cedro
 
 # Strict compilation flags, use during development:
@@ -7,14 +11,12 @@ CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -
 CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
 
 # Loose compilation flags, use for releases:
-CFLAGS=-g -std=c99
-CFLAGS_MINIZ=-g -std=c99
+#CFLAGS=-g -std=c99
+#CFLAGS_MINIZ=-g -std=c99
 
 # -DNDEBUG mutes the unused-variable warnings/errors.
 OPTIMIZATION=-O -DNDEBUG
 
-default: release
-all: release debug
 debug:   bin/$(NAME)-debug bin/$(NAME)cc-debug bin/$(NAME)-new-debug
 release: bin/$(NAME)       bin/$(NAME)cc       bin/$(NAME)-new
 .PHONY: default all debug release
@@ -22,20 +24,20 @@ release: bin/$(NAME)       bin/$(NAME)cc       bin/$(NAME)-new
 bin/cedro-debug: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $<
-	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME) src/$(NAME)cc.c >/dev/null; then echo Valgrind check passed: $@; fi; fi
+	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet $@ src/$(NAME)cc.c >/dev/null; then echo Valgrind check passed: $@; fi; fi
 bin/cedro:       src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $< $(OPTIMIZATION)
-	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME) src/$(NAME)cc.c >/dev/null; then echo Valgrind check passed: $@; fi; fi
+	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet $@ src/$(NAME)cc.c >/dev/null; then echo Valgrind check passed: $@; fi; fi
 
 bin/cedrocc-debug: src/cedrocc.c Makefile bin/cedro-debug
 	@mkdir -p bin
 	bin/cedro-debug --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@
-	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME)cc src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
+	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet $@ src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
 bin/cedrocc:       src/cedrocc.c Makefile bin/cedro
 	@mkdir -p bin
 	bin/cedro       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@  $(OPTIMIZATION)
-	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet bin/$(NAME)cc src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
+	@if which valgrind >/dev/null; then if valgrind --leak-check=yes --quiet $@ src/$(NAME)cc.c -I src -o /dev/null; then echo Valgrind check passed: $@; fi; fi
 
 bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc-debug
 	@mkdir -p bin
@@ -53,12 +55,10 @@ bin/%: src/%.c Makefile bin/cedrocc
 
 doc:
 	$(MAKE) -C doc
-.PHONY: doc
 
 test: src/$(NAME)-test.c bin/$(NAME)
 	$(CC) $(CFLAGS) -o bin/$@ $<
 	bin/$@
-.PHONY: test
 
 # gcc -fanalyzer needs at least GCC 10.
 # http://cppcheck.sourceforge.net/
@@ -77,4 +77,3 @@ check: bin/$(NAME)
 clean:
 	rm -rf bin
 	if [ -e doc ]; then $(MAKE) -C doc clean; fi
-.PHONY: clean

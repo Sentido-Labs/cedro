@@ -1,3 +1,7 @@
+.PHONY: default release debug static bt help doc clean
+default: release
+all: debug release
+
 CMDNAME={template}
 NAME={Template}
 LOGO=logo.png
@@ -17,6 +21,8 @@ CEDRO=tools/cedro/cedro
 CEDROCC=$(CEDRO)cc
 
 LIBRARIES=lib/build/btree.c-0.2.1/btree.o
+
+# include Makefile.libuv.mk
 
 release: $(LIBRARIES) build/$(CMDNAME)
 debug:   $(LIBRARIES) build/$(CMDNAME)-debug
@@ -40,21 +46,24 @@ $(CEDROCC): $(CEDROCC).c $(CEDRO)
 build/$(CMDNAME).o:     src/main.c src/* Makefile $(CEDROCC)
 	@mkdir -p build
 	$(CEDROCC) $< $(CFLAGS) -c           -o $@ -O
-build/$(CMDNAME):       build/$(CMDNAME).o Makefile
+build/$(CMDNAME):       build/$(CMDNAME).o $(LIBRARIES) Makefile
 	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
 	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+	@echo '--->' $@
 
 build/$(CMDNAME)-debug.o: src/main.c src/* Makefile $(CEDROCC)
 	@mkdir -p build
 	$(CEDROCC) $< $(CFLAGS) -c           -o $@
-build/$(CMDNAME)-debug:   build/$(CMDNAME)-debug.o Makefile
+build/$(CMDNAME)-debug:   build/$(CMDNAME)-debug.o $(LIBRARIES) Makefile
 	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
 	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+	@echo '--->' $@
 
-build/$(CMDNAME)-static: src/main.c src/* Makefile $(CEDROCC)
+build/$(CMDNAME)-static: src/main.c src/* $(LIBRARIES) Makefile $(CEDROCC)
 	@mkdir -p build
 	$(CEDROCC) $< $(CFLAGS) -o $@ -O -static
 	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+	@echo '--->' $@
 
 lib/build/%.o: lib/%.c lib/%.h
 	mkdir -p $$(dirname $@)
@@ -63,7 +72,6 @@ lib/build/%.o: lib/%.c lib/%.h
 doc: doc/api/main.c Makefile Doxyfile
 	mkdir -p doc/api
 	NAME="$(NAME)" doxygen
-.PHONY: doc
 
 # Amalgamation of src/main.c
 doc/api/main.c: src/* $(CEDROCC)
@@ -93,4 +101,3 @@ Doxyfile:
 clean:
 	rm -rf build lib/build doc/api
 	rm -f $(CEDRO) $(CEDRO)cc
-.PHONY: clean
