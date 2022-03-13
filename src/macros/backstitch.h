@@ -13,6 +13,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker semicolon = Marker_from(src, ";",  T_SEMICOLON);
   Marker space     = Marker_from(src, " ",  T_SPACE);
   Marker newline   = Marker_from(src, "\n", T_SPACE);
+  Marker empty     = {0};
   Marker_array_mut_slice object;
   Marker_array_mut_slice slice;
   while (cursor is_not end) {
@@ -31,22 +32,26 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       if (first_segment_start->token_type is T_ELLIPSIS) {
         first_segment_start = skip_space_forward(first_segment_start + 1, end);
         if (first_segment_start is end) {
-          error_at(LANG("declarador (pre|su)fijo incompleto.",
+          error_at(LANG("declarador afijo incompleto.",
                         "unfinished affix declarator."),
                    cursor, markers, src);
           return;
         }
-        if (first_segment_start->token_type is_not T_IDENTIFIER) {
-          error_at(LANG("prefijo no válido, debe ser un identificador.",
-                        "invalid suffix, must be an identifier."),
-                   cursor, markers, src);
-          return;
+        if ((first_segment_start - 1)->token_type is_not T_ELLIPSIS) {
+          // Special case `a->@... b(), c;` → `a->b(); a->c;`.
+          prefix = &empty;
+        } else {
+          if (first_segment_start->token_type is_not T_IDENTIFIER) {
+            error_at(LANG("prefijo no válido, debe ser un identificador.",
+                          "invalid suffix, must be an identifier."),
+                     cursor, markers, src);
+            return;
+          }
+          suffix = first_segment_start++;
+          first_segment_start = skip_space_forward(first_segment_start, end);
         }
-        suffix = first_segment_start++;
-        first_segment_start = skip_space_forward(first_segment_start, end);
       } else if (first_segment_start->token_type is T_IDENTIFIER) {
         Marker_mut_p m = first_segment_start + 1;
-        m = skip_space_forward(m, end);
         if (m is_not end) {
           if (m->token_type is T_ELLIPSIS) {
             prefix = first_segment_start;
@@ -118,7 +123,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
 
           // TODO: check that there is a group opening before the line if
-          //       if it is not an statement.
+          //       it is not a statement.
           mut_Marker_array replacement;
           // The factor of 2 here is a heuristic to avoid relocations.
           init_Marker_array(&replacement,
@@ -177,9 +182,12 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             bool is_function_call   = true;
             if (segment_start->token_type is T_INDEX_START or
                 segment_start->token_type is T_OP_1        or
-                segment_start->token_type is T_OP_14) {
+                segment_start->token_type is T_OP_14       or
+                prefix and prefix is &empty) {
               // If the segment starts with “[”, “.”, “->”, or “=”,
               // then this is already the correct insertion point.
+              // The special case where prefix is empty
+              // means that the pseudo-object part will be used as prefix.
             } else {
               // Assume function call, look for parenthesis:
               while (not inside_parenthesis and insertion_point < segment_end) {
@@ -208,7 +216,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
             slice.start_p = segment_start;
             slice.end_p   = insertion_point;
-            if (prefix or suffix) {
+            if (suffix or prefix and prefix is_not &empty) {
               while (slice.end_p is_not slice.start_p) {
                 --slice.end_p;
                 if (slice.end_p->token_type is T_IDENTIFIER) break;
