@@ -2977,7 +2977,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         const char*    basename = strrchr(included_file, '/');
         if (not basename) basename = strrchr(included_file, '\\');
         if (basename) ++basename; else basename = included_file;
-        fprintf(out, "[%lu] = { /* %s */\n0x%2X",
+        fprintf(out, "[%lu] = { /* %s */\n0x%02X",
                 bin.len, basename, bin.start[0]);
         for (size_t i = 1; i is_not bin.len; ++i) {
           fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
