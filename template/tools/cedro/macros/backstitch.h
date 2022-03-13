@@ -13,6 +13,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker semicolon = Marker_from(src, ";",  T_SEMICOLON);
   Marker space     = Marker_from(src, " ",  T_SPACE);
   Marker newline   = Marker_from(src, "\n", T_SPACE);
+  Marker empty     = {0};
   Marker_array_mut_slice object;
   Marker_array_mut_slice slice;
   while (cursor is_not end) {
@@ -22,7 +23,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       // Trim space before first segment, or affix declarator.
       first_segment_start = skip_space_forward(first_segment_start, end);
       if (first_segment_start is end) {
-        error_at("unfinished backstitch operator.",
+        error_at(LANG("macro pespunte incompleto.",
+                      "unfinished backstitch macro."),
                  cursor, markers, src);
         return;
       }
@@ -30,20 +32,26 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
       if (first_segment_start->token_type is T_ELLIPSIS) {
         first_segment_start = skip_space_forward(first_segment_start + 1, end);
         if (first_segment_start is end) {
-          error_at("unfinished affix declarator.",
+          error_at(LANG("declarador afijo incompleto.",
+                        "unfinished affix declarator."),
                    cursor, markers, src);
           return;
         }
-        if (first_segment_start->token_type is_not T_IDENTIFIER) {
-          error_at("invalid suffix, must be an identifier.",
-                   cursor, markers, src);
-          return;
+        if ((first_segment_start - 1)->token_type is_not T_ELLIPSIS) {
+          // Special case `a->@... b(), c;` → `a->b(); a->c;`.
+          prefix = &empty;
+        } else {
+          if (first_segment_start->token_type is_not T_IDENTIFIER) {
+            error_at(LANG("prefijo no válido, debe ser un identificador.",
+                          "invalid suffix, must be an identifier."),
+                     cursor, markers, src);
+            return;
+          }
+          suffix = first_segment_start++;
+          first_segment_start = skip_space_forward(first_segment_start, end);
         }
-        suffix = first_segment_start++;
-        first_segment_start = skip_space_forward(first_segment_start, end);
       } else if (first_segment_start->token_type is T_IDENTIFIER) {
         Marker_mut_p m = first_segment_start + 1;
-        m = skip_space_forward(m, end);
         if (m is_not end) {
           if (m->token_type is T_ELLIPSIS) {
             prefix = first_segment_start;
@@ -101,18 +109,21 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
         } else {
           end_of_line = skip_space_back(first_segment_start, end_of_line);
           bool ends_with_semicolon =
-              end_of_line < end &&
+              end_of_line < end and
               end_of_line->token_type is T_SEMICOLON;
-          bool empty_object = object.start_p == object.end_p;
-          bool empty_segments = first_segment_start == end_of_line;
-          if (empty_object && empty_segments) {
-            error_at("backstitch object and segments can not be both empty.",
+          bool empty_object = object.start_p is object.end_p;
+          bool empty_segments = first_segment_start is end_of_line;
+          if (empty_object and empty_segments) {
+            error_at(LANG("no se puede omitir a la vez"
+                          " el objeto de pespunte y los segmentos.",
+                          "backstitch object and segments"
+                          " can not be both omitted at the same time."),
                      cursor, markers, src);
             return;
           }
 
           // TODO: check that there is a group opening before the line if
-          //       if it is not an statement.
+          //       it is not a statement.
           mut_Marker_array replacement;
           // The factor of 2 here is a heuristic to avoid relocations.
           init_Marker_array(&replacement,
@@ -145,7 +156,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   --nesting;// Can not underflow because of find_line_end().
                   break;
                 case T_ELLIPSIS:
-                  error_at("invalid prefix, must be an identifier.",
+                  error_at(LANG("prefijo no válido, debe ser un identificador.",
+                                "invalid prefix, must be an identifier."),
                            cursor, markers, src);
                   destruct_Marker_array(&replacement);
                   return;
@@ -156,7 +168,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               ++segment_end;
             } found_segment_end:
             if (nesting) {
-              error_at("unclosed group, syntax error.",
+              error_at(LANG("error sintáctico, grupo sin cerrar.",
+                            "unclosed group, syntax error."),
                        cursor, markers, src);
               destruct_Marker_array(&replacement);
               return;
@@ -167,11 +180,14 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
             Marker_mut_p insertion_point = segment_start;
             bool inside_parenthesis = false;
             bool is_function_call   = true;
-            if (segment_start->token_type is T_INDEX_START ||
-                segment_start->token_type is T_OP_1        ||
-                segment_start->token_type is T_OP_14) {
+            if (segment_start->token_type is T_INDEX_START or
+                segment_start->token_type is T_OP_1        or
+                segment_start->token_type is T_OP_14       or
+                prefix and prefix is &empty) {
               // If the segment starts with “[”, “.”, “->”, or “=”,
               // then this is already the correct insertion point.
+              // The special case where prefix is empty
+              // means that the pseudo-object part will be used as prefix.
             } else {
               // Assume function call, look for parenthesis:
               while (not inside_parenthesis and insertion_point < segment_end) {
@@ -200,8 +216,8 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
             slice.start_p = segment_start;
             slice.end_p   = insertion_point;
-            if (prefix || suffix) {
-              while (slice.end_p != slice.start_p) {
+            if (suffix or prefix and prefix is_not &empty) {
+              while (slice.end_p is_not slice.start_p) {
                 --slice.end_p;
                 if (slice.end_p->token_type is T_IDENTIFIER) break;
               }
@@ -209,10 +225,13 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               if (empty_segments) {
                 // Modifying object is not a problem because there are
                 // no further segments, so we won’t use it again.
-                while (object.start_p->token_type == T_OP_2 &&
-                       object.start_p != cursor) ++object.start_p;
-                if (object.start_p->token_type != T_IDENTIFIER) {
-                  error_at("(pseudo-)object must start with an identifier.",
+                while (object.start_p->token_type is T_OP_2 and
+                       object.start_p is_not cursor) ++object.start_p;
+                if (object.start_p->token_type is_not T_IDENTIFIER) {
+                  error_at(LANG("el (pseudo-)objeto debe empezar"
+                                " con un identificador.",
+                                "the (pseudo-)object must start"
+                                " with an identifier."),
                            cursor, markers, src);
                   destruct_Marker_array(&replacement);
                   return;
@@ -236,10 +255,11 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               slice.start_p = slice.end_p;
               slice.end_p   = insertion_point;
               if (slice.start_p > slice.end_p) {
-                  error_at("missing object.",
-                           cursor, markers, src);
-                  destruct_Marker_array(&replacement);
-                  return;
+                error_at(LANG("falta el objeto.",
+                              "missing object."),
+                         cursor, markers, src);
+                destruct_Marker_array(&replacement);
+                return;
               }
             }
             append_Marker_array(&replacement, slice);
@@ -251,9 +271,16 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   push_Marker_array(&replacement, comma);
                   push_Marker_array(&replacement, space);
                 }
-              } else if (segment_start != end_of_line &&
-                         (segment_start+1)->token_type == T_SPACE) {
-                push_Marker_array(&replacement, space);
+              } else if (segment_start is_not end_of_line) {
+                TokenType object_end = cursor is_not start?
+                    (cursor-1)->token_type: T_NONE;
+                if (object_end is T_SPACE or
+                    (object_end is T_NUMBER or
+                     object_end is T_IDENTIFIER) and
+                    (segment_start->token_type is T_NUMBER or
+                     segment_start->token_type is T_IDENTIFIER)) {
+                  push_Marker_array(&replacement, space);
+                }
               }
             }
 

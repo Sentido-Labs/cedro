@@ -168,7 +168,7 @@ get_SourceFile_for_path(mut_SourceFile_array_p _, Byte_array path)
   SourceFile_mut_p cursor = start_of_SourceFile_array(_);
   SourceFile_p        end =   end_of_SourceFile_array(_);
   while (cursor is_not end) {
-    if (cursor->path.len is path.len &&
+    if (cursor->path.len is path.len and
         mem_eq(start_of_Byte_array(&cursor->path),
                start_of_Byte_array(&path), path.len)) {
       return cursor;
@@ -196,7 +196,7 @@ find_include_file(IncludePaths_p _, Byte_array_slice path,
     append_Byte_array(&path_buffer, get_IncludePaths(_, i));
     push_Byte_array(&path_buffer, '/');
     append_Byte_array(&path_buffer, path);
-    if (access(as_c_string(&path_buffer), F_OK) == 0) {
+    if (access(as_c_string(&path_buffer), F_OK) is 0) {
       result->len = 0;
       append_Byte_array(result, bounds_of_Byte_array(&path_buffer));
       found = true;
@@ -251,8 +251,8 @@ include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
     ++_->level;
     mut_Byte_array s = {0};
     auto destruct_Byte_array(&s);
-    if ((quoted_include &&
-         find_include_file(&_->paths_quote, content, &s)) ||
+    if ((quoted_include and
+         find_include_file(&_->paths_quote, content, &s)) or
         find_include_file(&_->paths, content, &s)) {
       // TODO: check #define guards?
       size_t previous_len = len_IncludePaths(&_->paths_quote);

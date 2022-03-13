@@ -59,7 +59,7 @@ typedef unsigned long uint32_t;
 #include <iso646.h>
 #define is_not not_eq
 #define is     ==
-#define in(min, x, max) (x >= min && x <= max)
+#define in(min, x, max) (x >= min and x <= max)
 #include <string.h> // For memcpy(), memmove().
 #define mem_eq(a, b, len)   (0 is memcmp(a, b, len))
 #define str_eq(a, b)        (0 is strcmp(a, b))
@@ -164,11 +164,11 @@ decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8
   uint8_t c = *cursor;
   uint32_t u;
   uint8_t len = 0;
-  if      (0x00 == (c & 0x80)) { *codepoint = (uint32_t)(c); return cursor+1; }
-  //if      (0x00 == (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
-  else if (0xC0 == (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
-  else if (0xE0 == (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
-  else if (0xF0 == (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
+  if      (0x00 is (c & 0x80)) { *codepoint = (uint32_t)(c); return cursor+1; }
+  //if      (0x00 is (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
+  else if (0xC0 is (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
+  else if (0xE0 is (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
+  else if (0xF0 is (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
   if (len is 0 or cursor + len > end) {
     *err_p = UTF8_ERROR;
     return cursor;
@@ -204,10 +204,10 @@ len_utf8(const uint8_t * const start, const uint8_t * const end,
   const uint8_t* cursor = start;
   while (cursor is_not end) {
     uint8_t c = *cursor;
-    if      (0x00 == (c & 0x80)) { cursor += 1; }
-    else if (0xC0 == (c & 0xE0)) { cursor += 2; }
-    else if (0xE0 == (c & 0xF0)) { cursor += 3; }
-    else if (0xF0 == (c & 0xF8)) { cursor += 4; }
+    if      (0x00 is (c & 0x80)) { cursor += 1; }
+    else if (0xC0 is (c & 0xE0)) { cursor += 2; }
+    else if (0xE0 is (c & 0xF0)) { cursor += 3; }
+    else if (0xF0 is (c & 0xF8)) { cursor += 4; }
     else cursor = end + 1;
     if (cursor > end) {
       *err_p = UTF8_ERROR;
@@ -428,9 +428,9 @@ TokenType_STRING[1+T_OTHER] = {
 };
 
 #define precedence(token_type) (token_type - T_OP_1)
-#define is_keyword(token_type) (token_type >= T_TYPE && token_type <= T_CONTROL_FLOW_LABEL)
-#define is_operator(token_type) (token_type >= T_OP_1 && token_type <= T_COMMA)
-#define is_fence(token_type) (token_type >= T_BLOCK_START && token_type <= T_GROUP_END)
+#define is_keyword(token_type) (token_type >= T_TYPE and token_type <= T_CONTROL_FLOW_LABEL)
+#define is_operator(token_type) (token_type >= T_OP_1 and token_type <= T_COMMA)
+#define is_fence(token_type) (token_type >= T_BLOCK_START and token_type <= T_GROUP_END)
 
 /** Marks a C token in the source code. */
 TYPEDEF_STRUCT(Marker, {
@@ -619,7 +619,7 @@ Marker_from(mut_Byte_array_p src, const char * const text, TokenType token_type)
   while ((cursor = memchr(cursor, first_character, (size_t)(end - cursor)))) {
     Byte_mut_p p1 = cursor;
     Byte_mut_p p2 = (Byte_p) text;
-    while (p2 is_not text_end && p1 is_not end && *p1 is *p2) { ++p1; ++p2; }
+    while (p2 is_not text_end and p1 is_not end and *p1 is *p2) { ++p1; ++p2; }
     if (p2 is text_end) {
       match = cursor;
       break;
@@ -1353,9 +1353,10 @@ find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
 static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
-  Marker_mut_p start_of_line = cursor;
+  Marker_mut_p start_of_line = cursor + 1;
   size_t nesting = 0;
   while (start_of_line is_not start) {
+    --start_of_line;
     switch (start_of_line->token_type) {
       case T_SEMICOLON: case T_LABEL_COLON:
       case T_BLOCK_START: case T_BLOCK_END:
@@ -1379,7 +1380,6 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
       default:
         break;
     }
-    --start_of_line;
   } found:
 
   if (nesting or start_of_line < start) {
@@ -1430,9 +1430,10 @@ find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
 static inline Marker_p
 find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 {
-  Marker_mut_p start_of_block = cursor;
+  Marker_mut_p start_of_block = cursor + 1;
   size_t nesting = 0;
   while (start_of_block >= start) {
+    --start_of_block;
     switch (start_of_block->token_type) {
       case T_BLOCK_START:
         if (not nesting) {
@@ -1447,7 +1448,6 @@ find_block_start(Marker_p cursor, Marker_p start, mut_Error_p err)
         break;
       default: break;
     }
-    --start_of_block;
   } found:
 
   if (nesting or start_of_block < start) {
@@ -1553,7 +1553,7 @@ indentation(Marker_array_p markers, Marker_mut_p cursor,
 static size_t
 line_number(Byte_array_p src, Marker_array_p markers, Marker_p position)
 {
-  assert(position >= markers->start &&
+  assert(position >= markers->start and
          position <= markers->start + markers->len);
   return 1 + count_appearances('\n', markers->start, position, src);
 }
@@ -1828,8 +1828,8 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       if (mem_eq(start, "goto", 4)) {
         return T_CONTROL_FLOW_GOTO;
       }
-      if (mem_eq(start, "char", 4) || mem_eq(start, "enum", 4) ||
-          mem_eq(start, "long", 4) || mem_eq(start, "void", 4) ||
+      if (mem_eq(start, "char", 4) or mem_eq(start, "enum", 4) or
+          mem_eq(start, "long", 4) or mem_eq(start, "void", 4) or
           mem_eq(start, "bool", 4)) {
         return T_TYPE;
       }
@@ -1848,7 +1848,7 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       if (mem_eq(start, "while", 5)) {
         return T_CONTROL_FLOW_LOOP;
       }
-      if (mem_eq(start, "float", 5) || mem_eq(start, "short", 5) ||
+      if (mem_eq(start, "float", 5) or mem_eq(start, "short", 5) or
           mem_eq(start, "union", 5)) {
         return T_TYPE;
       }
@@ -1868,11 +1868,11 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       if (mem_eq(start, "switch", 6)) {
         return T_CONTROL_FLOW_SWITCH;
       }
-      if (mem_eq(start, "double", 6) || mem_eq(start, "struct", 6)) {
+      if (mem_eq(start, "double", 6) or mem_eq(start, "struct", 6)) {
         return T_TYPE_STRUCT;
       }
-      if (mem_eq(start, "extern", 6) || mem_eq(start, "inline", 6) ||
-          mem_eq(start, "signed", 6) || mem_eq(start, "static", 6)){
+      if (mem_eq(start, "extern", 6) or mem_eq(start, "inline", 6) or
+          mem_eq(start, "signed", 6) or mem_eq(start, "static", 6)){
         return T_TYPE_QUALIFIER;
       }
       if (mem_eq(start, "sizeof", 6)) {
@@ -1894,8 +1894,8 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       if (mem_eq(start, "continue", 8)) {
         return T_CONTROL_FLOW_CONTINUE;
       }
-      if (mem_eq(start, "register", 8) || mem_eq(start, "restrict", 8) ||
-          mem_eq(start, "unsigned", 8) || mem_eq(start, "volatile", 8)){
+      if (mem_eq(start, "register", 8) or mem_eq(start, "restrict", 8) or
+          mem_eq(start, "unsigned", 8) or mem_eq(start, "volatile", 8)){
         return T_TYPE_QUALIFIER;
       }
       if (mem_eq(start, "_Alignof", 8)) {
@@ -2079,9 +2079,9 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
         case ',': TOKEN1(T_COMMA);       break;
         case ';': TOKEN1(T_SEMICOLON);   break;
         case '.':
-          if (c2 is '.' && c3 is '.') { TOKEN3(T_ELLIPSIS); }
-          else if (c2 is '.')         { TOKEN2(T_ELLIPSIS); }
-          else                        { TOKEN1(T_OP_1);     }
+          if (c2 is '.' and c3 is '.') { TOKEN3(T_ELLIPSIS); }
+          else if (c2 is '.')          { TOKEN2(T_ELLIPSIS); }
+          else                         { TOKEN1(T_OP_1);     }
           break;
         case '~': TOKEN1(T_OP_2);        break;
         case '?': TOKEN1(T_OP_13);       break;
@@ -2788,9 +2788,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       previous_marker_end        = m->start + m->len;
     }
 
-    if (options.discard_comments && m->token_type is T_COMMENT) {
-      if (options.discard_space && not eol_pending &&
-          m+1 is_not m_end && (m+1)->token_type is T_SPACE) ++m;
+    if (options.discard_comments and m->token_type is T_COMMENT) {
+      if (options.discard_space and not eol_pending and
+          m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
       if (pending_space) {
         if (not write_pending_space(&line_directive_pending,
                                     src_file_name,
@@ -2814,7 +2814,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         size_t len = m->len;
         if (eol_pending) {
           while ((eol = memchr(eol, '\n', len))) {
-            if (eol is text.start_p || *(eol-1) is_not '\\') {
+            if (eol is text.start_p or *(eol-1) is_not '\\') {
               fputc('\n', out);
               eol_pending = false;
               break;
@@ -2831,7 +2831,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         eol_pending = true;
       } else if (m->token_type is T_COMMENT) {
         // If not eol_pending, set it if this is a line comment.
-        eol_pending = eol_pending || (m->len > 1 && '/' is text.start_p[1]);
+        eol_pending = eol_pending or (m->len > 1 and '/' is text.start_p[1]);
       }
     }
 
@@ -2850,7 +2850,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         }
         rest += len;
         size_t line_length;
-        if (rest is_not end_of_Byte_array(src) && *rest == ' ') {
+        if (rest is_not end_of_Byte_array(src) and *rest is ' ') {
           fputs("#define", out);
           line_length = 7;
         } else {
@@ -2860,7 +2860,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         fwrite(rest, sizeof(rest[0]), m->len - len, out);
         line_length += m->len - len;
         for (++m; m is_not m_end; ++m) {
-          if (options.discard_comments && m->token_type is T_COMMENT) {
+          if (options.discard_comments and m->token_type is T_COMMENT) {
             continue;
           } else if (m->token_type is T_PREPROCESSOR) {
             text = slice_for_marker(src, m);
@@ -2886,9 +2886,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             if (m->token_type is T_COMMENT and len > 2) {
               // Valid comment tokens will always be at least 2 chars long,
               // but we need to check in case this one is not.
-              if ('/' == rest[1]) {
+              if ('/' is rest[1]) {
                 fputc('/', out); ++rest; --len; ++line_length;
-                while ('/' == *rest and len) {
+                while ('/' is *rest and len) {
                   fputc('*', out); ++rest; --len; ++line_length;
                 }
                 is_line_comment = true;
@@ -2987,7 +2987,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         continue;
       }
 
-      len = 10;// = strlen("#foreach {") == strlen("#foreach }")
+      len = 10;// = strlen("#foreach {") = strlen("#foreach }")
       if (m->len >= len) {
         if        (strn_eq("#foreach {", (char*)rest, len)) {
           bool insert_line_directives = options.insert_line_directives;
@@ -3270,7 +3270,7 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 
     if (options->apply_macros) {
       Macro_p macro = macros;
-      while (macro->name && macro->function) {
+      while (macro->name and macro->function) {
         macro->function(&markers, src_p);
         ++macro;
       }
@@ -3383,25 +3383,25 @@ int main(int argc, char** argv)
     char* arg = argv[i];
     if (arg[0] is '-' and arg[1] is_not '\0') {
       bool flag_value = !strn_eq("--no-", arg, 6);
-      if        (str_eq("--apply-macros", arg) ||
+      if        (str_eq("--apply-macros", arg) or
                  str_eq("--no-apply-macros", arg)) {
         options.apply_macros = flag_value;
-      } else if (str_eq("--escape-ucn", arg) ||
+      } else if (str_eq("--escape-ucn", arg) or
                  str_eq("--no-escape-ucn", arg)) {
         options.escape_ucn = flag_value;
-      } else if (str_eq("--discard-comments", arg) ||
+      } else if (str_eq("--discard-comments", arg) or
                  str_eq("--no-discard-comments", arg)) {
         options.discard_comments = flag_value;
-      } else if (str_eq("--discard-space", arg) ||
+      } else if (str_eq("--discard-space", arg) or
                  str_eq("--no-discard-space", arg)) {
         options.discard_space = flag_value;
-      } else if (str_eq("--insert-line-directives", arg) ||
+      } else if (str_eq("--insert-line-directives", arg) or
                  str_eq("--no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
-      } else if (str_eq("--print-markers", arg) ||
+      } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
-      } else if (str_eq("--enable-core-dump", arg) ||
+      } else if (str_eq("--enable-core-dump", arg) or
                  str_eq("--no-enable-core-dump", arg)) {
         opt_enable_core_dump = flag_value;
       } else if (str_eq("--benchmark", arg)) {
@@ -3410,7 +3410,7 @@ int main(int argc, char** argv)
         eprintln(CEDRO_VERSION);
       } else {
         eprintln(LANG(usage_es, usage_en));
-        return str_eq("-h", arg) || str_eq("--help", arg)? 0: 1;
+        return str_eq("-h", arg) or str_eq("--help", arg)? 0: 1;
       }
     }
   }
@@ -3467,7 +3467,7 @@ int main(int argc, char** argv)
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
-        while (macro->name && macro->function) {
+        while (macro->name and macro->function) {
           macro->function(&markers, &src);
           ++macro;
         }
