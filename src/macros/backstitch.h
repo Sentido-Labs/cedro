@@ -107,7 +107,11 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
           error_at(err.message, err.position, markers, src);
           err.message = NULL;
         } else {
-          end_of_line = skip_space_back(first_segment_start, end_of_line);
+          if (first_segment_start->token_type is T_COMMA) {
+            end_of_line = first_segment_start;
+          } else {
+            end_of_line = skip_space_back(first_segment_start, end_of_line);
+          }
           bool ends_with_semicolon =
               end_of_line < end and
               end_of_line->token_type is T_SEMICOLON;
