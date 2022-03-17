@@ -233,7 +233,9 @@ eprint(const char * const fmt, ...)
   } else {
     char* buffer;
     char small[512];
-    size_t needed = (size_t) vsnprintf(small, sizeof(small), fmt, args);
+    size_t needed =
+        (size_t) vsnprintf(small, sizeof(small), fmt, args)
+        + 1; // For the zero terminator.
     if (needed <= sizeof(small)) {
       buffer = &small[0];
     } else {
