@@ -64,10 +64,10 @@ usage_en =
 typedef size_t mut_size_t, * mut_size_t_mut_p, * const mut_size_t_p;
 typedef const size_t * size_t_mut_p, * const size_t_p;
 DEFINE_ARRAY_OF(size_t, 0, {});
-TYPEDEF_STRUCT(IncludePaths, {
-    mut_Byte_array text;
-    mut_size_t_array lengths;
-  });
+typedef struct IncludePaths {
+  mut_Byte_array text;
+  mut_size_t_array lengths;
+} MUT_CONST_TYPE_VARIANTS(IncludePaths);
 void
 init_IncludePaths(mut_IncludePaths_p _, size_t initial_capacity)
 {
@@ -149,11 +149,11 @@ find_path_in(IncludePaths_p _, const char* file_name)
   return (Result_size_t){ 1, position };
 }
 
-TYPEDEF_STRUCT(SourceFile, {
-    mut_Byte_array path;
-    mut_Byte_array src;
-    mut_Marker_array markers;
-  });
+typedef struct SourceFile {
+  mut_Byte_array path;
+  mut_Byte_array src;
+  mut_Marker_array markers;
+} MUT_CONST_TYPE_VARIANTS(SourceFile);
 DEFINE_ARRAY_OF(SourceFile, 0, {
     while (cursor is_not end) {
       destruct_Marker_array(&cursor->markers);
@@ -304,13 +304,13 @@ include(const char* file_name,
 
   int return_code = EXIT_SUCCESS;
 
-  Options options;
-  options @
-      .apply_macros           = true,
-      .escape_ucn             = false,
-      .discard_comments       = false,
-      .discard_space          = false,
-      .insert_line_directives = true;
+  Options options = {
+    .apply_macros           = true,
+    .escape_ucn             = false,
+    .discard_comments       = false,
+    .discard_space          = false,
+    .insert_line_directives = true
+  };
 
   mut_Marker_array markers;
   init_Marker_array(&markers, 8192);

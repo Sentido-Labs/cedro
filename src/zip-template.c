@@ -45,7 +45,7 @@
 #include <sys/stat.h> // stat()
 #include <dirent.h> // opendir(), readdir(), closedir()
 
-TYPEDEF(FileName, mut_Byte_array);
+typedef mut_Byte_array MUT_CONST_TYPE_VARIANTS(FileName);
 DEFINE_ARRAY_OF(FileName, 0, {
     while (cursor != end) destruct_Byte_array(cursor++);
   });

@@ -2,10 +2,10 @@
 static void
 macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src);
 
-TYPEDEF_STRUCT(DeferredAction, {
-    size_t level;
-    mut_Marker_array action;
-  });
+typedef struct DeferredAction {
+  size_t level;
+  mut_Marker_array action;
+} MUT_CONST_TYPE_VARIANTS(DeferredAction);
 
 /* Stack of pending deferred actions. */
 DEFINE_ARRAY_OF(DeferredAction, 0, {

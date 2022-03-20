@@ -293,24 +293,22 @@ eprint(const char * const fmt, ...)
  * variable does not contain `UTF-8`. */
 #define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
 
-/** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
- * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
+/** Expand to the mutable and constant variants for a `typedef`. \n
+ * The default, just the type name `T`, is the constant variant
+ * and the mutable variant is named `mut_T`, with corresponding \n
+ * `T_p`: constant pointer to constant `T`       \n
+ * `mut_T_p`: constant pointer to mutable `T`    \n
+ * `mut_T_mut_p`: mutable pointer to mutable `T` \n
+ * This mimics the usage in Rust, where constant bindings are the default
+ * which is a good idea.
  */
-#define TYPEDEF_STRUCT(T, TYPE)                                          \
-  typedef struct T TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p; \
-  typedef const struct T      T, * const       T##_p, *       T##_mut_p
-/** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
- * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
- *
- *  You can define similar types for an existing type, for instance `uint8_t`:
- * ```
- * typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
- * typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
- * ```
- */
-#define TYPEDEF(T, TYPE)                                                 \
-  typedef     TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p;      \
-  typedef const TYPE     T, * const       T##_p, *       T##_mut_p
+#define MUT_CONST_TYPE_VARIANTS(T)              \
+  /**/      mut_##T,                            \
+    *       mut_##T##_mut_p,                    \
+    * const mut_##T##_p;                        \
+  typedef const mut_##T T,                      \
+    *                   T##_mut_p,              \
+    * const             T##_p
 
 /** Parameters set by command line options. */
 typedef struct Options {
@@ -325,7 +323,7 @@ typedef struct Options {
   bool discard_comments;
   /// Insert `#line` directives in the output, mapping to the original file.
   bool insert_line_directives;
-} Options, *Options_p;
+} MUT_CONST_TYPE_VARIANTS(Options);
 
 /** Binary string, `const unsigned char const*`. */
 #define B(string) ((const unsigned char * const)string)
@@ -398,9 +396,7 @@ typedef enum TokenType {
   /** Ellipsis: `...`, or non-standard `..`          */ T_ELLIPSIS,
   /** Keyword for deferred resource release          */ T_CONTROL_FLOW_DEFER,
   /** Other token that is not part of the C grammar. */ T_OTHER
-} mut_TokenType, * const mut_TokenType_p, *  mut_TokenType_mut_p;
-typedef const enum TokenType
-/*  */TokenType, * const     TokenType_p, *      TokenType_mut_p;
+} MUT_CONST_TYPE_VARIANTS(TokenType);
 
 static const unsigned char * const
 TokenType_STRING[1+T_OTHER] = {
@@ -435,24 +431,24 @@ TokenType_STRING[1+T_OTHER] = {
 #define is_fence(token_type) (token_type >= T_BLOCK_START and token_type <= T_GROUP_END)
 
 /** Marks a C token in the source code. */
-TYPEDEF_STRUCT(Marker, {
-    SrcIndexType start;       /**< Start position, in bytes/chars. */
-    SrcLenType   len;         /**< Length, in bytes/chars. */
-    mut_TokenType token_type; /**< Token type. */
-  });
+typedef struct Marker {
+  SrcIndexType start;       /**< Start position, in bytes/chars. */
+  SrcLenType   len;         /**< Length, in bytes/chars. */
+  mut_TokenType token_type; /**< Token type. */
+} MUT_CONST_TYPE_VARIANTS(Marker);
 
 /** Error while processing markers. */
-TYPEDEF_STRUCT(Error, {
-    Marker_mut_p position; /**< Position at which the problem was noticed. */
-    const char * message;  /**< Message for user. */
-  });
+typedef struct Error {
+  Marker_mut_p position; /**< Position at which the problem was noticed. */
+  const char * message;  /**< Message for user. */
+} MUT_CONST_TYPE_VARIANTS(Error);
 
 #include "array.h"
 
 DEFINE_ARRAY_OF(Marker, 0, {});
 DEFINE_ARRAY_OF(TokenType, 0, {});
 
-TYPEDEF(Byte, uint8_t);
+typedef uint8_t MUT_CONST_TYPE_VARIANTS(Byte);
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
  * for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
@@ -2322,10 +2318,10 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
   return true;
 }
 
-TYPEDEF_STRUCT(Replacement, {
-    Marker_mut_p marker;
-    Marker_array_mut_slice replacement;
-  });
+typedef struct Replacement {
+  Marker_mut_p marker;
+  Marker_array_mut_slice replacement;
+} MUT_CONST_TYPE_VARIANTS(Replacement);
 DEFINE_ARRAY_OF(Replacement, 0, {});
 static Marker_array_slice
 get_replacement_value(Replacement_array_p _, Marker_p m, Byte_array_p src)
@@ -2352,7 +2348,7 @@ typedef int (*IncludeCallbackFunction_p)(Marker_p m, Byte_array_p src,
 typedef struct IncludeCallback {
   IncludeCallbackFunction_p function;
   void* context;
-} const IncludeCallback, * const IncludeCallback_p;
+} MUT_CONST_TYPE_VARIANTS(IncludeCallback);
 
 /* Prototype, defined after unparse_foreach(). */
 static Marker_p
@@ -2779,7 +2775,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                  Byte_array_p src, size_t original_src_len,
                  const char* src_file_name, IncludeCallback_p include,
                  mut_Replacement_array_p replacements, bool is_last,
-                 Options options, FILE* out)
+                 mut_Options options, FILE* out)
 {
   if (m is m_end) return m_end;
   bool eol_pending = false;
@@ -3372,7 +3368,7 @@ int main(int argc, char** argv)
     return result;
   }
 
-  Options options = { // Remember to keep the usage strings updated.
+  mut_Options options = { // Remember to keep the usage strings updated.
     .apply_macros           = true,
     .escape_ucn             = false,
     .discard_comments       = false,
