@@ -1,3 +1,5 @@
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /// Reorganize `obj @ fn1(a), fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
 static void
 macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)

@@ -1,3 +1,5 @@
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /// Simple `defer`-style functionality using the `auto` keyword.
 static void
 macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src);
