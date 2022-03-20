@@ -3449,7 +3449,9 @@ int main(int argc, char** argv)
         read_stream(&src, stdin);
     if (err) {
       print_file_error(err, file_name, &src);
-      fprintf(out, "#error The file name is the empty string.\n");
+      if (file_name[0] is '\0') {
+        fprintf(out, "#error The file name is the empty string.\n");
+      }
       return 11;
     }
 

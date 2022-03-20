@@ -307,7 +307,12 @@ int main(int argc, char* argv[])
       push_Byte_array(&path, '/');
     }
     const char* filename = file_stat.m_filename;
-    if (strn_eq("template/", filename, 9)) filename += 9;
+    if (not strn_eq("template/", filename, 9)) {
+      eprintln(LANG("Estructura incorrecta del archivo ZIP de plantilla.",
+                    "Incorrect template ZIP file structure."));
+      return EIO;
+    }
+    filename += 9;
     push_str(&path, filename);
 
     mz_uint flags = 0; // From enum mz_zip_flags.
