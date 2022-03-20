@@ -3289,9 +3289,10 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 
 static const char* const
 usage_es =
-    "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
-    "  Usa - en vez de fichero.c para leer desde stdin.\n"
-    "  El resultado va a stdout, para entregarlo al compilador:\n"
+    "Uso: cedro [opciones] <fichero.c>…\n"
+    "     cedro new <nombre> # Ejecuta: cedro-new <nombre>\n"
+    "  Usa - en vez de <fichero.c> para leer desde stdin.\n"
+    "  El resultado va a stdout, se puede compilar sin fichero intermedio:\n"
     " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
@@ -3321,9 +3322,10 @@ usage_es =
     ;
 static const char* const
 usage_en =
-    "Usage: cedro [options] file.c [file2.c … ]\n"
-    "  Use - instead of file.c to read from stdin.\n"
-    "  The result goes to stdout, to be fed into the compiler:\n"
+    "Usage: cedro [options] <file.c>…\n"
+    "       cedro new <name> # Runs: cedro-new <name>\n"
+    "  Use - instead of <file.c> to read from stdin.\n"
+    "  The result goes to stdout, can be compiled without intermediate files:\n"
     " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"
     " cedrocc -o file file.c\n"

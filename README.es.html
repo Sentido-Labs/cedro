@@ -24,10 +24,12 @@
       <p>Para activarlo, el fichero fuente debe contener esta línea:
         <code>#pragma Cedro 1.0</code><br/>
         Si no, el fichero se copia directamente a la salida.</p>
-      <code>Uso: cedro [opciones] fichero.c [fichero2.c … ]
-  El resultado va a stdout, puede usarse sin fichero intermedio así:
+      <code>Uso: cedro [opciones] &lt;fichero.c&gt;…
+     cedro new nombre # Ejecuta: <a href="#cedro-new">cedro-new</a> &lt;nombre&gt;
+  Usa - en vez de &lt;fichero.c&gt; para leer desde stdin.
+  El resultado va a stdout, se puede compilar sin fichero intermedio:
  cedro fichero.c | cc -x c - -o fichero
-  Es lo que hace el programa cedrocc:
+  Es lo que hace el programa <a href="#cedrocc">cedrocc</a>:
  cedrocc -o fichero fichero.c
   Con cedrocc, las siguientes opciones son implícitas:
     --discard-comments --insert-line-directives
@@ -60,7 +62,7 @@
         tras ejecutar <code>make doc</code> que necesita tener
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> instalado.</p>
       <p>El segundo ejecutable, <code>cedrocc</code>, permite usar Cedro como si fuera parte del compilador C.</p>
-      <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [ fichero2.o … ]
+      <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [&lt;fichero2.o&gt;…]
   Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,
   y compila el resultado con «cc -x c -» mas los otros argumentos.
     cedrocc -o fichero fichero.c

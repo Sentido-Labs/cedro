@@ -36,28 +36,34 @@
 
 static const char* const
 usage_es =
-    "Uso: cedrocc [opciones] <fichero.c> [ fichero2.o … ]\n"
+    "Uso: cedrocc [opciones] <fichero.c> [<fichero2.o>…]\n"
     "  Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
-    "  y compila el resultado con «%s» mas los otros argumentos.\n"
+    " y compila el resultado con «%s» mas los otros argumentos.\n"
     "    cedrocc -o fichero fichero.c\n"
     "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  Además, para cada #include, si encuentra el fichero lo lée y\n"
+    " si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado\n"
+    " en lugar del #include.\n"
     "  Se puede especificar el compilador, p.ej. gcc:\n"
     "    CEDRO_CC='gcc -x c -' cedrocc …\n"
     "  Para depuración, esto escribe el código que iría entubado a cc,\n"
-    "  en stdout:\n"
+    " en stdout:\n"
     "    CEDRO_CC='' cedrocc …"
     ;
 static const char* const
 usage_en =
-    "Usage: cedrocc [options] <file.c> [ file2.o … ]\n"
+    "Usage: cedrocc [options] <file.c> [<file2.o>…]\n"
     "  Runs Cedro on the first file name that ends with “.c”,\n"
-    "  and compiles the result with “%s” plus the other arguments.\n"
+    " and compiles the result with “%s” plus the other arguments.\n"
     "    cedrocc -o fichero fichero.c\n"
     "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  In addition, for each #include, if it finds the file it reads it and\n"
+    " if it finds `#pragma Cedro 1.0` processes it and inserts the result\n"
+    " in place of the #include.\n"
     "  You can specify the compiler, e.g. gcc:\n"
     "    CEDRO_CC='gcc -x c -' cedrocc …\n"
     "  For debugging, this writes the code that would be piped into cc,\n"
-    "  into stdout instead:\n"
+    " into stdout instead:\n"
     "    CEDRO_CC='' cedrocc …"
     ;
 

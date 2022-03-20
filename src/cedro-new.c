@@ -74,7 +74,7 @@ const char* const usage_en =
     "  Creates a directory named <name>/ with the template.\n"
     "  -h, --help        Shows this message.\n"
     "  -i, --interactive Asks for the names for command and project.\n"
-    "                    Otherwise, they will be derived from the directory name."
+    "                    Otherwise, they are derived from the directory name."
     ;
 
 Byte template_zip
