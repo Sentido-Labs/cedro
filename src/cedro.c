@@ -435,6 +435,7 @@ typedef struct Marker {
   SrcIndexType start;       /**< Start position, in bytes/chars. */
   SrcLenType   len;         /**< Length, in bytes/chars. */
   mut_TokenType token_type; /**< Token type. */
+  bool synthetic;           /**< It does not come directly from parsing. */
 } MUT_CONST_TYPE_VARIANTS(Marker);
 
 /** Error while processing markers. */
@@ -586,6 +587,7 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
   _->start      = index_Byte_array(src, start);
   _->len        = (size_t)(end - start);
   _->token_type = token_type;
+  _->synthetic  = false;
 }
 
 /** Check whether two markers represent the same token. */
@@ -631,6 +633,7 @@ Marker_from(mut_Byte_array_p src, const char * const text, TokenType token_type)
     splice_Byte_array(src, src->len, 0, NULL, insert);
   }
   init_Marker(&marker, match, match + text_len, src, token_type);
+  marker.synthetic = true;
 
   return marker;
 }
@@ -1681,7 +1684,9 @@ print_marker(Marker_p m, Byte_array_p src)
       eprint("“%s”", token);
   }
   tabulate_eprint(m->len, markers_tabulator);
-  eprintln(" ← %s", TokenType_STRING[m->token_type]);
+  eprintln(" ← %s%s",
+           TokenType_STRING[m->token_type],
+           m->synthetic? ", synthetic": "");
   destruct_Byte_array(&token_text);
 }
 
@@ -1767,7 +1772,9 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
         eprint("“%s”", token);
     }
     tabulate_eprint(len, markers_tabulator);
-    eprintln(" ← %s", TokenType_STRING[m->token_type]);
+    eprintln(" ← %s%s",
+             TokenType_STRING[m->token_type],
+             m->synthetic? ", synthetic": "");
   }
 
   destruct_Byte_array(&token_text);
@@ -2713,62 +2720,73 @@ exit:
  * @param line_directive_pending [out] will be set to `false` if it was
  * `true` and the `#line` directive was written.
  * @param src_file_name [in] C source file name, needed for `#line`.
- * @param pending_space [in] pointer to the pending space marker.
- * Assumes it is not `NULL`, and also not empty (`pending_space->len != 0`).
+ * @param pending_space [in] pointer to the pending space marker, not `NULL`.
  * @param src [in] source code as UTF-8 bytes.
  * @param options [in] program options.
  * @param out [in] stream where the result will be written.
  */
 static bool
 write_pending_space(bool* line_directive_pending, const char* src_file_name,
-                    Marker_p pending_space, Byte_array_p src,
+                    Marker_p pending_space, Marker_p end, Byte_array_p src,
                     Options options, FILE* out)
 {
-  assert(pending_space->len != 0);
   if (*line_directive_pending) {
     Byte_array_mut_slice space = slice_for_marker(src, pending_space);
-    Byte_mut_p eol = space.start_p;
-    if (*eol is_not '\n') {
-      ++eol;
-      if (eol is_not space.end_p) {
-        do {
-          eol = memchr(eol + 1, '\n', (size_t)(space.end_p - eol - 1));
-        } while (eol and *(eol-1) is '\\');
-      } else {
-        eol = NULL;
+    Byte_mut_p insertion_point = space.end_p; // Right after the LF.
+    if (insertion_point is_not space.start_p) {
+      while (insertion_point is_not space.start_p) {
+        Byte_mut_p next = insertion_point - 1;
+        if (*next is '\n' and
+            (next-1 is space.start_p or *(next-1) is_not '\\')) {
+          break;
+        }
+        insertion_point = next;
       }
     }
-    if (eol) {
-      ++eol; // Include newline byte.
-      size_t len = (size_t)(eol - space.start_p);
+    if (insertion_point is_not space.start_p or
+        pending_space->token_type is T_NONE) {
+      size_t len = (size_t)(insertion_point - space.start_p);
       if (fwrite(space.start_p, sizeof(space.start_p[0]), len, out)
           is_not len) {
         error(LANG("al escribir el espacio pendiente",
                    "when writing pending space"));
         return false;
       }
-      if (fprintf(out, "#line %lu \"%s\"\n",
-                  original_line_number(pending_space->start + len, src),
-                  src_file_name) < 0) {
-        error(LANG("al escribir el espacio pendiente",
-                   "when writing pending space"));
+      size_t line_number = 0;
+      if (pending_space is end) {
+        line_number = original_line_number(pending_space->start + len, src);
+      } else {
+        // Skip plain spaces and synthetic tokens:
+        Marker_mut_p next = pending_space + 1;
+        while (next is_not end and
+               (next->synthetic is true or
+                (next->token_type is T_SPACE and
+                 not has_byte('\n', next, src))
+                )) {
+          ++next;
+        }
+        if (next is_not end and next->synthetic is true) next = end;
+        line_number = next is end? 0: original_line_number(next->start, src);
+      }
+      if (line_number is_not 0 and
+          fprintf(out, "#line %lu \"%s\"\n", line_number, src_file_name) < 0) {
+        error(LANG("al escribir la directiva #line",
+                   "when writing #line directive"));
         return false;
       }
       *line_directive_pending = false;
-      len = (size_t)(space.end_p - eol);
-      if (fwrite(eol, sizeof(eol[0]), len, out)
+      len = (size_t)(space.end_p - insertion_point);
+      if (fwrite(insertion_point, sizeof(insertion_point[0]), len, out)
           is_not len) {
         error(LANG("al escribir el espacio pendiente",
                    "when writing pending space"));
         return false;
       }
       return true;
-    } else {
-      return write_token(pending_space, src, options, out);
     }
-  } else {
-    return write_token(pending_space, src, options, out);
   }
+
+  return write_token(pending_space, src, options, out);
 }
 static Marker_p
 unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
@@ -2784,16 +2802,16 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
   for (; m is_not m_end; ++m) {
     if (options.insert_line_directives) {
       line_directive_pending |= m->start is_not previous_marker_end;
-      previous_marker_end        = m->start + m->len;
+      if (m->synthetic is_not true) previous_marker_end = m->start + m->len;
     }
 
     if (options.discard_comments and m->token_type is T_COMMENT) {
       if (options.discard_space and not eol_pending and
           m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
       if (pending_space) {
-        if (not write_pending_space(&line_directive_pending,
-                                    src_file_name,
-                                    pending_space, src, options, out)) {
+        if (not write_pending_space(&line_directive_pending, src_file_name,
+                                    pending_space, m_end, src,
+                                    options, out)) {
           m = m_end;
           goto exit;
         }
@@ -2839,9 +2857,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       size_t len = 9;// = strlen("#define {")
       if (m->len >= len and strn_eq("#define {", (char*)rest, len)) {
         if (pending_space) {
-          if (not write_pending_space(&line_directive_pending,
-                                      src_file_name,
-                                      pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending, src_file_name,
+                                      pending_space, m_end, src,
+                                      options, out)) {
             m = m_end;
             break;
           }
@@ -2942,9 +2960,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       len = 10; // = strlen("#include {");
       if (m->len >= len and strn_eq("#include {", (char*)rest, len)) {
         if (pending_space) {
-          if (not write_pending_space(&line_directive_pending,
-                                      src_file_name,
-                                      pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending, src_file_name,
+                                      pending_space, m_end, src,
+                                      options, out)) {
             m = m_end;
             break;
           }
@@ -3082,7 +3100,8 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             if (pending_space) {
               if (not write_pending_space(&line_directive_pending,
                                           src_file_name,
-                                          pending_space, src, options, out)) {
+                                          pending_space, m_end, src,
+                                          options, out)) {
                 m = m_end;
                 goto exit;
               }
@@ -3118,9 +3137,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         }
 
         if (pending_space) {
-          if (not write_pending_space(&line_directive_pending,
-                                      src_file_name,
-                                      pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending, src_file_name,
+                                      pending_space, m_end, src,
+                                      options, out)) {
             m = m_end;
             goto exit;
           }
@@ -3155,9 +3174,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       }
     } else if (replacements and m->token_type is T_IDENTIFIER) {
       if (pending_space) {
-        if (not write_pending_space(&line_directive_pending,
-                                    src_file_name,
-                                    pending_space, src, options, out)) {
+        if (not write_pending_space(&line_directive_pending, src_file_name,
+                                    pending_space, m_end, src,
+                                    options, out)) {
           m = m_end;
           goto exit;
         }
@@ -3185,9 +3204,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
 
     // Default token output:
     if (pending_space) {
-      if (not write_pending_space(&line_directive_pending,
-                                  src_file_name,
-                                  pending_space, src, options, out)) goto exit;
+      if (not write_pending_space(&line_directive_pending, src_file_name,
+                                  pending_space, m_end, src,
+                                  options, out)) goto exit;
       pending_space = NULL;
     }
     if (m->token_type is T_SPACE) {
@@ -3198,9 +3217,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
   }
 
   if (pending_space) {
-    if (not write_pending_space(&line_directive_pending,
-                                src_file_name,
-                                pending_space, src, options, out)) goto exit;
+    if (not write_pending_space(&line_directive_pending, src_file_name,
+                                pending_space, m_end, src,
+                                options, out)) goto exit;
     pending_space = NULL;
   }
 
@@ -3225,6 +3244,17 @@ unparse(Marker_array_slice markers,
   assert(markers.end_p >= markers.start_p);
 
   Marker_mut_p m = markers.start_p;
+  /* We need a special case because unparse_fragment()
+   * does not have enough context to decide whether to insert it. */
+  if (options.insert_line_directives and m->start is_not 0) {
+    Marker empty = {0};
+    bool line_directive_pending = true;
+    if (not write_pending_space(&line_directive_pending, src_file_name,
+                                &empty, markers.end_p, src,
+                                options, out)) {
+      return;
+    }
+  }
   m = unparse_fragment(m, markers.end_p, 0,
                        src, original_src_len,
                        src_file_name, NULL,

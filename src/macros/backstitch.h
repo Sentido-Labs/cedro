@@ -118,6 +118,11 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
               end_of_line < end and
               end_of_line->token_type is T_SEMICOLON;
           bool empty_object = object.start_p is object.end_p;
+          for (mut_Marker_mut_p m = (mut_Marker_mut_p)object.start_p;
+               m is_not object.end_p;
+               ++m) {
+            m->synthetic = true;
+          }
           bool empty_segments = first_segment_start is end_of_line;
           if (empty_object and empty_segments) {
             error_at(LANG("no se puede omitir a la vez"
@@ -228,6 +233,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 if (slice.end_p->token_type is T_IDENTIFIER) break;
               }
               append_Marker_array(&replacement, slice);
+              mut_Marker affix = {0};
               if (empty_segments) {
                 // Modifying object is not a problem because there are
                 // no further segments, so we won’t use it again.
@@ -243,21 +249,23 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   return;
                 }
                 if (prefix) {
-                  push_Marker_array(&replacement, *prefix);
+                  affix = *prefix;
                 } else { // suffix
                   object.start_p++;
                   insertion_point = slice.end_p;
-                  push_Marker_array(&replacement, *suffix);
+                  affix = *suffix;
                 }
               } else {
                 if (prefix) {
-                  push_Marker_array(&replacement, *prefix);
+                  affix = *prefix;
                 } else {
                   push_Marker_array(&replacement, *slice.end_p++);
                   if (empty_object) insertion_point = slice.end_p;
-                  push_Marker_array(&replacement, *suffix);
+                  affix = *suffix;
                 }
               }
+              affix.synthetic = true;// In both cases, prefix and suffix.
+              push_Marker_array(&replacement, affix);
               slice.start_p = slice.end_p;
               slice.end_p   = insertion_point;
               if (slice.start_p > slice.end_p) {
