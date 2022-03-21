@@ -50,6 +50,10 @@
   --enable-core-dump    Activa el volcado de memoria al estrellarse.
   --no-enable-core-dump No activa el volcado de memoria al estrellarse. (implícito)
   --benchmark        Realiza una medición de rendimiento.
+  --validate=ref.c   Compara el resultado con el fichero «ref.c» dado.
+      No aplica las macros: para comparar el resultado de aplicar Cedro
+      a un fichero, pase la salida a través de esta opción, por ejemplo:
+      cedro fichero.c | cedro - --validate=ref.c
   --version          Muestra la versión: 1.0
                      El «pragma» correspondiente es: #pragma Cedro 1.0</code>
       <p>La opción <code>--escape-ucn</code> encapsula los caracteres Unicode®

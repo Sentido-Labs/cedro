@@ -50,6 +50,10 @@
   --enable-core-dump    Enables core dump on crash.
   --no-enable-core-dump Does not enable core dump on crash. (default)
   --benchmark        Runs a performance benchmark.
+  --validate=ref.c   Compares the result with the given «ref.c» file.
+      It does not apply the macros: to compare the results of applying Cedro
+      to a file, pipe the output to this option, for instance:
+      cedro file.c | cedro - --validate=ref.c
   --version          Shows version: 1.0
                      The corresponding “pragma” is: #pragma Cedro 1.0</code>
       <p>The option <code>--escape-ucn</code> encodes Unicode® characters

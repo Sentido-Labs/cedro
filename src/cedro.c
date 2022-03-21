@@ -3314,6 +3314,72 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
   return ((double)(end - start))/CLOCKS_PER_SEC / (double) repetitions;
 }
 
+/** Validates equivalence of input file to the given reference file.
+ * It does not apply any macros, just tokenizes both inputs.
+ */
+static bool
+validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref, Options_p options)
+{
+  bool result = true;
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
+  mut_Marker_array markers_ref;
+  init_Marker_array(&markers_ref, 8192);
+
+  /* Do not apply macros or anything else, just a straight tokenization. */
+  Byte_array_mut_slice region;
+  region = bounds_of_Byte_array(src);
+  if (parse(src, region, &markers) is_not region.end_p) {
+    result = false;
+    goto exit;
+  }
+  region = bounds_of_Byte_array(src_ref);
+  if (parse(src_ref, region, &markers_ref) is_not region.end_p) {
+    result = false;
+    goto exit;
+  }
+
+  Marker_p
+      end     = end_of_Marker_array(&markers),
+      end_ref = end_of_Marker_array(&markers_ref);
+  Marker_mut_p
+      cursor     = start_of_Marker_array(&markers),
+      cursor_ref = start_of_Marker_array(&markers_ref);
+  cursor     = skip_space_forward(cursor,     end);
+  cursor_ref = skip_space_forward(cursor_ref, end_ref);
+  while (cursor is_not end and cursor_ref is_not end_ref) {
+    if (cursor->token_type is_not cursor_ref->token_type or
+        cursor->len > cursor_ref->len                    or
+        not mem_eq(get_Byte_array(src,     cursor    ->start),
+                   get_Byte_array(src_ref, cursor_ref->start),
+                   cursor->len)) {
+      result = false;
+      break;
+    }
+    cursor     = skip_space_forward(cursor     + 1, end);
+    cursor_ref = skip_space_forward(cursor_ref + 1, end_ref);
+  }
+
+  if (result is false) {
+    mut_Byte_array message;
+    init_Byte_array(&message, 80);
+    push_fmt(&message, LANG("Procesado, línea %lu",
+                            "Processed, line %lu"),
+             original_line_number(cursor->start, src));
+    debug_cursor(cursor, 5, as_c_string(&message), &markers, src);
+    if (message.len) truncate_Byte_array(&message, 0);
+    push_fmt(&message, LANG("Referencia, línea %lu",
+                            "Reference, line %lu"),
+             original_line_number(cursor_ref->start, src_ref));
+    debug_cursor(cursor_ref, 5, as_c_string(&message), &markers_ref, src_ref);
+    destruct_Byte_array(&message);
+  }
+exit:
+  destruct_Marker_array(&markers_ref);
+  destruct_Marker_array(&markers);
+  return result;
+}
+
 
 #ifndef USE_CEDRO_AS_LIBRARY
 
@@ -3346,6 +3412,10 @@ usage_es =
     "  --no-enable-core-dump No activa el volcado de memoria al estrellarse."
     " (implícito)\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
+    "  --validate=ref.c   Compara el resultado con el fichero «ref.c» dado.\n"
+    "      No aplica las macros: para comparar el resultado de aplicar Cedro\n"
+    "      a un fichero, pase la salida a través de esta opción, por ejemplo:\n"
+    "      cedro fichero.c | cedro - --validate=ref.c\n"
     "  --version          Muestra la versión: " CEDRO_VERSION "\n"
     "                     El «pragma» correspondiente es: #pragma Cedro "
     CEDRO_VERSION
@@ -3379,6 +3449,10 @@ usage_en =
     "  --enable-core-dump    Enable core dump on crash.\n"
     "  --no-enable-core-dump Does not enable core dump on crash. (default)\n"
     "  --benchmark        Run a performance benchmark.\n"
+    "  --validate=ref.c   Compares the input to the given “ref.c” file.\n"
+    "      Does not apply any macros: to compare the result of running Cedro\n"
+    "      on a file, pipe its output through this option, for instance:\n"
+    "      cedro file.c | cedro - --validate=ref.c\n"
     "  --version          Show version: " CEDRO_VERSION "\n"
     "                     The corresponding “pragma” is: #pragma Cedro "
     CEDRO_VERSION
@@ -3411,6 +3485,7 @@ int main(int argc, char** argv)
   bool opt_print_markers    = false;
   bool opt_enable_core_dump = false;
   bool opt_run_benchmark    = false;
+  const char* opt_validate  = NULL;
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
@@ -3439,6 +3514,8 @@ int main(int argc, char** argv)
         opt_enable_core_dump = flag_value;
       } else if (str_eq("--benchmark", arg)) {
         opt_run_benchmark = true;
+      } else if (strn_eq("--validate=", arg, strlen("--validate="))) {
+        opt_validate = arg + strlen("--validate=");
       } else if (str_eq("--version", arg)) {
         eprintln(CEDRO_VERSION);
       } else {
@@ -3499,6 +3576,14 @@ int main(int argc, char** argv)
       double t = benchmark(&src, &options);
       if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
       else         eprintln("%.1fs for %s", t         , file_name);
+    } else if (opt_validate) {
+      mut_Byte_array src_ref = {0};
+      int err = read_file(&src_ref, opt_validate);
+      if (err) {
+        print_file_error(err, opt_validate, &src_ref);
+        return 12;
+      }
+      if (not validate_eq(&src, &src_ref, &options)) return 27;
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
