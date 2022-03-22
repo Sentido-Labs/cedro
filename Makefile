@@ -1,6 +1,43 @@
-.PHONY: default release debug static bt help doc test check clean
+.PHONY: default release debug help help-es help-en doc test check clean
 default: release
 all: release debug
+
+HELP != case $$LANG in es*) echo help-es;; *) echo help-en;; esac
+help: $(HELP)
+help-es:
+	@echo "Objetivos disponibles:"
+	@echo "release: compilación optimizada, comprobaciones desactivadas, NDEBUG definido."
+	@echo "  → bin/cedro*"
+	@echo "debug:   compilación para diagnóstico, comprobaciones activadas."
+	@echo "  → bin/cedro*-debug"
+	@echo "static:  lo mismo que release, sólo que con enlace estático."
+	@echo "  → bin/cedro*-static"
+	@echo "doc:     construye la documentación con Doxygen https://www.doxygen.org"
+	@echo "  → doc/api/index.html"
+	@echo "test:    construye tanto release como debug, y ejecuta la batería de pruebas."
+	@echo "check:   aplica varias herramientas de análisis estático:"
+	@echo "  sparse:   https://sparse.docs.kernel.org/"
+	@echo "  valgrind: https://valgrind.org/"
+	@echo "  gcc -fanalyzer:"
+	@echo "            https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html"
+	@echo "clean:   elimina el directorio bin/, y limpia también dentro de doc/."
+help-en:
+	@echo "Available targets:"
+	@echo "release: optimized build, assertions disabled, NDEBUG defined."
+	@echo "  → bin/cedro*"
+	@echo "debug:   debugging build, assertions enabled."
+	@echo "  → bin/cedro*-debug"
+	@echo "static:  same as release, only statically linked."
+	@echo "  → bin/cedro*-static"
+	@echo "doc:     build documentation with Doxygen https://www.doxygen.org"
+	@echo "  → doc/api/index.html"
+	@echo "test:    build both release and debug, then run test suite."
+	@echo "check:   apply several static analysis tools:"
+	@echo "  sparse:   https://sparse.docs.kernel.org/"
+	@echo "  valgrind: https://valgrind.org/"
+	@echo "  gcc -fanalyzer:"
+	@echo "            https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html"
+	@echo "clean:   remove bin/ directory, and clean also inside doc/."
 
 NAME=cedro
 
@@ -22,7 +59,7 @@ TEST_ARGUMENTS=src/$(NAME)cc.c
 
 debug:   bin/$(NAME)-debug bin/$(NAME)cc-debug bin/$(NAME)-new-debug
 release: bin/$(NAME)       bin/$(NAME)cc       bin/$(NAME)-new
-.PHONY: default all debug release
+static:  bin/$(NAME)-static bin/$(NAME)cc-static bin/$(NAME)-new-static
 
 bin/cedro-debug: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
@@ -48,6 +85,16 @@ bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc-debug
 bin/cedro-new:       src/cedro-new.c template.zip Makefile bin/cedrocc
 	@mkdir -p bin
 	bin/cedrocc       $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
+
+bin/cedro-static: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
+	@mkdir -p bin
+	$(CC) $(CFLAGS) -static -o $@ $< $(OPTIMIZATION)
+bin/cedrocc-static: src/cedrocc.c Makefile bin/cedro
+	@mkdir -p bin
+	bin/cedro       --insert-line-directives $< | $(CC) $(CFLAGS) -static -I src -x c - -o $@  $(OPTIMIZATION)
+bin/cedro-new-static: src/cedro-new.c template.zip Makefile bin/cedrocc
+	@mkdir -p bin
+	bin/cedrocc -static $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
 bin/%: src/%.c Makefile bin/cedrocc
 	@mkdir -p bin
@@ -75,6 +122,7 @@ check: bin/$(NAME)
 	@echo
 	@echo This was useful when Cedro was simpler, but it has become way too slow:
 	@echo '    cppcheck bin/$(NAME).i --std=c99 --enable=performance,portability --xml 2>&1 | cppcheck-htmlreport --report-dir=doc/cppcheck --source-dir=src'
+	@echo ''
 	gcc -fanalyzer -o /dev/null -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable src/$(NAME).c
 # Used to work:	scan-bin -o doc/clang bin/$(NAME)
 
