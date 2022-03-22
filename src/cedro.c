@@ -2539,7 +2539,17 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
           ++nesting;
           break;
         case T_BLOCK_END:
-          if (not nesting) goto found_args_end;
+          if (not nesting) {
+            if (skip_space_forward(value.end_p + 1, arg.end_p)
+                is_not arg.end_p) {
+              write_error_at(LANG("contenido inválido tras lista de valores",
+                                  "invalid content after value list"),
+                             value.start_p, src, out);
+              m = m_end;
+              goto exit;
+            }
+            goto found_args_end;
+          }
           --nesting;
           break;
         case T_TUPLE_END: case T_INDEX_END:
@@ -2569,7 +2579,7 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
     }
 
     if (value.end_p is arg.end_p) {
-      write_error_at(LANG("lista de valores inconclusa2",
+      write_error_at(LANG("lista de valores inconclusa",
                           "unfinished value list"),
                      value.start_p, src, out);
       m = m_end;
