@@ -356,11 +356,18 @@ include(const char* file_name,
       &include_callback,
       context
     };
+    mut_Replacement_array replacements = {0};
     unparse_fragment(markers.start, end_of_Marker_array(&markers), 0,
                      &src, original_src_len,
                      file_name, &include,
-                     NULL, false,
+                     &replacements, false,
                      options, cc_stdin);
+    destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
+
+    if (error_buffer[0]) {
+      fprintf(cc_stdin, "\n#error %s\n", error_buffer);
+      error_buffer[0] = 0;
+    }
   }
 
   return return_code;

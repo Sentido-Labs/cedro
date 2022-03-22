@@ -2047,7 +2047,7 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
       } else if (cursor + 8 <= token_end and mem_eq("#assert ", cursor, 8)) {
         eprintln(LANG("La directiva #assert es incompatible con Cedro.",
                       "The #assert directive is incompatible with Cedro."));
-        return 0;// Error.
+        return NULL;// Error.
       }
       TOKEN1(T_PREPROCESSOR);
       if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
@@ -2407,7 +2407,6 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
   Byte_array_mut_slice text = slice_for_marker(src, m);
   Byte_mut_p rest = text.start_p + 10; // = strlen("#foreach {");
 
-  if (not replacements) replacements = new_Replacement_array_p(2);
   size_t initial_replacements_len = replacements->len;
 
   mut_Marker_array arguments;
@@ -2720,7 +2719,9 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
 
 exit:
   destruct_Marker_array(&arguments);
-  truncate_Replacement_array(replacements, initial_replacements_len);
+  if (replacements->len > initial_replacements_len) {
+    truncate_Replacement_array(replacements, initial_replacements_len);
+  }
   if (initial_replacements_len is 0) destruct_Replacement_array(replacements);
 
   return m;
@@ -3265,11 +3266,14 @@ unparse(Marker_array_slice markers,
       return;
     }
   }
+
+  mut_Replacement_array replacements = {0};
   m = unparse_fragment(m, markers.end_p, 0,
                        src, original_src_len,
                        src_file_name, NULL,
-                       NULL, false,
+                       &replacements, false,
                        options, out);
+  destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
 
   if (error_buffer[0]) {
     fprintf(out, "\n#error %s\n", error_buffer);
@@ -3307,7 +3311,10 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 
     Byte_array_mut_slice region = bounds_of_Byte_array(src_p);
     region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers);
-    if (not parse(src_p, region, &markers)) return 0; // Error.
+    if (parse(src_p, region, &markers) is_not region.end_p) {
+      destruct_Marker_array(&markers);
+      return 0.0; // Error.
+    }
 
     if (options->apply_macros) {
       Macro_p macro = macros;
@@ -3470,6 +3477,8 @@ usage_en =
 
 int main(int argc, char** argv)
 {
+  int err = 0;
+
   if (argc > 2 and str_eq("new", argv[1])) {
     mut_Byte_array cmd;
     init_Byte_array(&cmd, 80);
@@ -3479,9 +3488,9 @@ int main(int argc, char** argv)
       push_str(&cmd, " ");
       push_str(&cmd, argv[i]);
     }
-    int result = system(as_c_string(&cmd));
+    err = system(as_c_string(&cmd));
     destruct_Byte_array(&cmd);
-    return result;
+    return err;
   }
 
   mut_Options options = { // Remember to keep the usage strings updated.
@@ -3530,7 +3539,8 @@ int main(int argc, char** argv)
         eprintln(CEDRO_VERSION);
       } else {
         eprintln(LANG(usage_es, usage_en));
-        return str_eq("-h", arg) or str_eq("--help", arg)? 0: 1;
+        err = str_eq("-h", arg) or str_eq("--help", arg)? 0: 1;
+        goto exit;
       }
     }
   }
@@ -3571,14 +3581,18 @@ int main(int argc, char** argv)
       if (file_name[0] is '\0') {
         fprintf(out, "#error The file name is the empty string.\n");
       }
-      return 11;
+      err = 11;
+      goto exit;
     }
 
     markers.len = 0;
 
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
-    if (not parse(&src, region, &markers)) return 1;
+    if (parse(&src, region, &markers) is_not region.end_p) {
+      err = 1;
+      goto exit;
+    }
 
     size_t original_src_len = src.len;
 
@@ -3591,9 +3605,14 @@ int main(int argc, char** argv)
       int err = read_file(&src_ref, opt_validate);
       if (err) {
         print_file_error(err, opt_validate, &src_ref);
-        return 12;
+        destruct_Marker_array(&markers);
+        err = 12;
+        goto exit;
       }
-      if (not validate_eq(&src, &src_ref, &options)) return 27;
+      if (not validate_eq(&src, &src_ref, &options)) {
+        err = 27;
+        goto exit;
+      }
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
@@ -3614,11 +3633,13 @@ int main(int argc, char** argv)
     }
 
     fflush(out);
-    destruct_Marker_array(&markers);
     destruct_Byte_array(&src);
   }
 
-  return 0;
+exit:
+  destruct_Marker_array(&markers);
+
+  return err;
 }
 
 #endif // USE_CEDRO_AS_LIBRARY

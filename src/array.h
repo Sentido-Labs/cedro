@@ -300,7 +300,7 @@ delete_##T##_array(mut_##T##_array_p _, size_t position, size_t delete) \
   _->len -= delete;                                                     \
 }                                                                       \
                                                                         \
-/** Truncate the array to the given length, if it is longer.            \
+/** Truncate the array to the given length, must be less than current.  \
     Same as `delete_##T##_array(_, len, _->len - len)`, which is        \
     the same as `splice_##T##_array(_, len, _->len - len, NULL,         \
     (T##_array_slice){0})`. */                                          \
