@@ -1,11 +1,13 @@
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /// Simple `defer`-style functionality using the `auto` keyword.
 static void
 macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src);
 
-TYPEDEF_STRUCT(DeferredAction, {
-    size_t level;
-    mut_Marker_array action;
-  });
+typedef struct DeferredAction {
+  size_t level;
+  mut_Marker_array action;
+} MUT_CONST_TYPE_VARIANTS(DeferredAction);
 
 /* Stack of pending deferred actions. */
 DEFINE_ARRAY_OF(DeferredAction, 0, {
@@ -177,6 +179,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
              --cursor) {
           if (*(cursor - 1) is '\n') {
             init_Marker(&indent_one_level, cursor, slice.end_p, src, T_SPACE);
+            indent_one_level.synthetic = true;
             break;
           }
         }
@@ -210,7 +213,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         goto exit_level_and_continue;
       }
 
-      Marker between = indentation(markers, cursor, false, src);
+      mut_Marker between = indentation(markers, cursor, false, src);
+      between.synthetic = true;
 
       Marker_p insertion_point =
           cursor is_not start and (cursor-1)->token_type is T_SPACE?
@@ -383,6 +387,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
 
       mut_Marker between = indentation(markers, line.start_p, true, src);
+      between.synthetic = true;
 
       Marker_mut_p insertion_point = cursor;
       if (cursor is_not start and (cursor-1)->token_type is T_SPACE) {

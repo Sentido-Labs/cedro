@@ -112,111 +112,7 @@ error_append(const char* const start, const char* const end)
 
 #define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
 
-typedef enum UTF8Error {
-  UTF8_NO_ERROR, UTF8_ERROR, UTF8_ERROR_OVERLONG,
-  UTF8_ERROR_INTERRUPTED_1 = 0x40,
-  UTF8_ERROR_INTERRUPTED_2 = 0x80,
-  UTF8_ERROR_INTERRUPTED_3 = 0xC0
-} UTF8Error, * UTF8Error_p;
-/** Store the error message corresponding to the error code `err`. */
-static bool
-utf8_error(UTF8Error err)
-{
-  switch (err) {
-    case UTF8_NO_ERROR: return false;
-    case UTF8_ERROR:
-      error(LANG("Error descodificando UTF-8.",
-                 "UTF-8 decode error."));
-      break;
-    case UTF8_ERROR_OVERLONG:
-      error(LANG("Error UTF-8, secuencia sobrelarga.",
-                 "UTF-8 error, overlong sequence."));
-      break;
-    case UTF8_ERROR_INTERRUPTED_1:
-    case UTF8_ERROR_INTERRUPTED_2:
-    case UTF8_ERROR_INTERRUPTED_3:
-      error(LANG("Error UTF-8, secuencia interrumpida.",
-                 "UTF-8 error, interrupted sequence."));
-      break;
-    default:
-      error(LANG("Error UTF-8 inesperado: 0x%02X",
-                 "UTF-8 error, unexpected: 0x%02X"),
-            err);
-  }
-
-  return true;
-}
-// If you want to assume that the input is valid UTF-8, you can do this
-// to disable UTF-8 decoding error checking and get a notable boost
-// with optimizing compilers.
-//#define utf8_error(_) false
-
-/** Decode one Unicode® code point from a UTF-8 byte buffer.
- *  Assumes `end` > `cursor`.
- * @param[in] cursor current byte.
- * @param[in] end byte buffer end.
- * @param[out] codepoint decoded 21-bit code point.
- * @param[out] err_p error code variable.
- */
-static inline const uint8_t*
-decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8Error_p err_p)
-{
-  uint8_t c = *cursor;
-  uint32_t u;
-  uint8_t len = 0;
-  if      (0x00 is (c & 0x80)) { *codepoint = (uint32_t)(c); return cursor+1; }
-  //if      (0x00 is (c & 0x80)) { u = (uint32_t)(c       ); len = 1; }
-  else if (0xC0 is (c & 0xE0)) { u = (uint32_t)(c & 0x1F); len = 2; }
-  else if (0xE0 is (c & 0xF0)) { u = (uint32_t)(c & 0x0F); len = 3; }
-  else if (0xF0 is (c & 0xF8)) { u = (uint32_t)(c & 0x07); len = 4; }
-  if (len is 0 or cursor + len > end) {
-    *err_p = UTF8_ERROR;
-    return cursor;
-  }
-  switch (len) {
-    case 4: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
-    case 3: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
-    case 2: c = *(++cursor)^0x80; u = (u<<6)|c; if (c&0xC0) *err_p = (c&0xC0);
-    case 1:      (++cursor);
-  }
-  if (len is 2 and u <    0x80 or
-      len is 3 and u <  0x0800 or
-      len is 4 and u < 0x10000) {
-    *err_p = UTF8_ERROR_OVERLONG;
-  }
-  *codepoint = u;
-
-  return cursor;
-}
-
-/** Compute the length in Unicode® code points for a UTF-8 byte buffer.
- *  Assumes `end` > `cursor`.
- * @param[in] start byte buffer slice start.
- * @param[in] end byte buffer slice end.
- * @param[out] err_p error code variable.
- * Returns the length in code points decoded from UTF-8 bytes.
- */
-static inline const size_t
-len_utf8(const uint8_t * const start, const uint8_t * const end,
-         UTF8Error_p err_p)
-{
-  size_t len = 0;
-  const uint8_t* cursor = start;
-  while (cursor is_not end) {
-    uint8_t c = *cursor;
-    if      (0x00 is (c & 0x80)) { cursor += 1; }
-    else if (0xC0 is (c & 0xE0)) { cursor += 2; }
-    else if (0xE0 is (c & 0xF0)) { cursor += 3; }
-    else if (0xF0 is (c & 0xF8)) { cursor += 4; }
-    else cursor = end + 1;
-    if (cursor > end) {
-      *err_p = UTF8_ERROR;
-      break;
-    }
-    ++len;
-  }
-  return len;
-}
+#include "utf8.h"
 
 /** Same as `fprintf(stderr, fmt, ...)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
@@ -233,7 +129,9 @@ eprint(const char * const fmt, ...)
   } else {
     char* buffer;
     char small[512];
-    size_t needed = (size_t) vsnprintf(small, sizeof(small), fmt, args);
+    size_t needed =
+        (size_t) vsnprintf(small, sizeof(small), fmt, args)
+        + 1; // For the zero terminator.
     if (needed <= sizeof(small)) {
       buffer = &small[0];
     } else {
@@ -291,24 +189,22 @@ eprint(const char * const fmt, ...)
  * variable does not contain `UTF-8`. */
 #define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
 
-/** Defines mutable struct types mut_〈T〉 and mut_〈T〉_p (pointer),
- * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
+/** Expand to the mutable and constant variants for a `typedef`. \n
+ * The default, just the type name `T`, is the constant variant
+ * and the mutable variant is named `mut_T`, with corresponding \n
+ * `T_p`: constant pointer to constant `T`       \n
+ * `mut_T_p`: constant pointer to mutable `T`    \n
+ * `mut_T_mut_p`: mutable pointer to mutable `T` \n
+ * This mimics the usage in Rust, where constant bindings are the default
+ * which is a good idea.
  */
-#define TYPEDEF_STRUCT(T, TYPE)                                          \
-  typedef struct T TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p; \
-  typedef const struct T      T, * const       T##_p, *       T##_mut_p
-/** Defines mutable types mut_〈T〉 and mut_〈T〉_p (pointer),
- * and constant types 〈T〉 and 〈T〉_p (pointer to constant).
- *
- *  You can define similar types for an existing type, for instance `uint8_t`:
- * ```
- * typedef       uint8_t mut_Byte, * const mut_Byte_p, *  mut_Byte_mut_p;
- * typedef const uint8_t     Byte, * const     Byte_p, *      Byte_mut_p;
- * ```
- */
-#define TYPEDEF(T, TYPE)                                                 \
-  typedef     TYPE mut_##T, * const mut_##T##_p, * mut_##T##_mut_p;      \
-  typedef const TYPE     T, * const       T##_p, *       T##_mut_p
+#define MUT_CONST_TYPE_VARIANTS(T)              \
+  /**/      mut_##T,                            \
+    *       mut_##T##_mut_p,                    \
+    * const mut_##T##_p;                        \
+  typedef const mut_##T T,                      \
+    *                   T##_mut_p,              \
+    * const             T##_p
 
 /** Parameters set by command line options. */
 typedef struct Options {
@@ -323,7 +219,7 @@ typedef struct Options {
   bool discard_comments;
   /// Insert `#line` directives in the output, mapping to the original file.
   bool insert_line_directives;
-} Options, *Options_p;
+} MUT_CONST_TYPE_VARIANTS(Options);
 
 /** Binary string, `const unsigned char const*`. */
 #define B(string) ((const unsigned char * const)string)
@@ -396,9 +292,7 @@ typedef enum TokenType {
   /** Ellipsis: `...`, or non-standard `..`          */ T_ELLIPSIS,
   /** Keyword for deferred resource release          */ T_CONTROL_FLOW_DEFER,
   /** Other token that is not part of the C grammar. */ T_OTHER
-} mut_TokenType, * const mut_TokenType_p, *  mut_TokenType_mut_p;
-typedef const enum TokenType
-/*  */TokenType, * const     TokenType_p, *      TokenType_mut_p;
+} MUT_CONST_TYPE_VARIANTS(TokenType);
 
 static const unsigned char * const
 TokenType_STRING[1+T_OTHER] = {
@@ -433,24 +327,25 @@ TokenType_STRING[1+T_OTHER] = {
 #define is_fence(token_type) (token_type >= T_BLOCK_START and token_type <= T_GROUP_END)
 
 /** Marks a C token in the source code. */
-TYPEDEF_STRUCT(Marker, {
-    SrcIndexType start;       /**< Start position, in bytes/chars. */
-    SrcLenType   len;         /**< Length, in bytes/chars. */
-    mut_TokenType token_type; /**< Token type. */
-  });
+typedef struct Marker {
+  SrcIndexType start;       /**< Start position, in bytes/chars. */
+  SrcLenType   len;         /**< Length, in bytes/chars. */
+  mut_TokenType token_type; /**< Token type. */
+  bool synthetic;           /**< It does not come directly from parsing. */
+} MUT_CONST_TYPE_VARIANTS(Marker);
 
 /** Error while processing markers. */
-TYPEDEF_STRUCT(Error, {
-    Marker_mut_p position; /**< Position at which the problem was noticed. */
-    const char * message;  /**< Message for user. */
-  });
+typedef struct Error {
+  Marker_mut_p position; /**< Position at which the problem was noticed. */
+  const char * message;  /**< Message for user. */
+} MUT_CONST_TYPE_VARIANTS(Error);
 
 #include "array.h"
 
 DEFINE_ARRAY_OF(Marker, 0, {});
 DEFINE_ARRAY_OF(TokenType, 0, {});
 
-TYPEDEF(Byte, uint8_t);
+typedef uint8_t MUT_CONST_TYPE_VARIANTS(Byte);
 /** Add 8 bytes after end of buffer to avoid bounds checking while scanning
  * for tokens. No literal token is longer. */
 DEFINE_ARRAY_OF(Byte, 8, {});
@@ -588,6 +483,7 @@ init_Marker(mut_Marker_p _, Byte_p start, Byte_p end, Byte_array_p src,
   _->start      = index_Byte_array(src, start);
   _->len        = (size_t)(end - start);
   _->token_type = token_type;
+  _->synthetic  = false;
 }
 
 /** Check whether two markers represent the same token. */
@@ -633,6 +529,7 @@ Marker_from(mut_Byte_array_p src, const char * const text, TokenType token_type)
     splice_Byte_array(src, src->len, 0, NULL, insert);
   }
   init_Marker(&marker, match, match + text_len, src, token_type);
+  marker.synthetic = true;
 
   return marker;
 }
@@ -1683,7 +1580,9 @@ print_marker(Marker_p m, Byte_array_p src)
       eprint("“%s”", token);
   }
   tabulate_eprint(m->len, markers_tabulator);
-  eprintln(" ← %s", TokenType_STRING[m->token_type]);
+  eprintln(" ← %s%s",
+           TokenType_STRING[m->token_type],
+           m->synthetic? ", synthetic": "");
   destruct_Byte_array(&token_text);
 }
 
@@ -1769,7 +1668,9 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
         eprint("“%s”", token);
     }
     tabulate_eprint(len, markers_tabulator);
-    eprintln(" ← %s", TokenType_STRING[m->token_type]);
+    eprintln(" ← %s%s",
+             TokenType_STRING[m->token_type],
+             m->synthetic? ", synthetic": "");
   }
 
   destruct_Byte_array(&token_text);
@@ -2042,7 +1943,7 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
       } else if (cursor + 8 <= token_end and mem_eq("#assert ", cursor, 8)) {
         eprintln(LANG("La directiva #assert es incompatible con Cedro.",
                       "The #assert directive is incompatible with Cedro."));
-        return 0;// Error.
+        return NULL;// Error.
       }
       TOKEN1(T_PREPROCESSOR);
       if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
@@ -2320,10 +2221,10 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
   return true;
 }
 
-TYPEDEF_STRUCT(Replacement, {
-    Marker_mut_p marker;
-    Marker_array_mut_slice replacement;
-  });
+typedef struct Replacement {
+  Marker_mut_p marker;
+  Marker_array_mut_slice replacement;
+} MUT_CONST_TYPE_VARIANTS(Replacement);
 DEFINE_ARRAY_OF(Replacement, 0, {});
 static Marker_array_slice
 get_replacement_value(Replacement_array_p _, Marker_p m, Byte_array_p src)
@@ -2350,7 +2251,7 @@ typedef int (*IncludeCallbackFunction_p)(Marker_p m, Byte_array_p src,
 typedef struct IncludeCallback {
   IncludeCallbackFunction_p function;
   void* context;
-} const IncludeCallback, * const IncludeCallback_p;
+} MUT_CONST_TYPE_VARIANTS(IncludeCallback);
 
 /* Prototype, defined after unparse_foreach(). */
 static Marker_p
@@ -2533,7 +2434,17 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
           ++nesting;
           break;
         case T_BLOCK_END:
-          if (not nesting) goto found_args_end;
+          if (not nesting) {
+            if (skip_space_forward(value.end_p + 1, arg.end_p)
+                is_not arg.end_p) {
+              write_error_at(LANG("contenido inválido tras lista de valores",
+                                  "invalid content after value list"),
+                             value.start_p, src, out);
+              m = m_end;
+              goto exit;
+            }
+            goto found_args_end;
+          }
           --nesting;
           break;
         case T_TUPLE_END: case T_INDEX_END:
@@ -2563,7 +2474,7 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
     }
 
     if (value.end_p is arg.end_p) {
-      write_error_at(LANG("lista de valores inconclusa2",
+      write_error_at(LANG("lista de valores inconclusa",
                           "unfinished value list"),
                      value.start_p, src, out);
       m = m_end;
@@ -2704,7 +2615,9 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
 
 exit:
   destruct_Marker_array(&arguments);
-  truncate_Replacement_array(replacements, initial_replacements_len);
+  if (replacements->len > initial_replacements_len) {
+    truncate_Replacement_array(replacements, initial_replacements_len);
+  }
   if (initial_replacements_len is 0) destruct_Replacement_array(replacements);
 
   return m;
@@ -2714,69 +2627,80 @@ exit:
  * @param line_directive_pending [out] will be set to `false` if it was
  * `true` and the `#line` directive was written.
  * @param src_file_name [in] C source file name, needed for `#line`.
- * @param pending_space [in] pointer to the pending space marker.
- * Assumes it is not `NULL`, and also not empty (`pending_space->len != 0`).
+ * @param pending_space [in] pointer to the pending space marker, not `NULL`.
  * @param src [in] source code as UTF-8 bytes.
  * @param options [in] program options.
  * @param out [in] stream where the result will be written.
  */
 static bool
 write_pending_space(bool* line_directive_pending, const char* src_file_name,
-                    Marker_p pending_space, Byte_array_p src,
+                    Marker_p pending_space, Marker_p end, Byte_array_p src,
                     Options options, FILE* out)
 {
-  assert(pending_space->len != 0);
   if (*line_directive_pending) {
     Byte_array_mut_slice space = slice_for_marker(src, pending_space);
-    Byte_mut_p eol = space.start_p;
-    if (*eol is_not '\n') {
-      ++eol;
-      if (eol is_not space.end_p) {
-        do {
-          eol = memchr(eol + 1, '\n', (size_t)(space.end_p - eol - 1));
-        } while (eol and *(eol-1) is '\\');
-      } else {
-        eol = NULL;
+    Byte_mut_p insertion_point = space.end_p; // Right after the LF.
+    if (insertion_point is_not space.start_p) {
+      while (insertion_point is_not space.start_p) {
+        Byte_mut_p next = insertion_point - 1;
+        if (*next is '\n' and
+            (next-1 is space.start_p or *(next-1) is_not '\\')) {
+          break;
+        }
+        insertion_point = next;
       }
     }
-    if (eol) {
-      ++eol; // Include newline byte.
-      size_t len = (size_t)(eol - space.start_p);
+    if (insertion_point is_not space.start_p or
+        pending_space->token_type is T_NONE) {
+      size_t len = (size_t)(insertion_point - space.start_p);
       if (fwrite(space.start_p, sizeof(space.start_p[0]), len, out)
           is_not len) {
         error(LANG("al escribir el espacio pendiente",
                    "when writing pending space"));
         return false;
       }
-      if (fprintf(out, "#line %lu \"%s\"\n",
-                  original_line_number(pending_space->start + len, src),
-                  src_file_name) < 0) {
-        error(LANG("al escribir el espacio pendiente",
-                   "when writing pending space"));
+      size_t line_number = 0;
+      if (pending_space is end) {
+        line_number = original_line_number(pending_space->start + len, src);
+      } else {
+        // Skip plain spaces and synthetic tokens:
+        Marker_mut_p next = pending_space + 1;
+        while (next is_not end and
+               (next->synthetic is true or
+                (next->token_type is T_SPACE and
+                 not has_byte('\n', next, src))
+                )) {
+          ++next;
+        }
+        if (next is_not end and next->synthetic is true) next = end;
+        line_number = next is end? 0: original_line_number(next->start, src);
+      }
+      if (line_number is_not 0 and
+          fprintf(out, "#line %lu \"%s\"\n", line_number, src_file_name) < 0) {
+        error(LANG("al escribir la directiva #line",
+                   "when writing #line directive"));
         return false;
       }
       *line_directive_pending = false;
-      len = (size_t)(space.end_p - eol);
-      if (fwrite(eol, sizeof(eol[0]), len, out)
+      len = (size_t)(space.end_p - insertion_point);
+      if (fwrite(insertion_point, sizeof(insertion_point[0]), len, out)
           is_not len) {
         error(LANG("al escribir el espacio pendiente",
                    "when writing pending space"));
         return false;
       }
       return true;
-    } else {
-      return write_token(pending_space, src, options, out);
     }
-  } else {
-    return write_token(pending_space, src, options, out);
   }
+
+  return write_token(pending_space, src, options, out);
 }
 static Marker_p
 unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                  Byte_array_p src, size_t original_src_len,
                  const char* src_file_name, IncludeCallback_p include,
                  mut_Replacement_array_p replacements, bool is_last,
-                 Options options, FILE* out)
+                 mut_Options options, FILE* out)
 {
   if (m is m_end) return m_end;
   bool eol_pending = false;
@@ -2785,16 +2709,16 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
   for (; m is_not m_end; ++m) {
     if (options.insert_line_directives) {
       line_directive_pending |= m->start is_not previous_marker_end;
-      previous_marker_end        = m->start + m->len;
+      if (m->synthetic is_not true) previous_marker_end = m->start + m->len;
     }
 
     if (options.discard_comments and m->token_type is T_COMMENT) {
       if (options.discard_space and not eol_pending and
           m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
       if (pending_space) {
-        if (not write_pending_space(&line_directive_pending,
-                                    src_file_name,
-                                    pending_space, src, options, out)) {
+        if (not write_pending_space(&line_directive_pending, src_file_name,
+                                    pending_space, m_end, src,
+                                    options, out)) {
           m = m_end;
           goto exit;
         }
@@ -2840,9 +2764,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       size_t len = 9;// = strlen("#define {")
       if (m->len >= len and strn_eq("#define {", (char*)rest, len)) {
         if (pending_space) {
-          if (not write_pending_space(&line_directive_pending,
-                                      src_file_name,
-                                      pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending, src_file_name,
+                                      pending_space, m_end, src,
+                                      options, out)) {
             m = m_end;
             break;
           }
@@ -2865,6 +2789,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           } else if (m->token_type is T_PREPROCESSOR) {
             text = slice_for_marker(src, m);
             rest = text.start_p;
+            len = 9;// = strlen("#define }")
             if (m->len >= len and strn_eq("#define }", (char*)rest, len)) {
               fputs("/* End #define */", out);
               // Not needed: line_length += strlen("/* End #define */");
@@ -2941,9 +2866,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       len = 10; // = strlen("#include {");
       if (m->len >= len and strn_eq("#include {", (char*)rest, len)) {
         if (pending_space) {
-          if (not write_pending_space(&line_directive_pending,
-                                      src_file_name,
-                                      pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending, src_file_name,
+                                      pending_space, m_end, src,
+                                      options, out)) {
             m = m_end;
             break;
           }
@@ -2974,7 +2899,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         const char*    basename = strrchr(included_file, '/');
         if (not basename) basename = strrchr(included_file, '\\');
         if (basename) ++basename; else basename = included_file;
-        fprintf(out, "[%lu] = { /* %s */\n0x%2X",
+        fprintf(out, "[%lu] = { /* %s */\n0x%02X",
                 bin.len, basename, bin.start[0]);
         for (size_t i = 1; i is_not bin.len; ++i) {
           fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
@@ -3081,7 +3006,8 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             if (pending_space) {
               if (not write_pending_space(&line_directive_pending,
                                           src_file_name,
-                                          pending_space, src, options, out)) {
+                                          pending_space, m_end, src,
+                                          options, out)) {
                 m = m_end;
                 goto exit;
               }
@@ -3117,9 +3043,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         }
 
         if (pending_space) {
-          if (not write_pending_space(&line_directive_pending,
-                                      src_file_name,
-                                      pending_space, src, options, out)) {
+          if (not write_pending_space(&line_directive_pending, src_file_name,
+                                      pending_space, m_end, src,
+                                      options, out)) {
             m = m_end;
             goto exit;
           }
@@ -3154,9 +3080,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       }
     } else if (replacements and m->token_type is T_IDENTIFIER) {
       if (pending_space) {
-        if (not write_pending_space(&line_directive_pending,
-                                    src_file_name,
-                                    pending_space, src, options, out)) {
+        if (not write_pending_space(&line_directive_pending, src_file_name,
+                                    pending_space, m_end, src,
+                                    options, out)) {
           m = m_end;
           goto exit;
         }
@@ -3184,9 +3110,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
 
     // Default token output:
     if (pending_space) {
-      if (not write_pending_space(&line_directive_pending,
-                                  src_file_name,
-                                  pending_space, src, options, out)) goto exit;
+      if (not write_pending_space(&line_directive_pending, src_file_name,
+                                  pending_space, m_end, src,
+                                  options, out)) goto exit;
       pending_space = NULL;
     }
     if (m->token_type is T_SPACE) {
@@ -3197,9 +3123,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
   }
 
   if (pending_space) {
-    if (not write_pending_space(&line_directive_pending,
-                                src_file_name,
-                                pending_space, src, options, out)) goto exit;
+    if (not write_pending_space(&line_directive_pending, src_file_name,
+                                pending_space, m_end, src,
+                                options, out)) goto exit;
     pending_space = NULL;
   }
 
@@ -3224,6 +3150,17 @@ unparse(Marker_array_slice markers,
   assert(markers.end_p >= markers.start_p);
 
   Marker_mut_p m = markers.start_p;
+  /* We need a special case because unparse_fragment()
+   * does not have enough context to decide whether to insert it. */
+  if (options.insert_line_directives and m->start is_not 0) {
+    Marker empty = {0};
+    bool line_directive_pending = true;
+    if (not write_pending_space(&line_directive_pending, src_file_name,
+                                &empty, markers.end_p, src,
+                                options, out)) {
+      return;
+    }
+  }
   m = unparse_fragment(m, markers.end_p, 0,
                        src, original_src_len,
                        src_file_name, NULL,
@@ -3266,7 +3203,10 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 
     Byte_array_mut_slice region = bounds_of_Byte_array(src_p);
     region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers);
-    if (not parse(src_p, region, &markers)) return 0; // Error.
+    if (not parse(src_p, region, &markers)) {
+      destruct_Marker_array(&markers);
+      return 0.0; // Error.
+    }
 
     if (options->apply_macros) {
       Macro_p macro = macros;
@@ -3283,14 +3223,81 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
   return ((double)(end - start))/CLOCKS_PER_SEC / (double) repetitions;
 }
 
+/** Validates equivalence of input file to the given reference file.
+ * It does not apply any macros, just tokenizes both inputs.
+ */
+static bool
+validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref, Options_p options)
+{
+  bool result = true;
+  mut_Marker_array markers;
+  init_Marker_array(&markers, 8192);
+  mut_Marker_array markers_ref;
+  init_Marker_array(&markers_ref, 8192);
+
+  /* Do not apply macros or anything else, just a straight tokenization. */
+  Byte_array_mut_slice region;
+  region = bounds_of_Byte_array(src);
+  if (not parse(src, region, &markers)) {
+    result = false;
+    goto exit;
+  }
+  region = bounds_of_Byte_array(src_ref);
+  if (not parse(src_ref, region, &markers_ref)) {
+    result = false;
+    goto exit;
+  }
+
+  Marker_p
+      end     = end_of_Marker_array(&markers),
+      end_ref = end_of_Marker_array(&markers_ref);
+  Marker_mut_p
+      cursor     = start_of_Marker_array(&markers),
+      cursor_ref = start_of_Marker_array(&markers_ref);
+  cursor     = skip_space_forward(cursor,     end);
+  cursor_ref = skip_space_forward(cursor_ref, end_ref);
+  while (cursor is_not end and cursor_ref is_not end_ref) {
+    if (cursor->token_type is_not cursor_ref->token_type or
+        cursor->len > cursor_ref->len                    or
+        not mem_eq(get_Byte_array(src,     cursor    ->start),
+                   get_Byte_array(src_ref, cursor_ref->start),
+                   cursor->len)) {
+      result = false;
+      break;
+    }
+    cursor     = skip_space_forward(cursor     + 1, end);
+    cursor_ref = skip_space_forward(cursor_ref + 1, end_ref);
+  }
+
+  if (result is false) {
+    mut_Byte_array message;
+    init_Byte_array(&message, 80);
+    push_fmt(&message, LANG("Procesado, línea %lu",
+                            "Processed, line %lu"),
+             original_line_number(cursor->start, src));
+    debug_cursor(cursor, 5, as_c_string(&message), &markers, src);
+    if (message.len) truncate_Byte_array(&message, 0);
+    push_fmt(&message, LANG("Referencia, línea %lu",
+                            "Reference, line %lu"),
+             original_line_number(cursor_ref->start, src_ref));
+    debug_cursor(cursor_ref, 5, as_c_string(&message), &markers_ref, src_ref);
+    destruct_Byte_array(&message);
+  }
+exit:
+  destruct_Marker_array(&markers_ref);
+  destruct_Marker_array(&markers);
+  return result;
+}
+
 
 #ifndef USE_CEDRO_AS_LIBRARY
 
 static const char* const
 usage_es =
-    "Uso: cedro [opciones] fichero.c [fichero2.c … ]\n"
-    "  Usa - en vez de fichero.c para leer desde stdin.\n"
-    "  El resultado va a stdout, para entregarlo al compilador:\n"
+    "Uso: cedro [opciones] <fichero.c>…\n"
+    "     cedro new <nombre> # Ejecuta: cedro-new <nombre>\n"
+    "  Para leer desde stdin, se pone - en vez de <fichero.c>.\n"
+    "  El resultado va a stdout, se puede compilar sin fichero intermedio:\n"
     " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
@@ -3314,15 +3321,20 @@ usage_es =
     "  --no-enable-core-dump No activa el volcado de memoria al estrellarse."
     " (implícito)\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
+    "  --validate=ref.c   Compara el resultado con el fichero «ref.c» dado.\n"
+    "      No aplica las macros: para comparar el resultado de aplicar Cedro\n"
+    "      a un fichero, pase la salida a través de esta opción, por ejemplo:\n"
+    "      cedro fichero.c | cedro - --validate=ref.c\n"
     "  --version          Muestra la versión: " CEDRO_VERSION "\n"
     "                     El «pragma» correspondiente es: #pragma Cedro "
     CEDRO_VERSION
     ;
 static const char* const
 usage_en =
-    "Usage: cedro [options] file.c [file2.c … ]\n"
-    "  Use - instead of file.c to read from stdin.\n"
-    "  The result goes to stdout, to be fed into the compiler:\n"
+    "Usage: cedro [options] <file.c>…\n"
+    "       cedro new <name> # Runs: cedro-new <name>\n"
+    "  To read from stdin, put - instead of <file.c>.\n"
+    "  The result goes to stdout, can be compiled without intermediate files:\n"
     " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"
     " cedrocc -o file file.c\n"
@@ -3346,6 +3358,10 @@ usage_en =
     "  --enable-core-dump    Enable core dump on crash.\n"
     "  --no-enable-core-dump Does not enable core dump on crash. (default)\n"
     "  --benchmark        Run a performance benchmark.\n"
+    "  --validate=ref.c   Compares the input to the given “ref.c” file.\n"
+    "      Does not apply any macros: to compare the result of running Cedro\n"
+    "      on a file, pipe its output through this option, for instance:\n"
+    "      cedro file.c | cedro - --validate=ref.c\n"
     "  --version          Show version: " CEDRO_VERSION "\n"
     "                     The corresponding “pragma” is: #pragma Cedro "
     CEDRO_VERSION
@@ -3353,6 +3369,8 @@ usage_en =
 
 int main(int argc, char** argv)
 {
+  int err = 0;
+
   if (argc > 2 and str_eq("new", argv[1])) {
     mut_Byte_array cmd;
     init_Byte_array(&cmd, 80);
@@ -3362,12 +3380,12 @@ int main(int argc, char** argv)
       push_str(&cmd, " ");
       push_str(&cmd, argv[i]);
     }
-    int result = system(as_c_string(&cmd));
+    err = system(as_c_string(&cmd));
     destruct_Byte_array(&cmd);
-    return result;
+    return err;
   }
 
-  Options options = { // Remember to keep the usage strings updated.
+  mut_Options options = { // Remember to keep the usage strings updated.
     .apply_macros           = true,
     .escape_ucn             = false,
     .discard_comments       = false,
@@ -3378,6 +3396,7 @@ int main(int argc, char** argv)
   bool opt_print_markers    = false;
   bool opt_enable_core_dump = false;
   bool opt_run_benchmark    = false;
+  const char* opt_validate  = NULL;
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
@@ -3406,11 +3425,14 @@ int main(int argc, char** argv)
         opt_enable_core_dump = flag_value;
       } else if (str_eq("--benchmark", arg)) {
         opt_run_benchmark = true;
+      } else if (strn_eq("--validate=", arg, strlen("--validate="))) {
+        opt_validate = arg + strlen("--validate=");
       } else if (str_eq("--version", arg)) {
         eprintln(CEDRO_VERSION);
       } else {
         eprintln(LANG(usage_es, usage_en));
-        return str_eq("-h", arg) or str_eq("--help", arg)? 0: 1;
+        err = str_eq("-h", arg) or str_eq("--help", arg)? 0: 1;
+        goto exit;
       }
     }
   }
@@ -3448,15 +3470,21 @@ int main(int argc, char** argv)
         read_stream(&src, stdin);
     if (err) {
       print_file_error(err, file_name, &src);
-      fprintf(out, "#error The file name is the empty string.\n");
-      return 11;
+      if (file_name[0] is '\0') {
+        fprintf(out, "#error The file name is the empty string.\n");
+      }
+      err = 11;
+      goto exit;
     }
 
     markers.len = 0;
 
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
-    if (not parse(&src, region, &markers)) return 1;
+    if (not parse(&src, region, &markers)) {
+      err = 1;
+      goto exit;
+    }
 
     size_t original_src_len = src.len;
 
@@ -3464,6 +3492,19 @@ int main(int argc, char** argv)
       double t = benchmark(&src, &options);
       if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
       else         eprintln("%.1fs for %s", t         , file_name);
+    } else if (opt_validate) {
+      mut_Byte_array src_ref = {0};
+      int err = read_file(&src_ref, opt_validate);
+      if (err) {
+        print_file_error(err, opt_validate, &src_ref);
+        destruct_Marker_array(&markers);
+        err = 12;
+        goto exit;
+      }
+      if (not validate_eq(&src, &src_ref, &options)) {
+        err = 27;
+        goto exit;
+      }
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
@@ -3484,11 +3525,13 @@ int main(int argc, char** argv)
     }
 
     fflush(out);
-    destruct_Marker_array(&markers);
     destruct_Byte_array(&src);
   }
 
-  return 0;
+exit:
+  destruct_Marker_array(&markers);
+
+  return err;
 }
 
 #endif // USE_CEDRO_AS_LIBRARY

@@ -1,3 +1,5 @@
+/* -*- coding: utf-8 c-basic-offset: 2 tab-width: 2 indent-tabs-mode: nil -*-
+ * vi: set et ts=2 sw=2: */
 /// Because of the lack of fences, it works for
 /// structs and array initializers, and for separate function arguments.
 /// x[a..b] → &x[a], &x[b]

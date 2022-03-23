@@ -36,38 +36,44 @@
 
 static const char* const
 usage_es =
-    "Uso: cedrocc [opciones] <fichero.c> [ fichero2.o … ]\n"
+    "Uso: cedrocc [opciones] <fichero.c> [<fichero2.o>…]\n"
     "  Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
-    "  y compila el resultado con «%s» mas los otros argumentos.\n"
+    " y compila el resultado con «%s» mas los otros argumentos.\n"
     "    cedrocc -o fichero fichero.c\n"
     "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  Además, para cada #include, si encuentra el fichero lo lée y\n"
+    " si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado\n"
+    " en lugar del #include.\n"
     "  Se puede especificar el compilador, p.ej. gcc:\n"
     "    CEDRO_CC='gcc -x c -' cedrocc …\n"
     "  Para depuración, esto escribe el código que iría entubado a cc,\n"
-    "  en stdout:\n"
+    " en stdout:\n"
     "    CEDRO_CC='' cedrocc …"
     ;
 static const char* const
 usage_en =
-    "Usage: cedrocc [options] <file.c> [ file2.o … ]\n"
+    "Usage: cedrocc [options] <file.c> [<file2.o>…]\n"
     "  Runs Cedro on the first file name that ends with “.c”,\n"
-    "  and compiles the result with “%s” plus the other arguments.\n"
+    " and compiles the result with “%s” plus the other arguments.\n"
     "    cedrocc -o fichero fichero.c\n"
     "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  In addition, for each #include, if it finds the file it reads it and\n"
+    " if it finds `#pragma Cedro 1.0` processes it and inserts the result\n"
+    " in place of the #include.\n"
     "  You can specify the compiler, e.g. gcc:\n"
     "    CEDRO_CC='gcc -x c -' cedrocc …\n"
     "  For debugging, this writes the code that would be piped into cc,\n"
-    "  into stdout instead:\n"
+    " into stdout instead:\n"
     "    CEDRO_CC='' cedrocc …"
     ;
 
 typedef size_t mut_size_t, * mut_size_t_mut_p, * const mut_size_t_p;
 typedef const size_t * size_t_mut_p, * const size_t_p;
 DEFINE_ARRAY_OF(size_t, 0, {});
-TYPEDEF_STRUCT(IncludePaths, {
-    mut_Byte_array text;
-    mut_size_t_array lengths;
-  });
+typedef struct IncludePaths {
+  mut_Byte_array text;
+  mut_size_t_array lengths;
+} MUT_CONST_TYPE_VARIANTS(IncludePaths);
 void
 init_IncludePaths(mut_IncludePaths_p _, size_t initial_capacity)
 {
@@ -149,11 +155,11 @@ find_path_in(IncludePaths_p _, const char* file_name)
   return (Result_size_t){ 1, position };
 }
 
-TYPEDEF_STRUCT(SourceFile, {
-    mut_Byte_array path;
-    mut_Byte_array src;
-    mut_Marker_array markers;
-  });
+typedef struct SourceFile {
+  mut_Byte_array path;
+  mut_Byte_array src;
+  mut_Marker_array markers;
+} MUT_CONST_TYPE_VARIANTS(SourceFile);
 DEFINE_ARRAY_OF(SourceFile, 0, {
     while (cursor is_not end) {
       destruct_Marker_array(&cursor->markers);
@@ -304,13 +310,13 @@ include(const char* file_name,
 
   int return_code = EXIT_SUCCESS;
 
-  Options options;
-  options @
-      .apply_macros           = true,
-      .escape_ucn             = false,
-      .discard_comments       = false,
-      .discard_space          = false,
-      .insert_line_directives = true;
+  Options options = {
+    .apply_macros           = true,
+    .escape_ucn             = false,
+    .discard_comments       = false,
+    .discard_space          = false,
+    .insert_line_directives = true
+  };
 
   mut_Marker_array markers;
   init_Marker_array(&markers, 8192);
