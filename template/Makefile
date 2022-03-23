@@ -16,13 +16,19 @@ CFLAGS=-g -L build/lib -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -W
 CFLAGS=-g -DNDEBUG -L build/lib -I lib -I src -std=c99
 
 TEST_ARGUMENTS="dummy"
+VALGRIND_CHECK=valgrind --error-exitcode=123 --leak-check=yes
 
-CEDRO=tools/cedro/cedro
+CEDRO_DIR=tools/cedro
+CEDRO=$(CEDRO_DIR)/cedro
 CEDROCC=$(CEDRO)cc
 
 LIBRARIES=lib/build/btree.c-0.2.1/btree.o
 
+MAIN=src/main.c
 # include Makefile.libuv.mk
+# MAIN=src/main.libuv.c
+# include Makefile.nanovg.mk
+# MAIN=src/main.nanovg.c
 
 release: $(LIBRARIES) build/$(CMDNAME)
 debug:   $(LIBRARIES) build/$(CMDNAME)-debug
@@ -38,36 +44,36 @@ help:
 	@echo " clean: remove build/, doc/, $(CEDRO), $(CEDROCC)"
 .PHONY: release debug static bt help
 
-$(CEDRO): $(CEDRO).c
+$(CEDRO): $(CEDRO).c $(CEDRO_DIR)/macros/*
 	$(CC) $(CFLAGS) -O -o $@ $<
 $(CEDROCC): $(CEDROCC).c $(CEDRO)
 	$(CEDRO) --insert-line-directives $< | $(CC) $(CFLAGS) -I `dirname $(CEDRO)` -O -o $@ -x c -
 
-build/$(CMDNAME).o:     src/main.c src/* Makefile $(CEDROCC)
+build/$(CMDNAME).o:     $(MAIN) src/* Makefile $(CEDROCC)
 	@mkdir -p build
-	$(CEDROCC) $< $(CFLAGS) -c           -o $@ -O
+	$(CEDROCC) -c -o $@ $< $(CFLAGS) -O
 build/$(CMDNAME):       build/$(CMDNAME).o $(LIBRARIES) Makefile
-	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
-	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+	$(CC)         -o $@ $@.o $(CFLAGS) $(LIBRARIES)
+	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 	@echo '--->' $@
 
-build/$(CMDNAME)-debug.o: src/main.c src/* Makefile $(CEDROCC)
+build/$(CMDNAME)-debug.o: $(MAIN) src/* Makefile $(CEDROCC)
 	@mkdir -p build
-	$(CEDROCC) $< $(CFLAGS) -c           -o $@
+	$(CEDROCC) -c -o $@ $< $(CFLAGS)
 build/$(CMDNAME)-debug:   build/$(CMDNAME)-debug.o $(LIBRARIES) Makefile
-	$(CC)    $@.o $(CFLAGS) $(LIBRARIES) -o $@
-	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+	$(CC)         -o $@ $@.o $(CFLAGS) $(LIBRARIES)
+	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 	@echo '--->' $@
 
-build/$(CMDNAME)-static: src/main.c src/* $(LIBRARIES) Makefile $(CEDROCC)
+build/$(CMDNAME)-static: $(MAIN) src/* $(LIBRARIES) Makefile $(CEDROCC)
 	@mkdir -p build
-	$(CEDROCC) $< $(CFLAGS) -o $@ -O -static
-	@if which valgrind >/dev/null; then CMD="valgrind --leak-check=yes --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null 2>/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with:; echo $$CMD; fi; fi
+	$(CEDROCC) -o $@ $< $(CFLAGS) -O -static
+	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 	@echo '--->' $@
 
 lib/build/%.o: lib/%.c lib/%.h
 	mkdir -p $$(dirname $@)
-	$(CC) -c $< $(CFLAGS) -o $@ -O
+	$(CC) -c -o $@ $< $(CFLAGS) -O
 
 doc: doc/api/main.c Makefile Doxyfile
 	mkdir -p doc/api
@@ -76,7 +82,7 @@ doc: doc/api/main.c Makefile Doxyfile
 # Amalgamation of src/main.c
 doc/api/main.c: src/* $(CEDROCC)
 	mkdir -p doc/api
-	CEDRO_CC='' $(CEDROCC) src/main.c >$@
+	CEDRO_CC='' $(CEDROCC) $(MAIN) >$@
 
 Doxyfile:
 	doxygen -g

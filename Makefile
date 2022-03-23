@@ -100,7 +100,7 @@ bin/%: src/%.c Makefile bin/cedrocc
 	@mkdir -p bin
 	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
-%.zip: % %/** bin/zip-template template
+%.zip: % %/** bin/zip-template template/*
 	bin/zip-template $@ $<
 
 doc:

@@ -86,23 +86,7 @@ const char* const usage_en =
     "  Prints the given arguments."
     ;
 
-/** Print a message to `stderr`, with a newline character at the end. */
-static void
-eprintln(const char * const fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt); vfprintf(stderr, fmt, args); putc('\n', stderr);
-    va_end(args);
-}
-
-/** Print a message to `stdout`, with a newline character at the end. */
-static void
-println(const char * const fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt); vprintf(fmt, args); putc('\n', stdout);
-    va_end(args);
-}
+#include "eprintln.h"
 
 bool
 string_count_print(const void* a, void* udata)
@@ -120,23 +104,30 @@ string_count_print(const void* a, void* udata)
 }
 
 int
-main(int argc, char** argv)
+main(int argc, char* argv[])
 {
+    int err = 0;
     if (argc == 1) {
         eprintln(LANG(usage_es, usage_en));
-        return 1;
+        err = 1;
+        return err;
     }
 
     const char * const format_string =
             LANG("Me has dado %d argumentos.\n",
                  "You gave me %d arguments.\n");
     size_t length = (size_t)snprintf(NULL, 0, format_string, argc - 1);
-    if (length == SIZE_ERROR) { perror(""); return errno; }
+    if (length == SIZE_ERROR) {
+        perror("");
+        err = errno;
+        return err;
+    }
     char* message = malloc(length);
     auto free(message);
     if (SIZE_ERROR == snprintf(message, length, format_string, argc - 1)) {
         perror("");
-        return errno;
+        err = errno;
+        return err;
     }
 
     eprintln(LANG("Mensaje: %s",
@@ -223,5 +214,5 @@ main(int argc, char** argv)
                  &(struct string_count){ .arg = "" },
                  string_count_print, stderr);
 
-    return 0;
+    return err;
 }
