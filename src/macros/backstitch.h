@@ -167,6 +167,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                   --nesting;// Can not underflow because of find_line_end().
                   break;
                 case T_ELLIPSIS:
+                  if (nesting) break; // Allow nested backstitch application.
                   error_at(LANG("prefijo no válido, debe ser un identificador.",
                                 "invalid prefix, must be an identifier."),
                            cursor, markers, src);
@@ -326,7 +327,6 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                               (size_t)(end_of_line - object.start_p),
                               NULL,
                               bounds_of_Marker_array(&replacement));
-          cursor_position += replacement.len;
           start = start_of_Marker_array(markers);
           end   =   end_of_Marker_array(markers);
           cursor = start + cursor_position;
