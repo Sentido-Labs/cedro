@@ -26,7 +26,7 @@
         Otherwise, the file is copied directly to the output.</p>
       <code>Usage: cedro [options] &lt;file.c&gt;…
        cedro new &lt;name&gt; # Runs: <a href="#cedro-new">cedro-new</a> &lt;name&gt;
-  Use - instead of &lt;file.c&gt; to read from stdin.
+  To read from stdin, put - instead of &lt;file.c&gt;.
   The result goes to stdout, can be used without an intermediate file:
  cedro file.c | cc -x c - -o file
   It is what the <a href="#cedrocc">cedrocc</a> program does:
@@ -62,27 +62,53 @@
         (“C99 standard”, page 65, “<a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf#65">6.4.3 Universal character names</a>”),
         which can be useful for older compilers without UTF-8 support such as
         <a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67224#c32">GCC before version 10</a>.</p>
-      <p>For API documentation, see <a href="doc/api/index.html">doc/api/index.html</a>
+      <p>For API documentation, see <url><a href="doc/api/index.html">doc/api/index.html</a></url>
         after running <code>make doc</code> that requires having
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
+
+      <h2><code id="cedrocc">cedrocc</code> <a class="anchor" href="#cedrocc">#cedrocc</a></h2>
       <p>The second executable, <code>cedrocc</code>, allows using Cedro as if it was part of the C compiler.</p>
       <code>Usage: cedrocc [options] &lt;file.c&gt; [ file2.o … ]
   Runs Cedro on the first file name that ends with “.c”,
   and compiles the result with “cc -x c -” plus the other arguments.
-    cedrocc -o fichero fichero.c
-    cedro fichero.c | cc -x c - -o fichero
+    cedrocc -o file file.c
+    cedro file.c | cc -x c - -o file
   You can specify the compiler, e.g. gcc:
     CEDRO_CC='gcc -x c -' cedrocc …
   For debugging, this writes the code that would be piped into cc,
   into stdout instead:
     CEDRO_CC='' cedrocc …</code>
       <p>If you get an error message like “embedding a directive within macro arguments is not portable” (GCC) or “embedding a directive within macro arguments has undefined behavior” (clang), it means that you’re using Cedro with <code>--insert-line-directives</code> inside the parameters for a macro. You can either expand the code given to the macro manually, or avoid <code>--insert-line-directives</code> by replacing <code>cedrocc -o file file.c</code> with <code>cedro file.c | cc -x c - -o file</code>.</p>
-      <p>There is a third executable, <code>cedro-new</code>, that produces a program draft in a similar way to <code>cargo new</code> in Rust. <code>cedro new …</code> will actually run <code>cedro-new …</code>. The content is produced from the template in the <code>template/</code> directory, that gets included in the <code>cedro-new</code> executable at compilation.</p>
+      <p><code>cedrocc</code> does another thing in addition to <code>cedro file.c | cc -x c - -o file</code>:
+        for each <code>#include</code>, if it finds the file (<code>-I ...</code>) it looks inside for <code>#pragma Cedro 1.0</code> and if found, processes the file and inserts the result in place of the <code>#include</code>. The reason is being able to compile in one go programs that use Cedro in several files, instead of having to transform each of them into temporary files to be compiled later.</p>
+
+      <h2 id="cedro-new"><code>cedro-new</code> <a class="anchor" href="#cedro-new">#cedro-new</a></h2>
+      <p>There is a third executable, <code>cedro-new</code>, that produces a program draft in a similar way to <code>cargo new</code> in Rust. <code>cedro new …</code> will actually run <code>cedro-new …</code>. The content is produced from the template in the <url>template/</url> directory, that gets included in the <code>cedro-new</code> executable at compilation.</p>
       <code>Usage: cedro-new [options] &lt;name&gt;
   Creates a directory named &lt;name&gt;/ with the template.
   -h, --help        Shows this message.
   -i, --interactive Asks for the names for command and project.
                     Otherwise, they will be derived from the directory name.</code>
+
+      <p>The template includes several project drafts, that can be activated in the generated <url>Makefile</url>:</p>
+      <ul>
+        <li><p>Command line (“CLI”) tool
+            that identifies the type of each argument,
+            and uses a <code>btree</code>
+            to count how many times each one is repeated.
+            This gets built if you do not modify the <url>Makefile</url></p></li>
+        <li><p>Graphical application with <em><a href="https://github.com/memononen/nanovg">nanovg</a></em>.
+            Downloads (with <code>curl</code>) and
+            compiles automatically nanovg, <a href="https://www.glfw.org/">GLFW</a>, and <a href="https://github.com/nigels-com/glew">GLEW</a>.</p>
+          <code style="display:inline-block;vertical-align:top">include Makefile.nanovg.mk
+MAIN=src/main.nanovg.c</code></li>
+        <li><p>HTTP/1.1 server using <em><a href="https://libuv.org/">libuv</a></em>.
+            Downloads (with <code>curl</code>) and
+            compiles automatically libuv.</p>
+          <code style="display:inline-block;vertical-align:top">include Makefile.libuv.mk
+MAIN=src/main.libuv.c</code></li>
+      </ul>
+
     </section>
 
     <section id="backstitch-macro">
@@ -102,28 +128,34 @@
           <td><code>object @ f(a), g(b);</code></td>
           <td><code>f(object, a);
 g(object, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>&amp;object @ f(a), g(b);</code></td>
           <td><code>f(&amp;object, a);
 g(&amp;object, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>object.field @ f(a), g(b);</code></td>
           <td><code>f(object.field, a);
 g(object.field, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>int x = (object @ f(a), g(b));</code></td>
           <td><code>int x = (f(object, a), g(object, b));</code>
             <p>This is the C <a href="https://en.wikipedia.org/wiki/Comma_operator">comma operator</a>, it’s the same as</p>
             <code>f(object, a); int x = g(object, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>object @prefix_... f(a), g(b);</code></td>
           <td><code>prefix_f(object, a);
 prefix_g(object, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>object @..._suffix f(a), g(b);</code></td>
           <td><code>f_suffix(object, a);
 g_suffix(object, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td>
 <code>graphics_context @<a href="https://github.com/memononen/nanovg">nvg</a>...
     BeginPath(),
@@ -237,18 +269,7 @@ ngx_http_sqlite_echo(r, "\"", 1);
 } TokenType;</code>
           </td>
         </tr>
-      </table>
-
-      <p>The segments part can also be left empty
-        to add either a prefix or a suffix to an identifier:</p>
-      <table>
         <tr>
-          <td><code>Next(reader) @xmlTextReader...;</code></td>
-          <td><code>xmlTextReaderNext(reader);</code></td>
-        </tr><tr>
-          <td><code>get(&amp;vector, index) @..._Byte_vec;</code></td>
-          <td><code>get_Byte_vec(&amp;vector, index);</code></td>
-        </tr><tr>
           <td><code>// <a href="http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations">http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations</a>
 // `hare` and `tortoise` are functions.
 int main() {
@@ -256,11 +277,11 @@ int main() {
     @uv_thread_...
         t hare_id,
         t tortoise_id,
-        create(&hare_id, hare, &tracklen),
-        create(&tortoise_id, tortoise, &tracklen),
+        create(&amp;hare_id, hare, &amp;tracklen),
+        create(&amp;tortoise_id, tortoise, &amp;tracklen),
 
-        join(&hare_id),
-        join(&tortoise_id);
+        join(&amp;hare_id),
+        join(&amp;tortoise_id);
     return 0;
 }
 </code></td>
@@ -279,6 +300,27 @@ int main() {
 }
 </code></td>
         </tr>
+        <tr>
+          <td><code>function(a, @prefix_... b, c)</code></td>
+          <td><code>function(a, prefix_b, prefix_c)</code></td>
+        </tr>
+      </table>
+
+      <p>The segments part can also be left empty
+        to add either a prefix or a suffix to an identifier:</p>
+      <table>
+        <tr>
+          <td><code>Next(reader) @xmlTextReader...;</code></td>
+          <td><code>xmlTextReaderNext(reader);</code></td>
+        </tr>
+        <tr>
+          <td><code>get(&amp;vector, index) @..._Byte_vec;</code></td>
+          <td><code>get_Byte_vec(&amp;vector, index);</code></td>
+        </tr>
+        <tr>
+          <td><code>function(a, b @prefix_..., c)</code></td>
+          <td><code>function(a, prefix_b, c)</code></td>
+        </tr>
       </table>
 
       <p>It is a left-associative operator:</p>
@@ -287,7 +329,8 @@ int main() {
         <tr>
           <td><code>object @ f(a) @ g(b);</code></td>
           <td><code>g(f(object, a), b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>x @ one() @ two() @ three() @ four();</code></td>
           <td><code>four(three(two(one(x))));</code></td>
         </tr>
@@ -300,8 +343,7 @@ int main() {
         <code><a href="https://github.com/eudoxia0/magma#doto">doto</a></code>.
         It is a macro for the
         <a href="https://github.com/eudoxia0/cmacro">cmacro</a>
-        pre-processor
-        which has the inconvenient of needing the Common Lisp
+        pre-processor which has the inconvenient of needing the Common Lisp
         <a href="http://www.sbcl.org/">SBCL</a> compiler
         in addition to the C compiler.</p>
       <p>Functional languages often have a similar operator
@@ -313,7 +355,7 @@ int main() {
         <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">&</a></code></td><td><em>reverse application</em> operator</td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
         <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">|&gt;</a></code></td><td><em>pipe</em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
         <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">-></a></code></td><td><em>threading</em> macro</td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
-        <tr><th><a>Cedro</a></th><td><code>@</code></td><td><em>backstitch</em> macro</td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
+        <tr><th><a href="#backstitch-macro">Cedro</a></th><td><code>@</code></td><td><em>backstitch</em> macro</td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
       </table>
       <p>Ada 2005 introduced a feature called
         <a href="https://www.adaic.org/resources/add_content/standards/05rat/html/Rat-2-3.html">prefixed-view notation</a>
@@ -358,7 +400,10 @@ int main() {
       which is not needed in standard C code because it is the default.
       If you want to use Cedro with standard C code that already uses <code>auto</code>,
       you can first replace it with <code>signed</code> as
-      <a href="https://stackoverflow.com/a/60890064/291462">it has the same effect</a>.</p>
+      <a href="https://stackoverflow.com/a/60890064/291462">it has the same effect</a>.
+      It is also possible to use <code>defer</code>
+      by defining the constant <code>USE_DEFER_AS_KEYWORD</code> in
+      <url>src/cedro.c</url> (line 40).</p>
       <p>In this example, there is a <code>text</code> store and a <code>file</code> that must be released back to the system:</p>
       <table>
         <tr>
@@ -828,6 +873,7 @@ f_##A(B, C); /** Version of f() for type A. */                    \
           </td>
         </tr>
       </table>
+
       <p>Preprocessor directives are still not allowed
         inside macros, so you can not use
         <code>#if</code>, <code>#include</code>, etc.</p>
@@ -842,7 +888,9 @@ f_##A(B, C); /** Version of f() for type A. */                    \
       <h2>Loop macros: <a class="anchor" href="#loop-macros">#loop-macros</a></h2>
       <p>Repeat the lines between
         <code>#foreach { ...</code> y <code>#foreach }</code>
-        replacing the given variables.</p>
+        replacing the given variables.
+        These lines may contain macro definitions (<code>#define</code>)
+        but the loop variables will not be expanded inside them.</p>
       <p>As in <code>#define</code>,
         the <code>##</code> serves to
          <a href="https://gcc.gnu.org/onlinedocs/cpp/Concatenation.html#Concatenation">join <em>tokens</em></a>
@@ -874,7 +922,7 @@ f_##A(B, C); /** Version of f() for type A. */                    \
       </table>
 
       <p>If a variable has the prefix <code>#</code>,
-        <a href="https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing">the result is a string with its contents</a>.
+        <a href="https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing">the result is a string with its contents</a>:
         if <code>T</code> is <code>float</code>,
         <code>char* name = #T;</code> produces
         <code>char* name = <b>"float"</b>;</code>.</p>
@@ -1091,7 +1139,7 @@ append_Vec_##<b>T</b>(Vec_##<b>T</b> *v, const <b>T</b> *start, const <b>T</b> *
 }
 
 #foreach }
-#foreach { <b>DEFINE</b> {<b>#define</b>} // Keep lines separate.
+#foreach { <b>DEFINE</b> {<b>#define</b>} // Avoid joining lines.
 <b>DEFINE</b> append(VEC, START, END) _Generic((VEC), \
 #foreach { <b>T</b> <b>TYPES_LIST</b>
   Vec_##<b>T</b>*: append_Vec_##<b>T</b>#, \
@@ -1324,6 +1372,45 @@ const uint8_t image
       <p>Note: the directive must start exactly with <code>#include {</code>,
         with no more or less space between
         <code>#include</code> and the brace <code>{</code>.</p>
+
+      <p>Directly inserting the code in the program is very convenient
+        but it will slow down compilation.
+        The way to reduce the problem is to compile this part separately
+        as can be seen in <url>template/Makefile.nanovg.mk</url>
+        or in this example:</p>
+      <table>
+        <tr><td><url>assets.c</url><br/><code>#include &lt;stdint.h&gt;
+#include &lt;stdlib.h&gt;
+
+#pragma Cedro 1.0
+
+const uint8_t image
+#include {images/cedro-32x32.png}
+;
+const size_t sizeof_image = sizeof(image);</code></td></tr>
+        <tr><td><url>main.c</url></br><code>#include &lt;stdint.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;limits.h&gt;
+
+extern const uint8_t image[];
+extern const size_t sizeof_image;
+
+int main(void)
+{
+    unsigned int sum = 0;
+    for (size_t i = 0; i < sizeof_image; ++i) {
+        sum += image[i];
+    }
+    fprintf(stderr,
+            "The sum (module UINT_MAX=%u) of the image bytes is %u.\n",
+            UINT_MAX, sum);
+}</code></td></tr>
+         <tr><td><code>cedrocc -c -o assets.o assets.c -std=c99
+cedrocc -c -o main.o   main.c   -std=c99
+cc -o program main.o assets.o</code></td></tr>
+      </table>
+
       <h3 id="binary-include-related-work">Related work <a class="anchor" href="#binary-include-related-work">#…-related-work</a></h3>
       <p>This feature is an old idea
         and there are several implementations, for instance

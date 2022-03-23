@@ -3300,7 +3300,7 @@ static const char* const
 usage_es =
     "Uso: cedro [opciones] <fichero.c>…\n"
     "     cedro new <nombre> # Ejecuta: cedro-new <nombre>\n"
-    "  Usa - en vez de <fichero.c> para leer desde stdin.\n"
+    "  Para leer desde stdin, se pone - en vez de <fichero.c>.\n"
     "  El resultado va a stdout, se puede compilar sin fichero intermedio:\n"
     " cedro fichero.c | cc -x c - -o fichero\n"
     "  Es lo que hace el programa cedrocc:\n"
@@ -3337,7 +3337,7 @@ static const char* const
 usage_en =
     "Usage: cedro [options] <file.c>…\n"
     "       cedro new <name> # Runs: cedro-new <name>\n"
-    "  Use - instead of <file.c> to read from stdin.\n"
+    "  To read from stdin, put - instead of <file.c>.\n"
     "  The result goes to stdout, can be compiled without intermediate files:\n"
     " cedro file.c | cc -x c - -o file\n"
     "  It is what the cedrocc program does:\n"

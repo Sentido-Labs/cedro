@@ -198,7 +198,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 prefix and prefix is &empty) {
               // If the segment starts with “[”, “.”, “->”, or “=”,
               // then this is already the correct insertion point.
-              // The special case where prefix is empty
+              // The special case where prefix is empty (but not NULL)
               // means that the pseudo-object part will be used as prefix.
             } else {
               // Assume function call, look for parenthesis:
