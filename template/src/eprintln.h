@@ -10,6 +10,7 @@
  */
 
 #include <stdio.h>
+#include <stdarg.h>
 
 /** Print a message to `stderr`, with a newline character at the end. */
 static void
@@ -26,5 +27,23 @@ println(const char * const fmt, ...)
 {
     va_list args;
     va_start(args, fmt); vprintf(fmt, args); putc('\n', stdout);
+    va_end(args);
+}
+
+/** Print a message to `stderr`. */
+static void
+eprint(const char * const fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt); vfprintf(stderr, fmt, args);
+    va_end(args);
+}
+
+/** Print a message to `stdout`. */
+static void
+print(const char * const fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt); vprintf(fmt, args);
     va_end(args);
 }

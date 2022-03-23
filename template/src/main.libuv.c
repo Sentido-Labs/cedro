@@ -56,11 +56,9 @@ typedef unsigned char uint8_t;
 
 #include <stdbool.h>
 #include <string.h>
-#define SIZE_ERROR (size_t)(-1)
-#define mem_eq(a, b, len) (0 == memcmp(a, b, len))
-#define str_eq(a, b)      (0 == strcmp(a, b))
-#define strn_eq(a, b, n)  (0 == strncmp(a, b, n))
-#include <stdarg.h>
+#define mem_eq(a, b, len)  (0 == memcmp(a, b, len))
+#define str_eq(a, b)       (0 == strcmp(a, b))
+#define strn_eq(a, b, len) (0 == strncmp(a, b, len))
 #include <assert.h>
 #include <errno.h>
 
@@ -71,6 +69,9 @@ typedef unsigned char uint8_t;
 #include <uv.h>
 
 #pragma Cedro 1.0
+
+#include "eprintln.h"
+#define LANG(es, en) (strncmp(getenv("LANG"), "es", 2) == 0? es: en)
 
 /** Expand to the mutable and constant variants for a `typedef`. \n
  * The default, just the type name `T`, is the constant variant
@@ -87,8 +88,8 @@ typedef unsigned char uint8_t;
     * const mut_##T##_p;
 typedef const mut_##T T,
     *                 T##_mut_p,
-    * const           T##_p
-#define }
+    * const           T##_p;
+#define }; // The semicolon here erases the one at the end of the previous line.
 
 #include <ctl/str.h>
 // Some extras for ctl/str by Alberto González Palomo https://sentido-labs.com
@@ -131,21 +132,6 @@ str_append_double(str* self, const char* format, const double value)
     buffer[sizeof(buffer)-1] = '\0';
     str_append(self, buffer);
 }
-
-#define DEFAULT_PORT 7000
-#define DEFAULT_BACKLOG 128
-
-#define LANG(es, en) (strncmp(getenv("LANG"), "es", 2) == 0? es: en)
-const char* const usage_es =
-    "Uso: {template} <argumento> [<argumento> ...]\n"
-    "  Sirve la fecha actual y la cuenta de visitas como HTML."
-    ;
-const char* const usage_en =
-    "Usage: {template} <argument> [<argument> ...]\n"
-    "  Serves the current date and visit count as HTML."
-    ;
-
-#include "eprintln.h"
 
 uv_loop_t *loop;
 struct sockaddr_in addr;
@@ -403,32 +389,80 @@ on_sigint(uv_signal_t *handle, int signum)
     uv_stop(loop);
 }
 
+
+const char* const usage_es =
+        "Uso: {template} [opciones]\n"
+        "  Sirve la fecha actual y la cuenta de visitas como HTML.\n"
+        "  --address=0.0.0.0 IP en la que escuchar las peticiones.\n"
+        "  --port=7000       Puerto.\n"
+        "  --exit-after-brief-delay Sale tras 100ms, para pruebas.\n"
+        ;
+const char* const usage_en =
+        "Usage: {template} [options]\n"
+        "  Serves the current date and visit count as HTML."
+        "  --address=0.0.0.0 IP at which to listen for queries.\n"
+        "  --port=7000       Port.\n"
+        "  --exit-after-brief-delay Exit after 100ms, for testing.\n"
+        ;
+
+typedef struct Options {
+    const char*  host;
+    unsigned int port;
+    int          backlog;
+    bool         exit_after_brief_delay;
+} MUT_CONST_TYPE_VARIANTS(Options);
+
 int
 main(int argc, char* argv[])
 {
     int err = 0;
-    const char* host = "0.0.0.0";
-    unsigned int port = DEFAULT_PORT;
+
+    mut_Options options = {
+        .host = "0.0.0.0", .port = 7000,
+        .backlog = 128,
+        .exit_after_brief_delay = false
+    };
+
+    for (int i = 1; i < argc; ++i) {
+        const char* arg = argv[i];
+        if (str_eq("-h", arg) || str_eq("--help", arg)) {
+            eprint(LANG(usage_es, usage_en));
+            return err;
+        } else if (str_eq("--exit-after-brief-delay", arg)) {
+            options.exit_after_brief_delay = true;
+        } else if (strn_eq("--address=", arg, strlen("--address="))) {
+            options.host = &arg[strlen("--address=")];
+        } else if (strn_eq("--port=",    arg, strlen("--port="))) {
+            char* end;
+            options.port = strtol(&arg[strlen("--port=")], &end, 10);
+            if (end != arg + strlen(arg) ||
+                options.port < 0 || options.port > 65535) {
+                eprintln(LANG("El número de puerto debe ser un entero"
+                              " entre 0 y 65535",
+                              "Port number must be an integer"
+                              " between 0 and 65535."));
+                return 11;
+            }
+        }
+    }
 
     loop = uv_default_loop();
 
     uv_tcp_t server;
     uv_tcp_init(loop, &server);
 
-    uv_ip4_addr(host, port, &addr);
+    uv_ip4_addr(options.host, options.port, &addr);
 
     uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
-    err = uv_listen((uv_stream_t*) &server, DEFAULT_BACKLOG,
-                    on_new_connection);
+    err = uv_listen((uv_stream_t*)&server, options.backlog, on_new_connection);
     if (err) {
         fprintf(stderr, "Listen error %s\n", uv_strerror(err));
         return err;
     }
 
-    eprintln("Listening on %s:%u, connect with: telnet %s %u",
-             host, port, host, port);
+    eprintln("Listening on http://%s:%u", options.host, options.port);
 
-    if (argc > 1 && 0 == strcmp("dummy", argv[1])) {
+    if (options.exit_after_brief_delay) {
         // This is so that the Valgrind test finishes without having to
         // interrupt the server:
         // http://docs.libuv.org/en/v1.x/guide/threads.html
@@ -439,13 +473,14 @@ main(int argc, char* argv[])
                 join(&watchdog_id);
     }
 
+    // Finish the server nicely when interrupted:
     uv_signal_t sigint;
     uv_signal_init(loop, &sigint);
     uv_signal_start(&sigint, on_sigint, SIGINT);
 
     err = uv_run(loop, UV_RUN_DEFAULT);
 
-    eprintln("Closing loop...");
+    eprintln("Closing event loop...");
     while ((err = uv_loop_close(loop))) {
         if (err == UV_EBUSY) {
             eprintln("Not closed yet, server busy.");
@@ -455,7 +490,7 @@ main(int argc, char* argv[])
         uv_walk(loop, close_each_handle, NULL);
         uv_run(loop, UV_RUN_NOWAIT);
     }
-    eprintln("Loop closed.");
+    eprintln("Event loop closed.");
 
     return err;
 }

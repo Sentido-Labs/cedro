@@ -15,8 +15,8 @@ CFLAGS=-g -L build/lib -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -W
 # Loose compilation flags, use for releases:
 CFLAGS=-g -DNDEBUG -L build/lib -I lib -I src -std=c99
 
-TEST_ARGUMENTS="dummy"
 VALGRIND_CHECK=valgrind --error-exitcode=123 --leak-check=yes
+TEST_ARGUMENTS="--exit-after-brief-delay"
 
 CEDRO_DIR=tools/cedro
 CEDRO=$(CEDRO_DIR)/cedro

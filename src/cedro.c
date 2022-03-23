@@ -45,7 +45,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #ifdef __UINT8_C
 #include <stdint.h>
 #else
@@ -55,19 +54,21 @@ typedef unsigned char uint8_t;
 typedef unsigned long uint32_t;
 #endif
 #endif
+
 #include <stdbool.h>
-#include <iso646.h>
-#define is_not not_eq
-#define is     ==
-#define in(min, x, max) (x >= min and x <= max)
 #include <string.h> // For memcpy(), memmove().
 #define mem_eq(a, b, len)   (0 is memcmp(a, b, len))
 #define str_eq(a, b)        (0 is strcmp(a, b))
 #define strn_eq(a, b, len)  (0 is strncmp(a, b, len))
-
 #include <assert.h>
-#include <sys/resource.h>
 #include <errno.h>
+
+#include <iso646.h> // and, or, not, not_eq, etc.
+#define is_not not_eq
+#define is     ==
+#define in(min, x, max) (x >= min and x <= max)
+
+#include <sys/resource.h> // rlimit, setrlimit()
 
 #define CEDRO_VERSION "1.0"
 /** Versions with the same major number are compatible in that they produce
@@ -86,6 +87,11 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
+#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
+
+#include "utf8.h"
+
+#include <stdarg.h>
 static const size_t error_buffer_size = 256;
 static char         error_buffer[256] = {0};
 static void
@@ -110,9 +116,42 @@ error_append(const char* const start, const char* const end)
   error_buffer[previous_len + len] = 0;
 }
 
-#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
+/** Store the error message corresponding to the error code `err`.
+ *
+ * If you want to assume that the input is valid UTF-8, you can do this
+ * to disable UTF-8 decoding error checking and get a notable boost
+ * with optimizing compilers:
+ *#define utf8_error(_) false
+ *
+ * If you want to do it only is specific cases, use `decode_utf8_unchecked()`.
+ */
+static bool
+utf8_error(UTF8Error err)
+{
+  switch (err) {
+    case UTF8_NO_ERROR: return false;
+    case UTF8_ERROR:
+      error(LANG("Error descodificando UTF-8.",
+                 "UTF-8 decode error."));
+      break;
+    case UTF8_ERROR_OVERLONG:
+      error(LANG("Error UTF-8, secuencia sobrelarga.",
+                 "UTF-8 error, overlong sequence."));
+      break;
+    case UTF8_ERROR_INTERRUPTED_1:
+    case UTF8_ERROR_INTERRUPTED_2:
+    case UTF8_ERROR_INTERRUPTED_3:
+      error(LANG("Error UTF-8, secuencia interrumpida.",
+                 "UTF-8 error, interrupted sequence."));
+      break;
+    default:
+      error(LANG("Error UTF-8 inesperado: 0x%02X",
+                 "UTF-8 error, unexpected: 0x%02X"),
+            err);
+  }
 
-#include "utf8.h"
+  return true;
+}
 
 /** Same as `fprintf(stderr, fmt, ...)`
  * but converting UTF-8 characters to Latin-1 if the `LANG` environment
