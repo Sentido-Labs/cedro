@@ -2745,7 +2745,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
   bool eol_pending = false;
   bool line_directive_pending = false;
   Marker_mut_p pending_space = NULL;
-  for (; m is_not m_end; ++m) {
+  while (m is_not m_end) {
     if (options.insert_line_directives) {
       line_directive_pending |= m->start is_not previous_marker_end;
       if (m->synthetic is_not true) previous_marker_end = m->start + m->len;
@@ -2785,10 +2785,14 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             ++eol; // Skip the LF character we just found.
             len = m->len - (size_t)(eol - text.start_p);
           }
-          if (not eol_pending) continue;
+          if (not eol_pending) {
+            ++m;
+            continue;
+          }
         }
         fputc(' ', out);
         pending_space = NULL;
+        ++m;
         continue;
       } else if (m->token_type is T_PREPROCESSOR) {
         eol_pending = true;
@@ -2832,6 +2836,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             if (m->len >= len and strn_eq("#define }", (char*)rest, len)) {
               fputs("/* End #define */", out);
               // Not needed: line_length += strlen("/* End #define */");
+              ++m;
               break;
             }
             fwrite(rest, sizeof(rest[0]), m->len, out);
@@ -2899,7 +2904,6 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             }
           }
         }
-        --m; // Loop will increase m for next iteration.
         continue;
       }
 
@@ -2982,7 +2986,6 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           previous_marker_end = m->start;
           line_directive_pending = options.insert_line_directives;
           options.insert_line_directives = insert_line_directives;
-          --m; // Loop will increase m for next iteration.
           continue;
         } else if (strn_eq("#foreach }", (char*)rest, len)) {
           line_directive_pending = false;
@@ -3017,6 +3020,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                      (size_t)(space.end_p-space.start_p), out);
               pending_space = NULL;
             }
+            ++m;
             continue;
           } else {
             // TODO: improve error messages, report specific error.
@@ -3033,7 +3037,6 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         // Allow spaces before and after, as in #define:
         pending_space = NULL;
         m = skip_space_forward(m + 1, m_end);
-        --m;
         continue;
       } else if (m->len is 1 and replacements) {
         ++m;
@@ -3058,6 +3061,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
               goto exit;
             }
           }
+          ++m;
           continue;
         }
         if (m is m_end or m->token_type is_not T_IDENTIFIER) {
@@ -3107,7 +3111,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           }
         }
         fputc('"', out);
-        //--m;
+        ++m;
         continue;
       } else if (replacements and replacements->len is_not 0) {
         write_error_at(LANG("no se permiten directivas de preprocesador"
@@ -3145,6 +3149,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           goto exit;
         }
       }
+      ++m;
       continue;
     }
 
@@ -3157,9 +3162,11 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
     }
     if (m->token_type is T_SPACE) {
       pending_space = m;
+      ++m;
       continue;
     }
     if (not write_token(m, src, options, out)) goto exit;
+    ++m;
   }
 
   if (pending_space) {
