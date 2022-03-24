@@ -331,7 +331,18 @@ include(const char* file_name,
   } else {
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
-    parse(&src, region, &markers);
+    Byte_p parse_end = parse(&src, region, &markers);
+    if (parse_end is_not region.end_p) {
+      if (fprintf(cc_stdin, "#line %lu \"%s\"\n#error %s\n",
+                  original_line_number((size_t)(parse_end - src.start), &src),
+                  file_name,
+                  error_buffer) < 0) {
+        eprintln(LANG("error al escribir la directiva #line",
+                      "error when writing #line directive"));
+      }
+      error_buffer[0] = 0;
+    }
+
     if (context->level is_not 0) {
       if (markers.len is 1) {
         // Included file is not a Cedro file.

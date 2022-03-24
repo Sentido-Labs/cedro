@@ -452,12 +452,12 @@ read_file(mut_Byte_array_p _, FilePath path)
   int err = 0; // No error.
   mut_File_p input = path[0]? fopen(path, "r"): stdin;
   if (not input) {
-    init_Byte_array(_, 0);
+    _->len = 0;
     return errno;
   }
   fseek(input, 0, SEEK_END);
   size_t size = (size_t)ftell(input);
-  init_Byte_array(_, size);
+  ensure_capacity_Byte_array(_, size);
   rewind(input);
   _->len = fread(_->start, sizeof(_->start[0]), size, input);
   if (feof(input)) {
@@ -477,11 +477,9 @@ static int
 read_stream(mut_Byte_array_p _, FILE* input)
 {
   int err = 0; // No error.
-  if (not input) {
-    init_Byte_array(_, 0);
-    return errno;
-  }
-  init_Byte_array(_, 4096); // 4 KB, for instance.
+  _->len = 0;
+  if (not input) return errno;
+  ensure_capacity_Byte_array(_, 4096); // 4 KB, for instance.
   while (not feof(input)) {
     ensure_capacity_Byte_array(_, _->len + 4096);
     size_t read = fread(_->start + _->len, sizeof(_->start[0]), 4096, input);
@@ -1664,8 +1662,8 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
       markers->len <  10000? "%s% 4lu: ":
       markers->len < 100000? "%s% 5lu: ": "%s% 6lu: ";
 
-  mut_Byte_array token_text;
-  init_Byte_array(&token_text, 80);
+  mut_Byte_array token_text = {0};
+  ensure_capacity_Byte_array(&token_text, 80);
 
   Marker_p markers_start = start_of_Marker_array(markers);
   Marker_p m_start = markers->start + start;
@@ -1892,14 +1890,15 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
       if (CEDRO_PRAGMA_LEN < (size_t)(token_end - cursor)) {
         if (mem_eq((Byte_p)CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
           if (cursor is_not start_of_Byte_array(src)) {
-            if (*(cursor-1) is '\n') --cursor;
+            //if (*(cursor-1) is '\n') --cursor;
             mut_Marker inert;
             init_Marker(&inert, start_of_Byte_array(src), cursor, src, T_NONE);
             push_Marker_array(markers, inert);
           }
           cursor = token_end;
           // Skip LF and empty lines after line.
-          while (cursor is_not end and '\n' is *cursor) ++cursor;
+          while (cursor is_not end and
+                 ('\n' is *cursor or ' ' is *cursor)) ++cursor;
           break;
         }
       }
@@ -1951,6 +1950,10 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
  * parse(&src, bounds_of_Byte_array(&src), &markers);
  * print_markers(&markers, &src, "", 0, markers.len);
  * ```
+ *
+ * Returns the point where parsing ended, which will normally be the
+ * end of `region` unless there is an error, in which case the message
+ * will be in `error_buffer`.
  */
 static Byte_p
 parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
@@ -2063,11 +2066,7 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
                   mut_Error err = {0};
                   Marker_mut_p line_start = find_line_start(m, start, &err);
                   if (err.message) {
-                    eprintln(LANG("Error: %lu: %s",
-                                  "Error: %lu: %s"),
-                             original_line_number((size_t)(cursor - src->start),
-                                                  src),
-                             err.message);
+                    error(err.message);
                     return cursor;
                   }
                   while (line_start->token_type is T_SPACE or
@@ -2190,20 +2189,18 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
       }
     }
     if (error_buffer[0]) {
-      eprintln(LANG("Error: %lu: %s",
-                    "Error: %lu: %s"),
-               original_line_number((size_t)(cursor - src->start), src),
-               error_buffer);
-      error_buffer[0] = 0;
-      return cursor;
+      // This should never happen: any error must cause an immediate return.
+      eprintln("Uncaught error: %s", error_buffer);
+      exit(87);
+      //return cursor;
     }
+
     if (token_type is T_NONE) {
       token_end = other(cursor, end);
       if (not token_end) {
-        eprintln(LANG("Error: %lu: problema al extraer otro pedazo.",
-                      "Error: %lu: problem extracting other token."),
-                 original_line_number((size_t)(cursor - src->start), src));
-        break;
+        error(LANG("problema al extraer pedazo de tipo OTHER.",
+                   "problem extracting token of type OTHER."));
+        return cursor;
       }
     }
 
@@ -2347,9 +2344,17 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
 
   mut_Marker_array arguments;
   init_Marker_array(&arguments, 32);
-  if (parse(src, (Byte_array_slice){rest, text.end_p}, &arguments)
-      is_not text.end_p) {
-    // The error was printed in parse().
+  Byte_p parse_end =
+      parse(src, (Byte_array_slice){rest, text.end_p}, &arguments);
+  if (parse_end is_not text.end_p) {
+    if (fprintf(out, "#line %lu \"%s\"\n#error %s\n",
+                original_line_number((size_t)(parse_end - src->start), src),
+                src_file_name,
+                error_buffer) < 0) {
+      eprintln(LANG("error al escribir la directiva #line",
+                    "error when writing #line directive"));
+    }
+    error_buffer[0] = 0;
     m = m_end;
     goto exit;
   }
@@ -3310,7 +3315,7 @@ static Macro macros[] = {
 #include <time.h>
 /** Returns the time in seconds, as a double precision floating point value. */
 static double
-benchmark(mut_Byte_array_p src_p, Options_p options)
+benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
 {
   const size_t repetitions = 100;
   clock_t start = clock();
@@ -3323,8 +3328,14 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
 
     Byte_array_mut_slice region = bounds_of_Byte_array(src_p);
     region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers);
-    if (parse(src_p, region, &markers) is_not region.end_p) {
+    Byte_p parse_end = parse(src_p, region, &markers);
+    if (parse_end is_not region.end_p) {
       destruct_Marker_array(&markers);
+      eprintln("#line %lu \"%s\"\n#error %s\n",
+               original_line_number((size_t)(parse_end - src_p->start), src_p),
+               src_file_name,
+               error_buffer);
+      error_buffer[0] = 0;
       return 0.0; // Error.
     }
 
@@ -3347,7 +3358,9 @@ benchmark(mut_Byte_array_p src_p, Options_p options)
  * It does not apply any macros, just tokenizes both inputs.
  */
 static bool
-validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref, Options_p options)
+validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
+            const char* src_file_name, const char* src_ref_file_name,
+            Options_p options)
 {
   bool result = true;
   mut_Marker_array markers;
@@ -3357,14 +3370,27 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref, Options_p options)
 
   /* Do not apply macros or anything else, just a straight tokenization. */
   Byte_array_mut_slice region;
-  region = bounds_of_Byte_array(src);
-  if (parse(src, region, &markers) is_not region.end_p) {
+  Byte_mut_p parse_end;
+  region    = bounds_of_Byte_array(src);
+  parse_end = parse(src, region, &markers);
+  if (parse_end is_not region.end_p) {
     result = false;
+    eprintln("#line %lu \"%s\"\n#error %s\n",
+             original_line_number((size_t)(parse_end - src->start), src),
+             src_file_name,
+             error_buffer);
+    error_buffer[0] = 0;
     goto exit;
   }
-  region = bounds_of_Byte_array(src_ref);
-  if (parse(src_ref, region, &markers_ref) is_not region.end_p) {
+  region    = bounds_of_Byte_array(src_ref);
+  parse_end = parse(src_ref, region, &markers_ref);
+  if (parse_end is_not region.end_p) {
     result = false;
+    eprintln("#line %lu \"%s\"\n#error %s\n",
+             original_line_number((size_t)(parse_end-src_ref->start), src_ref),
+             src_ref_file_name,
+             error_buffer);
+    error_buffer[0] = 0;
     goto exit;
   }
 
@@ -3552,7 +3578,7 @@ int main(int argc, char** argv)
       } else {
         eprintln(LANG(usage_es, usage_en));
         err = str_eq("-h", arg) or str_eq("--help", arg)? 0: 1;
-        goto exit;
+        return err;
       }
     }
   }
@@ -3567,12 +3593,13 @@ int main(int argc, char** argv)
     opt_print_markers    = false;
   }
 
-  mut_Marker_array markers;
-  init_Marker_array(&markers, 8192);
+  mut_Marker_array markers = {0};
+  ensure_capacity_Marker_array(&markers, 8192);
+  mut_Byte_array src = {0};
 
   FILE* out = stdout;
 
-  for (int i = 1; i < argc; ++i) {
+  for (int i = 1; not err and i < argc; ++i) {
     char* file_name = argv[i];
     if (file_name[0] is '-') {
       if (file_name[1] is_not '\0') continue;
@@ -3584,7 +3611,10 @@ int main(int argc, char** argv)
       break;
     }
 
-    mut_Byte_array src = {0};
+    // Re-use arrays:
+    markers.len = 0;
+    src.len = 0;
+
     int err = file_name[0]?
         read_file(&src, file_name):
         read_stream(&src, stdin);
@@ -3594,37 +3624,43 @@ int main(int argc, char** argv)
         fprintf(out, "#error The file name is the empty string.\n");
       }
       err = 11;
-      goto exit;
+      break;
     }
-
-    markers.len = 0;
 
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
-    if (parse(&src, region, &markers) is_not region.end_p) {
+    Byte_p parse_end = parse(&src, region, &markers);
+    if (parse_end is_not region.end_p) {
       err = 1;
-      goto exit;
+      eprintln("#line %lu \"%s\"\n#error %s\n",
+               original_line_number((size_t)(parse_end - src.start), &src),
+               file_name,
+               error_buffer);
+      error_buffer[0] = 0;
+      break;
     }
 
     size_t original_src_len = src.len;
 
     if (opt_run_benchmark) {
-      double t = benchmark(&src, &options);
+      double t = benchmark(&src, file_name, &options);
       if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
       else         eprintln("%.1fs for %s", t         , file_name);
     } else if (opt_validate) {
       mut_Byte_array src_ref = {0};
-      int err = read_file(&src_ref, opt_validate);
+      err = read_file(&src_ref, opt_validate);
       if (err) {
         print_file_error(err, opt_validate, &src_ref);
-        destruct_Marker_array(&markers);
+        destruct_Byte_array(&src_ref);
         err = 12;
-        goto exit;
+        break;
       }
-      if (not validate_eq(&src, &src_ref, &options)) {
+      if (not validate_eq(&src, &src_ref, file_name, opt_validate, &options)) {
+        destruct_Byte_array(&src_ref);
         err = 27;
-        goto exit;
+        break;
       }
+      destruct_Byte_array(&src_ref);
     } else {
       if (options.apply_macros) {
         Macro_p macro = macros;
@@ -3645,10 +3681,10 @@ int main(int argc, char** argv)
     }
 
     fflush(out);
-    destruct_Byte_array(&src);
   }
 
-exit:
+  fflush(out);
+  destruct_Byte_array(&src);
   destruct_Marker_array(&markers);
 
   return err;
