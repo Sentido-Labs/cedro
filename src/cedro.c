@@ -2836,6 +2836,25 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             len = 9;// = strlen("#define }")
             if (m->len >= len and strn_eq("#define }", (char*)rest, len)) {
               fputs("/* End #define */", out);
+              // Now check that there is only space and comments after it:
+              rest += len;
+              if (rest < text.end_p) {
+                if (*rest is ';') ++rest; // No space allowed before ';'.
+                Byte_mut_p end;
+                while (rest is_not text.end_p) {
+                  end = space(rest, text.end_p);
+                  if (not end) end = comment(rest, text.end_p);
+                  if (not end) break;
+                  rest = end;
+                }
+                if (rest is_not text.end_p) {
+                  write_error_at(LANG("contenido inválido tras `#define }`.",
+                                      "invalid content after `#define }`"),
+                                 m, src, out);
+                  m = m_end;
+                  goto exit;
+                }
+              }
               // Not needed: line_length += strlen("/* End #define */");
               ++m;
               break;
@@ -2907,6 +2926,14 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         }
         continue;
       }
+      if (m->len >= len and strn_eq("#define }", (char*)rest, len)) {
+        write_error_at(
+            LANG("cierre de directiva de bloque sin apertura previa.",
+                 "block directive closing without previous opening."),
+            m, src, out);
+        m = m_end;
+        goto exit;
+      }
 
       len = 10; // = strlen("#include {");
       if (m->len >= len and strn_eq("#include {", (char*)rest, len)) {
@@ -2922,6 +2949,13 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         rest += len;
         Byte_mut_p end = rest;
         while (end < text.end_p) { if (*end is '}') break; ++end; }
+        if (end is text.end_p) {
+          write_error_at(LANG("falta la llave de cierre tras `#include {...`.",
+                              "missing closing brace after `#include {...`"),
+                         m, src, out);
+          m = m_end;
+          goto exit;
+        }
         mut_Byte_array file_name = {0};
         push_str(&file_name, src_file_name);
         Byte_array_mut_slice dirname = bounds_of_Byte_array(&file_name);
@@ -2952,8 +2986,25 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         fputs("\n}", out);
         destruct_Byte_array(&bin);
         destruct_Byte_array(&file_name);
-
-        if (m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
+        // Now check that there is only space and comments after it:
+        rest = end + 1;
+        if (rest < text.end_p) {
+          Byte_mut_p end;
+          while (rest is_not text.end_p) {
+            end = space(rest, text.end_p);
+            if (not end) end = comment(rest, text.end_p);
+            if (not end) break;
+            rest = end;
+          }
+          if (rest is_not text.end_p) {
+            write_error_at(LANG("contenido inválido tras `#include {...}`.",
+                                "invalid content after `#include {...}`"),
+                           m, src, out);
+            m = m_end;
+            goto exit;
+          }
+        }
+        ++m;
         continue;
       }
 
@@ -2998,6 +3049,24 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             fwrite(space.start_p, sizeof(space.start_p[0]),
                    (size_t)(space.end_p-space.start_p), out);
             pending_space = NULL;
+          }
+          // Now check that there is only space and comments after it:
+          rest += len;
+          if (rest < text.end_p) {
+            Byte_mut_p end;
+            while (rest is_not text.end_p) {
+              end = space(rest, text.end_p);
+              if (not end) end = comment(rest, text.end_p);
+              if (not end) break;
+              rest = end;
+            }
+            if (rest is_not text.end_p) {
+              write_error_at(LANG("contenido inválido tras `#foreach }`.",
+                                  "invalid content after `#foreach }`"),
+                             m, src, out);
+              m = m_end;
+              goto exit;
+            }
           }
           ++m; // Skip this token, point to T_SPACE newline after it.
           break;
