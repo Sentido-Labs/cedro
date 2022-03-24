@@ -1854,10 +1854,6 @@ keyword_or_identifier(Byte_p start, Byte_p end)
   return T_IDENTIFIER;
 }
 
-#define TOKEN1(token) token_type = token
-#define TOKEN2(token) ++token_end;    TOKEN1(token)
-#define TOKEN3(token) token_end += 2; TOKEN1(token)
-
 /** Wrap everything in the input up to `#pragma Cedro x.y` into a single token
  * for efficiency.
  *  Everything up to that marker is output verbatim without any processing,
@@ -1935,6 +1931,10 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
   return cursor;
 }
 
+#define TOKEN1(token) token_type = token
+#define TOKEN2(token) ++token_end;    TOKEN1(token)
+#define TOKEN3(token) token_end += 2; TOKEN1(token)
+
 /** Parse the given source code into the `markers` array,
  * appending the new markers to whatever was already there.
  *
@@ -1979,7 +1979,8 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
                    "  for instance if it uses `auto` in its standard meaning."),
               original_line_number((size_t)(cursor - src->start), src));
         }
-      } else if (cursor + 8 <= token_end and mem_eq("#assert ", cursor, 8)) {
+      } else if (cursor + 8/*strlen("#assert ")*/ <= token_end and
+                 mem_eq("#assert ", cursor, 8/*strlen("#assert ")*/)) {
         eprintln(LANG("La directiva #assert es incompatible con Cedro.",
                       "The #assert directive is incompatible with Cedro."));
         return NULL;// Error.
