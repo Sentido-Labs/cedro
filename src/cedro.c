@@ -2114,9 +2114,12 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
           break;
         case '/':
         case '%':
-          /* %: → #, %:%: → ##, but they can only appear inside of
-             preprocessor directives which we pack in one token. */
           switch (c2) {
+            case ':':
+              /* %: → #, %:%: → ## */
+              error(LANG("los digrafos %: y %:%: no están implementados.",
+                         "the digraphs %: and %:%: are not implemented."));
+              break;
             case '=': TOKEN2(T_OP_14); break;
             case '>': TOKEN2(T_BLOCK_END); break;
             default:  TOKEN1(T_OP_3);
