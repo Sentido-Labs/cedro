@@ -1984,9 +1984,27 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
         }
       } else if (cursor + 8/*strlen("#assert ")*/ <= token_end and
                  mem_eq("#assert ", cursor, 8/*strlen("#assert ")*/)) {
-        eprintln(LANG("La directiva #assert es incompatible con Cedro.",
-                      "The #assert directive is incompatible with Cedro."));
-        return NULL;// Error.
+        error(LANG("La directiva #assert es incompatible con Cedro.",
+                   "The #assert directive is incompatible with Cedro."));
+        return cursor;
+      } else if (cursor + 10/*strlen("#define };")*/ <= token_end and
+                 mem_eq("#define };", cursor, 10/*strlen("#define };")*/)) {
+        if (markers->len is_not 0) { // If 0, error will be caught by unparse().
+          // https://gcc.gnu.org/onlinedocs/cpp/Swallowing-the-Semicolon.html
+          Marker_mut_p semicolon =
+              skip_space_back(markers->start, end_of_Marker_array(markers) - 1);
+          if (semicolon is_not markers->start) {
+            --semicolon;
+            if (semicolon->token_type is T_SEMICOLON) {
+              delete_Marker_array(markers,
+                                  index_Marker_array(markers, semicolon),
+                                  1);
+            } else {
+              error(LANG("la línea anterior debe terminar en punto y coma.",
+                         "previous line must end in semicolon."));
+            }
+          }
+        }
       }
       TOKEN1(T_PREPROCESSOR);
       if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }

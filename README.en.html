@@ -856,25 +856,76 @@ int main(int argc, char **argv) {
       <p>C macros must be written all in one line,
         but some times you need to split them in several pseudo-lines
         and it gets tedious and error-prone
-        to maintain all the newline escapes (<code>\</code>).</p>
-      <p>By adding braces (<code>{</code> or <code>}</code>)
+        to maintain all the newline escapes <code>\</code>.</p>
+      <p>By adding braces <code>{</code> or <code>}</code>
         right after <code>#define</code>
         we can have <em>Cedro</em> do that for us:</p>
       <table>
         <tr>
           <td>
             <code>#define { macro(A, B, C)
-f_##A(B, C); /// Version of f() for type A.
-#define }</code>
+/// Version of f() for type A.
+f_##A(B, C) /// Without semicolon “<b>;</b>” at the end.
+#define }
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
           </td><td>
             <code>#define macro(A, B, C)                                            \
-f_##A(B, C); /** Version of f() for type A. */                    \
-/* End #define */</code>
+/** Version of f() for type A. */                                 \
+f_##A(B, C) /** Without semicolon “<b>;</b>” at the end. */              \
+/* End #define */
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>In cases like this
+        (“<a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Function-like-Macros.html#Function-like-Macros">function-like macros</a>”),
+        since there is no semicolon after <code>f_##A(B, C)</code>
+        tools such as source code editors
+        (e.g. <a href="https://www.gnu.org/software/emacs/manual/html_node/ccmode/Macros-with-_003b.html">Emacs</a>)
+        indent the code incorrectly.</p>
+      <p>The solution is to leave it there for the editor,
+        and add it too after
+        <code>#define }</code> as <code>#define }<b>;</b></code>
+        which directs Cedro to remove it from the definition.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#define { macro(A, B, C)
+/// Version of f() for type A.
+f_##A(B, C)<b>;</b> /// Semicolon “<b>;</b>” removed by Cedro.
+#define }<b>;</b>
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
+          </td><td>
+            <code>#define macro(A, B, C)                                            \
+/** Version of f() for type A. */                                 \
+f_##A(B, C) /** Semicolon “<b>;</b>” removed by Cedro. */                \
+/* End #define */
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
           </td>
         </tr>
       </table>
 
-      <p>Preprocessor directives are still not allowed
+      <p>Preprocessor directives are not allowed
         inside macros, so you can not use
         <code>#if</code>, <code>#include</code>, etc.</p>
       <p>Note: the directive must start exactly with

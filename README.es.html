@@ -851,29 +851,80 @@ int main(int argc, char **argv) {
 
     <section id="block-macros">
       <h2>Macros de bloque: <a class="anchor" href="#block-macros">#block-macros</a></h2>
-      <p>Formatea una macro multi-línea en una sóla línea.</p>
+      <p>Formatea una macro multi-línea en una sola línea.</p>
       <p>Las macros en C deben escribirse todo en una línea,
         pero a veces hay que partirlas en varias pseudo-líneas
         y se hace tedioso y propenso a errores
-        el mantener todos los escapes de nueva línea  (<code>\</code>).</p>
-      <p>Añadiendo llaves (<code>{</code> o <code>}</code>)
+        el mantener todos los escapes de nueva línea <code>\</code>.</p>
+      <p>Añadiendo llaves <code>{</code> o <code>}</code>
         justo tras <code>#define</code>
         podemos hacer que <em>Cedro</em> se encargue de eso por nosotros:</p>
       <table>
         <tr>
           <td>
             <code>#define { macro(A, B, C)
-f_##A(B, C); /// Versión de f() para el tipo A.
-#define }</code>
+/// Versión de f() para el tipo A.
+f_##A(B, C) /// Sin punto y coma «<b>;</b>» al final.
+#define }
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
           </td><td>
             <code>#define macro(A, B, C)                                            \
-f_##A(B, C); /** Versión de f() para el tipo A. */                \
-/* End #define */</code>
+/** Versión de f() para el tipo A. */                             \
+f_##A(B, C) /** Sin punto y coma «<b>;</b>» al final. */                 \
+/* End #define */
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>En casos como este
+        («<a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Function-like-Macros.html#Function-like-Macros">function-like macros</a>»),
+        al no haber punto y coma tras <code>f_##A(B, C)</code>
+        herramientas tales como editores de texto
+        (p.ej. <a href="https://www.gnu.org/software/emacs/manual/html_node/ccmode/Macros-with-_003b.html">Emacs</a>)
+        sangran [«indent»] el código incorrectamente.</p>
+      <p>La solución es dejarlo ahí para el editor,
+        y añadirlo también tras
+        <code>#define }</code> como <code>#define }<b>;</b></code>
+        lo que indica a Cedro que lo elimine de la definición.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#define { macro(A, B, C)
+/// Versión de f() para el tipo A.
+f_##A(B, C); /// Punto y coma «<b>;</b>» eliminado por Cedro.
+#define }<b>;</b>
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y)<b>;</b>
+    // → f_int(x, y);
+}</code>
+          </td><td>
+            <code>#define macro(A, B, C)                                            \
+/** Versión de f() para el tipo A. */                             \
+f_##A(B, C) /** Punto y coma «<b>;</b>» eliminado por Cedro. */          \
+/* End #define */
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y)<b>;</b>
+    // → f_int(x, y);
+}</code>
           </td>
         </tr>
       </table>
 
-      <p>Aún así, las directrices de preprocesador no se permiten
+      <p>Las directrices de preprocesador no se permiten
         dentro de macros, de manera que no se puede usar
         <code>#if</code>, <code>#include</code>, etc.</p>
       <p>Nota: la directiva debe empezar exactamente con
@@ -881,6 +932,7 @@ f_##A(B, C); /** Versión de f() para el tipo A. */                \
         ni más ni menos espacio entre
         <code>#define</code> y la llave
         <code>{</code> o <code>}</code>.</p>
+
     </section>
 
     <section id="loop-macros">
