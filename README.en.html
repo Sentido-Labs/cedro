@@ -1,7 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>C programming language extension: Cedro pre-processor</title>
     <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } url, code { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th { font-weight:normal; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -16,9 +17,9 @@
       <ol>
         <li>The <a href="#backstitch-macro"><em>backstitch</em> <code>@</code> macro</a> (<a href="#backstitch-macro-related-work">related work</a>).</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release <code>auto ...</code></a> (<a href="#deferred-resource-release-related-work">related work</a>).</li>
+        <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a> (<a href="#slice-notation-related-work">related work</a>).</li>
         <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">related work</a>)-->.</li>
         <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">related work</a>)-->.</li>
-        <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a> (<a href="#slice-notation-related-work">related work</a>).</li>
         <li><a href="#binary-include"><em>Binary</em> inclusion <code>#include {...}</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
       </ol>
       <p>To activate it, the source file must contain this line:
@@ -403,7 +404,7 @@ int main() {
       <a href="https://stackoverflow.com/a/60890064/291462">it has the same effect</a>.
       It is also possible to use <code>defer</code>
       by defining the constant <code>USE_DEFER_AS_KEYWORD</code> in
-      <url>src/cedro.c</url> (line 40).</p>
+      <url>src/cedro.c</url> (line 40) before compiling it.</p>
       <p>In this example, there is a <code>text</code> store and a <code>file</code> that must be released back to the system:</p>
       <table>
         <tr>
@@ -848,6 +849,74 @@ int main(int argc, char **argv) {
           </td>
         </tr>
       </table>
+    </section>
+
+    <section id="slice-notation">
+      <h2>Notation for array slices: <a class="anchor" href="#slice-notation">#slice-notation</a></h2>
+      <p>Converts <code><b>array</b>[<b>start</b>..<b>end</b>]</code> into <code>&amp;<b>array</b>[<b>start</b>], &amp;<b>array</b>[<b>end</b>]</code>. The array/pointer value <code>array</code> can be just an identifier or in general an expression which, as it will be evaluated twice, must not have any side effects, just <a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Duplication-of-Side-Effects.html#Duplication-of-Side-Effects">like standard C preprocessor macros</a>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  append(&amp;words, <b>animals</b>[<b>0</b>..<b>2</b>]);
+  append(&amp;words, <b>plants</b>[<b>0</b>..<b>3</b>]);
+  append(&amp;words, <b>animals</b>[<b>2</b>..<b>4</b>]);
+</code>
+          </td><td>
+            <code>  append(&amp;words, &amp;<b>animals</b>[<b>0</b>], &amp;<b>animals</b>[<b>2</b>]);
+  append(&amp;words, &amp;<b>plants</b>[<b>0</b>], &amp;<b>plants</b>[<b>3</b>]);
+  append(&amp;words, &amp;<b>animals</b>[<b>2</b>], &amp;<b>animals</b>[<b>4</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>The end of the slice can have a positive sign to indicate that
+        it is a relative position to the start of the slice:
+        <code><b>array</b>[<b>start</b>..+<b>end</b>]</code> becomes
+        <code>&amp;<b>array</b>[<b>start</b>], &amp;<b>array</b>[<b>start</b>+<b>end</b>]</code>.
+        In this case, the advice about double execution of side effects applies to
+        <code>start</code> in addition to <code>array</code>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  append(&amp;words, <b>animals</b>[<b>0</b>..<b>+2</b>]);
+  append(&amp;words, <b>plants</b>[<b>0</b>..<b>3</b>]);
+  append(&amp;words, <b>animals</b>[<b>2</b>..<b>+2</b>]);
+</code>
+          </td><td>
+            <code>  append(&amp;words, &amp;<b>animals</b>[<b>0</b>], &amp;<b>animals</b>[<b>0+2</b>]);
+  append(&amp;words, &amp;<b>plants</b>[<b>0</b>], &amp;<b>plants</b>[<b>3</b>]);
+  append(&amp;words, &amp;<b>animals</b>[<b>2</b>], &amp;<b>animals</b>[<b>2+2</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>If the slice is composed of more than one token, it will be wrapped in parentheses to make sure it’s correct.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  append(&amp;words, <b>(uint8_t*)animals</b>[<b>0</b>..<b>+2</b>]);
+  append(&amp;words, <b>(uint8_t*)plants</b>[<b>0</b>..<b>3</b>]);
+  append(&amp;words, <b>(uint8_t*)animals</b>[<b>2</b>..<b>+2</b>]);
+</code>
+          </td><td>
+            <code>  append(&amp;words, &amp;<b>((uint8_t*)animals)</b>[<b>0</b>], &amp;<b>((uint8_t*)animals)</b>[<b>0+2</b>]);
+  append(&amp;words, &amp;<b>((uint8_t*)plants)</b>[<b>0</b>], &amp;<b>((uint8_t*)plants)</b>[<b>3</b>]);
+  append(&amp;words, &amp;<b>((uint8_t*)animals)</b>[<b>2</b>], &amp;<b>((uint8_t*)animals)</b>[<b>2+2</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <h3 id="slice-notation-related-work">Related work <a class="anchor" href="#slice-notation-related-work">#…-related-work</a></h3>
+      <p>The notation <code>[a..b]</code> for array slices was
+        <a href="https://en.wikipedia.org/wiki/Array_slicing#1968:_Algol_68">first defined in Algol 68</a>
+        where it was an alternative to the primary notation <code>[a:b]</code>, and
+        both have been adopted by other languages since then.
+        The <code>[a..b]</code> form is used in <a href="https://www.adaic.org/">Ada</a>,
+        <a href="https://www.perl.org/">Perl</a>, <a href="https://dlang.org/">D</a>, and
+        <a href="https://www.rust-lang.org/">Rust</a>, for example.</p>
     </section>
 
     <section id="block-macros">
@@ -1328,74 +1397,6 @@ int main(void)
           </td>
         </tr>
       </table>
-    </section>
-
-    <section id="slice-notation">
-      <h2>Notation for array slices: <a class="anchor" href="#slice-notation">#slice-notation</a></h2>
-      <p>Converts <code><b>array</b>[<b>start</b>..<b>end</b>]</code> into <code>&amp;<b>array</b>[<b>start</b>], &amp;<b>array</b>[<b>end</b>]</code>. The array/pointer value <code>array</code> can be just an identifier or in general an expression which, as it will be evaluated twice, must not have any side effects, just <a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Duplication-of-Side-Effects.html#Duplication-of-Side-Effects">like standard C preprocessor macros</a>.</p>
-      <table>
-        <tr>
-          <td>
-            <code>  append(&amp;words, <b>animals</b>[<b>0</b>..<b>2</b>]);
-  append(&amp;words, <b>plants</b>[<b>0</b>..<b>3</b>]);
-  append(&amp;words, <b>animals</b>[<b>2</b>..<b>4</b>]);
-</code>
-          </td><td>
-            <code>  append(&amp;words, &amp;<b>animals</b>[<b>0</b>], &amp;<b>animals</b>[<b>2</b>]);
-  append(&amp;words, &amp;<b>plants</b>[<b>0</b>], &amp;<b>plants</b>[<b>3</b>]);
-  append(&amp;words, &amp;<b>animals</b>[<b>2</b>], &amp;<b>animals</b>[<b>4</b>]);
-</code>
-          </td>
-        </tr>
-      </table>
-
-      <p>The end of the slice can have a positive sign to indicate that
-        it is a relative position to the start of the slice:
-        <code><b>array</b>[<b>start</b>..+<b>end</b>]</code> becomes
-        <code>&amp;<b>array</b>[<b>start</b>], &amp;<b>array</b>[<b>start</b>+<b>end</b>]</code>.
-        In this case, the advice about double execution of side effects applies to
-        <code>start</code> in addition to <code>array</code>.</p>
-      <table>
-        <tr>
-          <td>
-            <code>  append(&amp;words, <b>animals</b>[<b>0</b>..<b>+2</b>]);
-  append(&amp;words, <b>plants</b>[<b>0</b>..<b>3</b>]);
-  append(&amp;words, <b>animals</b>[<b>2</b>..<b>+2</b>]);
-</code>
-          </td><td>
-            <code>  append(&amp;words, &amp;<b>animals</b>[<b>0</b>], &amp;<b>animals</b>[<b>0+2</b>]);
-  append(&amp;words, &amp;<b>plants</b>[<b>0</b>], &amp;<b>plants</b>[<b>3</b>]);
-  append(&amp;words, &amp;<b>animals</b>[<b>2</b>], &amp;<b>animals</b>[<b>2+2</b>]);
-</code>
-          </td>
-        </tr>
-      </table>
-
-      <p>If the slice is composed of more than one token, it will be wrapped in parentheses to make sure it’s correct.</p>
-      <table>
-        <tr>
-          <td>
-            <code>  append(&amp;words, <b>(uint8_t*)animals</b>[<b>0</b>..<b>+2</b>]);
-  append(&amp;words, <b>(uint8_t*)plants</b>[<b>0</b>..<b>3</b>]);
-  append(&amp;words, <b>(uint8_t*)animals</b>[<b>2</b>..<b>+2</b>]);
-</code>
-          </td><td>
-            <code>  append(&amp;words, &amp;<b>((uint8_t*)animals)</b>[<b>0</b>], &amp;<b>((uint8_t*)animals)</b>[<b>0+2</b>]);
-  append(&amp;words, &amp;<b>((uint8_t*)plants)</b>[<b>0</b>], &amp;<b>((uint8_t*)plants)</b>[<b>3</b>]);
-  append(&amp;words, &amp;<b>((uint8_t*)animals)</b>[<b>2</b>], &amp;<b>((uint8_t*)animals)</b>[<b>2+2</b>]);
-</code>
-          </td>
-        </tr>
-      </table>
-
-      <h3 id="slice-notation-related-work">Related work <a class="anchor" href="#slice-notation-related-work">#…-related-work</a></h3>
-      <p>The notation <code>[a..b]</code> for array slices was
-        <a href="https://en.wikipedia.org/wiki/Array_slicing#1968:_Algol_68">first defined in Algol 68</a>
-        where it was an alternative to the primary notation <code>[a:b]</code>, and
-        both have been adopted by other languages since then.
-        The <code>[a..b]</code> form is used in <a href="https://www.adaic.org/">Ada</a>,
-        <a href="https://www.perl.org/">Perl</a>, <a href="https://dlang.org/">D</a>, and
-        <a href="https://www.rust-lang.org/">Rust</a>, for example.</p>
     </section>
 
     <section id="binary-include">
