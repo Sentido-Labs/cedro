@@ -2053,32 +2053,20 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
             default:
               TOKEN1(T_OP_13); // Default.
               if (markers->len is_not 0) {
-                // skip_space_back:
-                Marker_p start     =   start_of_Marker_array(markers);
-                mut_Marker_mut_p m = end_of_mut_Marker_array(markers);
-                while (m is_not start and
-                       ((m-1)->token_type is T_SPACE or
-                        (m-1)->token_type is T_COMMENT)
-                       ) --m;
-                --m;
+                Marker_p start =   start_of_Marker_array(markers);
+                Marker_mut_p m = end_of_mut_Marker_array(markers);
+                m = skip_space_back(start, m);
+                if (m is_not start) --m;
                 if (m->token_type is T_IDENTIFIER) {
-                  mut_Marker_p label_candidate = m;
-                  // skip_space_back:
-                  while (m is_not start and
-                         ((m-1)->token_type is T_SPACE or
-                          (m-1)->token_type is T_COMMENT)
-                         ) --m;
-                  --m;
+                  mut_Marker_p label_candidate = (mut_Marker_p)m;
+                  m = skip_space_back(start, m);
+                  if (m is_not start) --m;
                   if (m->token_type is T_SEMICOLON   or
                       m->token_type is T_LABEL_COLON or
                       m->token_type is T_BLOCK_START or
                       m->token_type is T_BLOCK_END) {
                     label_candidate->token_type = T_CONTROL_FLOW_LABEL;
                     token_type = T_LABEL_COLON;
-                    mut_Byte_array text;
-                    init_Byte_array(&text, 10);
-                    extract_src(label_candidate, label_candidate+1, src, &text);
-                    destruct_Byte_array(&text);
                   }
                 } else {
                   mut_Error err = {0};
