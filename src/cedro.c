@@ -3472,9 +3472,6 @@ usage_es =
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
-    "  --enable-core-dump    Activa el volcado de memoria al estrellarse.\n"
-    "  --no-enable-core-dump No activa el volcado de memoria al estrellarse."
-    " (implícito)\n"
     "  --benchmark        Realiza una medición de rendimiento.\n"
     "  --validate=ref.c   Compara el resultado con el fichero «ref.c» dado.\n"
     "      No aplica las macros: para comparar el resultado de aplicar Cedro\n"
@@ -3510,8 +3507,6 @@ usage_en =
     "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
-    "  --enable-core-dump    Enable core dump on crash.\n"
-    "  --no-enable-core-dump Does not enable core dump on crash. (default)\n"
     "  --benchmark        Run a performance benchmark.\n"
     "  --validate=ref.c   Compares the input to the given “ref.c” file.\n"
     "      Does not apply any macros: to compare the result of running Cedro\n"
@@ -3549,7 +3544,6 @@ int main(int argc, char** argv)
   };
 
   bool opt_print_markers    = false;
-  bool opt_enable_core_dump = false;
   bool opt_run_benchmark    = false;
   const char* opt_validate  = NULL;
 
@@ -3575,9 +3569,6 @@ int main(int argc, char** argv)
       } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
-      } else if (str_eq("--enable-core-dump", arg) or
-                 str_eq("--no-enable-core-dump", arg)) {
-        opt_enable_core_dump = flag_value;
       } else if (str_eq("--benchmark", arg)) {
         opt_run_benchmark = true;
       } else if (strn_eq("--validate=", arg, strlen("--validate="))) {
@@ -3590,11 +3581,6 @@ int main(int argc, char** argv)
         return err;
       }
     }
-  }
-
-  if (opt_enable_core_dump) {
-    struct rlimit core_limit = { RLIM_INFINITY, RLIM_INFINITY };
-    assert(0 is setrlimit(RLIMIT_CORE, &core_limit));
   }
 
   if (opt_run_benchmark) {
