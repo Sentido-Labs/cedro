@@ -148,7 +148,8 @@ new_##T##_array_p(size_t initial_capacity)                              \
 }                                                                       \
 /** Release any resources allocated for this struct.                 \n \
     Safe to call also for objects initialized as views over constants   \
-    with `init_from_constant_##T##_array()`.                            \
+    with `init_from_constant_##T##_array()`, and to be called again     \
+    on an already-destructed array.                                     \
  */                                                                     \
 static void                                                             \
 destruct_##T##_array(mut_##T##_array_p _)                               \
