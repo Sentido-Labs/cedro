@@ -3663,14 +3663,11 @@ int main(int argc, char** argv)
       err = read_file(&src_ref, opt_validate);
       if (err) {
         print_file_error(err, opt_validate, &src_ref);
-        destruct_Byte_array(&src_ref);
         err = 12;
-        break;
-      }
-      if (not validate_eq(&src, &src_ref, file_name, opt_validate, &options)) {
-        destruct_Byte_array(&src_ref);
+      } else if (not validate_eq(&src,      &src_ref,
+                                 file_name, opt_validate,
+                                 &options)) {
         err = 27;
-        break;
       }
       destruct_Byte_array(&src_ref);
     } else {
