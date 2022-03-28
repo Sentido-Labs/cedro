@@ -96,7 +96,7 @@ capitalize(mut_Byte_array_p _)
   wint_t u = 0;
   UTF8Error err = UTF8_NO_ERROR;
   cursor = decode_utf8(cursor, end, &u, &err);
-  if (utf8_error(err)) {
+  if (utf8_error(err, (size_t)(cursor - start_of_Byte_array(_)))) {
     eprintln(LANG("Error al descodificar UTF-8 en capitalize(): %s",
                   "Error when deocding UTF-8 in capitalize(): %s"),
              error_buffer);

@@ -126,28 +126,32 @@ error_append(const char* const start, const char* const end)
  * If you want to do it only is specific cases, use `decode_utf8_unchecked()`.
  */
 static bool
-utf8_error(UTF8Error err)
+utf8_error(UTF8Error err, size_t position)
 {
   switch (err) {
-    case UTF8_NO_ERROR: return false;
+    case UTF8_NO_ERROR:
+      return false;
     case UTF8_ERROR:
-      error(LANG("Error descodificando UTF-8.",
-                 "UTF-8 decode error."));
+      error(LANG("Error descodificando UTF-8 en octeto %lu.",
+                 "UTF-8 decode error at byte %lu."),
+            position);
       break;
     case UTF8_ERROR_OVERLONG:
-      error(LANG("Error UTF-8, secuencia sobrelarga.",
-                 "UTF-8 error, overlong sequence."));
+      error(LANG("Error UTF-8, secuencia sobrelarga en octeto %lu.",
+                 "UTF-8 error, overlong sequence at byte %lu."),
+            position);
       break;
     case UTF8_ERROR_INTERRUPTED_1:
     case UTF8_ERROR_INTERRUPTED_2:
     case UTF8_ERROR_INTERRUPTED_3:
-      error(LANG("Error UTF-8, secuencia interrumpida.",
-                 "UTF-8 error, interrupted sequence."));
+      error(LANG("Error UTF-8, secuencia interrumpida en octeto %lu.",
+                 "UTF-8 error, interrupted sequence at byte %lu."),
+            position);
       break;
     default:
-      error(LANG("Error UTF-8 inesperado: 0x%02X",
-                 "UTF-8 error, unexpected: 0x%02X"),
-            err);
+      error(LANG("Error UTF-8 inesperado 0x%02X en octeto %lu.",
+                 "UTF-8 error, unexpected 0x%02X at byte %lu."),
+            err, position);
   }
 
   return true;
@@ -176,10 +180,9 @@ eprint(const char * const fmt, ...)
     } else {
       buffer = malloc(needed);
       if (not buffer) {
-        fprintf(stderr,
-                LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
-                     "Out of memory error. %lu bytes needed.\n"),
-                needed);
+        error(LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
+                   "Out of memory error. %lu bytes needed.\n"),
+              needed);
         return;
       }
       vsnprintf(buffer, needed, fmt, args);
@@ -190,14 +193,7 @@ eprint(const char * const fmt, ...)
       uint32_t u = 0;
       UTF8Error err = UTF8_NO_ERROR;
       p = decode_utf8(p, end, &u, &err);
-      if (utf8_error(err)) {
-        fprintf(stderr,
-                LANG("Error en posición %lu: %s\n",
-                     "Error at position %lu: %s\n"),
-                (size_t)(p - (uint8_t*)buffer), error_buffer);
-        error_buffer[0] = 0;
-        return;
-      }
+      if (utf8_error(err, (size_t)(p - (uint8_t*)buffer))) return;
       if (not u) break;
       if ((u & 0xFFFFFF00) is 0) {
         fputc((unsigned char) u, stderr); // Latin-1 / ISO-8859-1 / ISO-8859-15
@@ -597,7 +593,7 @@ identifier(Byte_p start, Byte_p end)
   uint32_t u = 0;
   UTF8Error err = UTF8_NO_ERROR;
   cursor = decode_utf8(cursor, end, &u, &err);
-  if (utf8_error(err)) return NULL;
+  if (utf8_error(err, (size_t)(cursor - start))) return NULL;
   if (u is '\\') {
     if (cursor is end) return NULL;
     size_t len;
@@ -764,7 +760,7 @@ identifier(Byte_p start, Byte_p end)
       // Use `p` here because we need to return `cursor`
       // if `*p` is no longer part of the identifier.
       Byte_mut_p p = decode_utf8(cursor, end, &u, &err);
-      if (utf8_error(err)) return NULL;
+      if (utf8_error(err, (size_t)(p - start))) return NULL;
       if (u is '\\') {
         if (p is end) {
           // `cursor` can not be `start` if we reached this point.
@@ -2257,7 +2253,7 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
       uint32_t u = 0;
       UTF8Error err = UTF8_NO_ERROR;
       text.start_p = decode_utf8(text.start_p, text.end_p, &u, &err);
-      if (utf8_error(err)) return false;
+      if (utf8_error(err, (size_t)(text.start_p - src->start))) return false;
       if      ((u & 0xFFFFFF80) is 0 and
                u is_not 0x0024 and
                u is_not 0x0040 and
@@ -2889,7 +2885,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             }
             fwrite(rest, sizeof(rest[0]), m->len, out);
             line_length += len_utf8(text.start_p, text.end_p, &err);
-            if (utf8_error(err)) {
+            if (utf8_error(err, (size_t)(text.start_p - src->start))) {
               write_error_at(error_buffer, m, src, out);
               error_buffer[0] = 0;
               m = m_end;
@@ -2915,7 +2911,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             while ((eol = memchr(rest, '\n', len))) {
               fwrite(rest, sizeof(rest[0]), (size_t)(eol - rest), out);
               line_length += len_utf8(rest, eol, &err);
-              if (utf8_error(err)) {
+              if (utf8_error(err, (size_t)(rest - src->start))) {
                 write_error_at(error_buffer, m, src, out);
                 error_buffer[0] = 0;
                 m = m_end;
@@ -2940,7 +2936,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             }
             fwrite(rest, sizeof(rest[0]), len, out);
             line_length += len_utf8(rest, rest + len, &err);
-            if (utf8_error(err)) {
+            if (utf8_error(err, (size_t)(rest - src->start))) {
               write_error_at(error_buffer, m, src, out);
               error_buffer[0] = 0;
               m = m_end;
