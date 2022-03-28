@@ -74,8 +74,8 @@ insert_deferred_actions(DeferredAction_array_p pending, size_t level,
     Marker_array_mut_slice action =
         bounds_of_Marker_array(&actions_cursor->action);
 
-    mut_Marker_array action_indented = {0};
-    init_Marker_array(&action_indented, actions_cursor->action.len + 10);
+    mut_Marker_array action_indented =
+        init_Marker_array(actions_cursor->action.len + 10);
     for (Marker_mut_p p = action.start_p; p is_not action.end_p; ++p) {
       if (is_newline_marker(*p)) {
         append_Marker_array(&action_indented, indent);
@@ -127,10 +127,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker block_end   = Marker_from(src, "}", T_BLOCK_END);
   mut_Marker indent_one_level = { .start = 0, .len = 0, .token_type = T_NONE };
 
-  mut_TokenType_array block_stack;
-  init_TokenType_array(&block_stack, 20);
-  mut_DeferredAction_array pending;
-  init_DeferredAction_array(&pending, 20);
+  mut_TokenType_array block_stack  = init_TokenType_array(20);
+  mut_DeferredAction_array pending = init_DeferredAction_array(20);
 
   mut_Marker_mut_p start  = start_of_mut_Marker_array(markers);
   mut_Marker_mut_p cursor = start;
@@ -138,8 +136,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
   size_t cursor_position;
 
   mut_Error err = { .position = NULL, .message = NULL };
-  mut_Marker_array marker_buffer;
-  init_Marker_array(&marker_buffer, 8);
+  mut_Marker_array marker_buffer = init_Marker_array(8);
 
   while (cursor is_not end) {
     if (cursor->token_type is T_BLOCK_START) {
@@ -251,6 +248,10 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
                cursor->token_type is T_CONTROL_FLOW_GOTO     or
                cursor->token_type is T_CONTROL_FLOW_RETURN) {
       size_t block_level = 0; // This is the correct value for ..._RETURN.
+      Marker_mut_p label_p = skip_space_forward(cursor + 1, end);
+      if (label_p is end or label_p->token_type is_not T_IDENTIFIER) {
+        label_p = NULL;
+      }
       if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
         block_level = block_stack.len;
         if (block_level is 0) {
@@ -314,7 +315,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
                    cursor - 1, markers, src);
           break;
         }
-        mut_Byte_array label; init_Byte_array(&label, 10);
+
+        mut_Byte_array label = init_Byte_array(10);
         extract_src(label_p, label_p+1, src, &label);
 
         // Find minimum block level traversed to reach label.

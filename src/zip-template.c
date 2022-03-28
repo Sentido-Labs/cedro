@@ -52,8 +52,7 @@ DEFINE_ARRAY_OF(FileName, 0, {
 
 void collect_file_names(const char* directory_path, mut_FileName_array_p names)
 {
-  mut_Byte_array name;
-  init_Byte_array(&name, 256);
+  mut_Byte_array name = init_Byte_array(256);
   auto destruct_Byte_array(&name);
 
   DIR* dir = opendir(directory_path);
@@ -113,8 +112,7 @@ int main(int argc, char* argv[])
   const char* const zip_file_name  = argv[1];
   const char* const directory_name = argv[2];
 
-  mut_FileName_array names;
-  init_FileName_array(&names, 20);
+  mut_FileName_array names = init_FileName_array(20);
   auto destruct_FileName_array(&names);
   collect_file_names(directory_name, &names);
 

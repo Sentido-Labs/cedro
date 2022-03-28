@@ -1168,7 +1168,7 @@ slice_for_marker(Byte_array_p src, Marker_p cursor)
  *
  *  To extract the text for `Marker_p m` from `Byte_p src`:
  * ```
- * mut_Byte_array string; init_Byte_array(&string, 20);
+ * mut_Byte_array string = init_Byte_array(20);
  * extract_src(m, m + 1, src, &string);
  * destruct_Byte_array(&string);
  * ```
@@ -1521,8 +1521,7 @@ error_at(const char * message, Marker_p cursor, mut_Marker_array_p _, mut_Byte_a
 {
   assert(cursor >= _->start and cursor <= _->start + _->len);
   _->len = index_Marker_array(_, cursor);
-  mut_Byte_array buffer;
-  init_Byte_array(&buffer, 200);
+  mut_Byte_array buffer = init_Byte_array(200);
   bool ok =
       push_fmt(&buffer, "\n#line %lu", original_line_number(cursor->start,
                                                             src)) &&
@@ -1595,8 +1594,7 @@ tabulate_eprint(size_t skip, size_t tabulator)
 static void
 print_marker(Marker_p m, Byte_array_p src)
 {
-  mut_Byte_array token_text;
-  init_Byte_array(&token_text, 80);
+  mut_Byte_array token_text = init_Byte_array(80);
   extract_src(m, m+1, src, &token_text);
   const char * const token = as_c_string(&token_text);
   switch (m->token_type) {
@@ -1668,8 +1666,7 @@ print_markers(Marker_array_p markers, Byte_array_p src, const char* prefix,
       markers->len <  10000? "%s% 4lu: ":
       markers->len < 100000? "%s% 5lu: ": "%s% 6lu: ";
 
-  mut_Byte_array token_text = {0};
-  ensure_capacity_Byte_array(&token_text, 80);
+  mut_Byte_array token_text = init_Byte_array(80);
 
   Marker_p markers_start = start_of_Marker_array(markers);
   Marker_p m_start = markers->start + start;
@@ -1865,10 +1862,8 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  *
  *  Example:
  * ```
- * mut_Marker_array markers;
- * init_Marker_array(&markers, 8192);
- * mut_Byte_array src;
- * init_Byte_array(&src, 80);
+ * mut_Marker_array markers = init_Marker_array(8192);
+ * mut_Byte_array src = init_Byte_array(80);
  * push_str(&src, "#pragma Cedro 1.0\nprintf(\"hello\\n\", i);");
  * Byte_array_mut_slice region = bounds_of_Byte_array(&src);
  * region.start_p = parse_skip_until_cedro_pragma(&src, region, markers);
@@ -1954,10 +1949,8 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
  *
  *  Example:
  * ```
- * mut_Marker_array markers;
- * init_Marker_array(&markers, 8192);
- * mut_Byte_array src;
- * init_Byte_array(&src, 80);
+ * mut_Marker_array markers = init_Marker_array(8192);
+ * mut_Byte_array src = init_Byte_array(80);
  * push_str(&src, "printf(\"hello\\n\", i);");
  * parse(&src, bounds_of_Byte_array(&src), &markers);
  * print_markers(&markers, &src, "", 0, markers.len);
@@ -2366,8 +2359,7 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
 
   size_t initial_replacements_len = replacements->len;
 
-  mut_Marker_array arguments;
-  init_Marker_array(&arguments, 32);
+  mut_Marker_array arguments = init_Marker_array(32);
   Byte_p parse_end =
       parse(src, (Byte_array_slice){rest, text.end_p}, &arguments);
   if (parse_end is_not text.end_p) {
@@ -3007,7 +2999,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         file_name.len = len_Byte_array_slice(dirname);
         append_Byte_array(&file_name, (Byte_array_slice){ rest, end });
         const char* included_file = as_c_string(&file_name);
-        mut_Byte_array bin;
+        mut_Byte_array bin = {0};
         int err = read_file(&bin, included_file);
         if (err) {
           print_file_error(err, included_file, &bin);
@@ -3354,8 +3346,7 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
   const size_t repetitions = 100;
   clock_t start = clock();
 
-  mut_Marker_array markers;
-  init_Marker_array(&markers, 8192);
+  mut_Marker_array markers = init_Marker_array(8192);
 
   for (size_t i = repetitions + 1; i; --i) {
     delete_Marker_array(&markers, 0, markers.len);
@@ -3397,10 +3388,8 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
             Options_p options)
 {
   bool result = true;
-  mut_Marker_array markers;
-  init_Marker_array(&markers, 8192);
-  mut_Marker_array markers_ref;
-  init_Marker_array(&markers_ref, 8192);
+  mut_Marker_array markers     = init_Marker_array(8192);
+  mut_Marker_array markers_ref = init_Marker_array(8192);
 
   /* Do not apply macros or anything else, just a straight tokenization. */
   Byte_array_mut_slice region;
@@ -3450,11 +3439,9 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
   }
 
   if (result is false) {
-    mut_Byte_array message;
-    init_Byte_array(&message, 80);
-    push_fmt(&message, LANG("Procesado, línea %lu",
-                            "Processed, line %lu"),
-             original_line_number(cursor->start, src));
+    mut_Byte_array message = init_Byte_array(80);
+    if (not push_fmt(&message, LANG("Procesado, línea %lu",
+                                    "Processed, line %lu"),
                      original_line_number(cursor->start, src))) {
       error("OUT OF MEMORY ERROR.");
       return false;
@@ -3554,8 +3541,7 @@ int main(int argc, char** argv)
   int err = 0;
 
   if (argc > 2 and str_eq("new", argv[1])) {
-    mut_Byte_array cmd;
-    init_Byte_array(&cmd, 80);
+    mut_Byte_array cmd = init_Byte_array(80);
     if (not (push_str(&cmd, argv[0]) && push_str(&cmd, "-new"))) {
       error("OUT OF MEMORY ERROR.");
       return ENOMEM;
@@ -3624,9 +3610,8 @@ int main(int argc, char** argv)
     opt_print_markers    = false;
   }
 
-  mut_Marker_array markers = {0};
-  ensure_capacity_Marker_array(&markers, 8192);
-  mut_Byte_array src = {0};
+  mut_Marker_array markers = init_Marker_array(8192);
+  mut_Byte_array src = init_Byte_array(16384);
 
   FILE* out = stdout;
 

@@ -23,8 +23,7 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker closeParenthesis = Marker_from(src, ")", T_INDEX_END);
   Marker addressOf        = Marker_from(src, "&", T_OP_2);
 
-  mut_Marker_array replacement;
-  init_Marker_array(&replacement, 30);
+  mut_Marker_array replacement = init_Marker_array(30);
 
   while (cursor is_not end) {
     if (cursor->token_type is T_ELLIPSIS and cursor->len is 2) {

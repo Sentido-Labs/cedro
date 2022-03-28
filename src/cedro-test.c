@@ -15,8 +15,7 @@ void test_number()
 
 void test_const()
 {
-  mut_Byte_array array;
-  init_Byte_array(&array, 10);
+  mut_Byte_array array = init_Byte_array(10);
   // Will fail:
   push_Byte_array(&array, '@');
   *get_mut_Byte_array(&array, 0) = 0;
@@ -39,8 +38,7 @@ char* to_string_Byte_array(Byte_array_p array)
 void test_array()
 {
   Byte_p text = B("En un lugar de La Mancha, de cuyo nombre no quiero acordarme, no ha mucho tiempo que vivía un hidalgo de los de lanza en astillero, adarga antigua, rocín flaco y galgo corredor.");
-  mut_Byte_array array;
-  init_Byte_array(&array, 10);
+  mut_Byte_array array = init_Byte_array(10);
   size_t text_len = strlen((char*const) text);
   for (size_t i = 0; i < text_len; ++i) {
     push_Byte_array(&array, text[i]);
