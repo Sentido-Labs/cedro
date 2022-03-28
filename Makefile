@@ -61,44 +61,44 @@ debug:   bin/$(NAME)-debug bin/$(NAME)cc-debug bin/$(NAME)-new-debug
 release: bin/$(NAME)       bin/$(NAME)cc       bin/$(NAME)-new
 static:  bin/$(NAME)-static bin/$(NAME)cc-static bin/$(NAME)-new-static
 
-bin/cedro-debug: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
+bin/$(NAME)-debug: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $<
 	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
-bin/cedro:       src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
+bin/$(NAME):       src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $< $(OPTIMIZATION)
 	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 
-bin/cedrocc-debug: src/cedrocc.c Makefile bin/cedro-debug
+bin/$(NAME)cc-debug: src/cedrocc.c Makefile bin/$(NAME)-debug
 	@mkdir -p bin
-	bin/cedro-debug --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@
+	bin/$(NAME)-debug --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@
 	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
-bin/cedrocc:       src/cedrocc.c Makefile bin/cedro
+bin/$(NAME)cc:       src/cedrocc.c Makefile bin/$(NAME)
 	@mkdir -p bin
-	bin/cedro       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@  $(OPTIMIZATION)
+	bin/$(NAME)       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@  $(OPTIMIZATION)
 	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 
-bin/cedro-new-debug: src/cedro-new.c template.zip Makefile bin/cedrocc-debug
+bin/$(NAME)-new-debug: src/cedro-new.c template.zip Makefile bin/$(NAME)cc-debug
 	@mkdir -p bin
-	bin/cedrocc-debug $< -I src $(CFLAGS_MINIZ) -o $@
-bin/cedro-new:       src/cedro-new.c template.zip Makefile bin/cedrocc
+	bin/$(NAME)cc-debug $< -I src $(CFLAGS_MINIZ) -o $@
+bin/$(NAME)-new:       src/cedro-new.c template.zip Makefile bin/$(NAME)cc
 	@mkdir -p bin
-	bin/cedrocc       $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
+	bin/$(NAME)cc       $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
-bin/cedro-static: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
+bin/$(NAME)-static: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -static -o $@ $< $(OPTIMIZATION)
-bin/cedrocc-static: src/cedrocc.c Makefile bin/cedro
+bin/$(NAME)cc-static: src/cedrocc.c Makefile bin/$(NAME)
 	@mkdir -p bin
-	bin/cedro       --insert-line-directives $< | $(CC) $(CFLAGS) -static -I src -x c - -o $@  $(OPTIMIZATION)
-bin/cedro-new-static: src/cedro-new.c template.zip Makefile bin/cedrocc
+	bin/$(NAME)       --insert-line-directives $< | $(CC) $(CFLAGS) -static -I src -x c - -o $@  $(OPTIMIZATION)
+bin/$(NAME)-new-static: src/cedro-new.c template.zip Makefile bin/$(NAME)cc
 	@mkdir -p bin
-	bin/cedrocc -static $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
+	bin/$(NAME)cc -static $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
-bin/%: src/%.c Makefile bin/cedrocc
+bin/%: src/%.c Makefile bin/$(NAME)cc
 	@mkdir -p bin
-	bin/cedrocc $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
+	bin/$(NAME)cc $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
 %.zip: % %/** bin/zip-template template/*
 	bin/zip-template $@ $<
@@ -109,21 +109,23 @@ doc:
 test: src/$(NAME)-test.c test/* bin/$(NAME) bin/$(NAME)-debug
 	@$(CC) $(CFLAGS) -o bin/$@ $<
 	@bin/$@
-	@for f in test/*.c; do echo -n "$${f} ... "; OPTS=""; if [ -z "$${f##*-line-directives*}" ]; then OPTS="--insert-line-directives"; fi; ERROR=$$(bin/cedro $${OPTS} "$${f}" | bin/cedro - $${OPTS} --validate="test/reference/$${f##test/}" 2>&1); if [ "$$ERROR" ]; then echo "ERROR"; echo "$${ERROR}"; exit 7; else echo "OK"; fi; done
+	@for f in test/*.c; do echo -n "$${f} ... "; OPTS=""; if [ -z "$${f##*-line-directives*}" ]; then OPTS="--insert-line-directives"; fi; ERROR=$$(bin/$(NAME) $${OPTS} "$${f}" | bin/$(NAME) - $${OPTS} --validate="test/reference/$${f##test/}" 2>&1); if [ "$$ERROR" ]; then echo "ERROR"; echo "$${ERROR}"; exit 7; else echo "OK"; fi; done
 
 # gcc -fanalyzer needs at least GCC 10.
 # http://cppcheck.sourceforge.net/
 # https://sparse.docs.kernel.org/en/latest/
 check: bin/$(NAME)
 	mkdir -p doc/cppcheck
-	cpp src/$(NAME).c | sed 's/^\(\s*\)# /\1\/\/ # /' >bin/$(NAME).i
+	$(CPP) src/$(NAME).c | sed 's/^\(\s*\)# /\1\/\/ # /' >bin/$(NAME).i
 	sparse -Wall bin/$(NAME).i
 	valgrind --leak-check=yes bin/$(NAME) src/$(NAME)cc.c >/dev/null
 	@echo
 	@echo This was useful when Cedro was simpler, but it has become way too slow:
 	@echo '    cppcheck bin/$(NAME).i --std=c99 --enable=performance,portability --xml 2>&1 | cppcheck-htmlreport --report-dir=doc/cppcheck --source-dir=src'
 	@echo ''
-	gcc -fanalyzer -o /dev/null -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable src/$(NAME).c
+	@echo 'GCC should be version 11.2 or later because older releases such as 10.2 produce false negatives on Cedro.'
+	@echo 'Running GCC version: '`$(CC) -dumpversion`
+	$(CC) -fanalyzer -o /dev/null -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable src/$(NAME).c
 # Used to work:	scan-bin -o doc/clang bin/$(NAME)
 
 clean:
