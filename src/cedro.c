@@ -391,35 +391,37 @@ DEFINE_ARRAY_OF(Byte, 8, {});
 //DEFINE_ARRAY_OF(Byte_array_slice, 0, {});
 
 /** Append the C string bytes to the end of the given buffer. */
-static void
+static bool
 push_str(mut_Byte_array_p _, const char * const str)
 {
   Byte_array_slice insert = { (Byte_p) str, (Byte_p) str + strlen(str) };
-  splice_Byte_array(_, _->len, 0, NULL, insert);
+  return splice_Byte_array(_, _->len, 0, NULL, insert);
 }
 
 /** Append a formatted C string to the end of the given buffer.
  *  It’s similar to `sprintf(...)`, only the result is stored in a byte buffer
  * that grows automatically if needed to hold the complete result. */
 __attribute__ ((format (printf, 2, 3))) // GCC, typecheck format string args
-static void
+static bool
 push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
 
-  ensure_capacity_Byte_array(_, _->len + 80);
+  if (not ensure_capacity_Byte_array(_, _->len + 80)) return false;
   size_t available = _->capacity - _->len;
   size_t needed = (size_t)
       vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   if (needed > available) {
-    ensure_capacity_Byte_array(_, _->len + needed + 1);
+    if (not ensure_capacity_Byte_array(_, _->len + needed + 1)) return false;
     available = _->capacity - _->len;
     vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   }
   _->len += (needed > available? available: needed);
 
   va_end(args);
+
+  return true;
 }
 
 /** Make it be a valid C string, by adding a `'\0'` character after the
@@ -434,11 +436,12 @@ static const char *
 as_c_string(mut_Byte_array_p _)
 {
   if (_->len is _->capacity) {
-    push_Byte_array(_, '\0');
-    --_->len;
-  } else {
-    *(_->start + _->len) = 0;
+    if (not ensure_capacity_Byte_array(_, _->len + 1)) {
+      if (not _->len) return "ERROR<as_c_string()>";
+      --_->len;
+    }
   }
+  *(_->start + _->len) = 0;
   return (const char *) _->start;
 }
 
@@ -450,14 +453,14 @@ static int
 read_file(mut_Byte_array_p _, FilePath path)
 {
   int err = 0; // No error.
-  mut_File_p input = path[0]? fopen(path, "r"): stdin;
-  if (not input) {
-    _->len = 0;
-    return errno;
-  }
+  mut_File_p input = fopen(path, "r");
+  if (not input) return errno;
   fseek(input, 0, SEEK_END);
   size_t size = (size_t)ftell(input);
-  ensure_capacity_Byte_array(_, size);
+  if (not ensure_capacity_Byte_array(_, size)) {
+    fclose(input);
+    return ENOMEM;
+  }
   rewind(input);
   _->len = fread(_->start, sizeof(_->start[0]), size, input);
   if (feof(input)) {
@@ -477,12 +480,11 @@ static int
 read_stream(mut_Byte_array_p _, FILE* input)
 {
   int err = 0; // No error.
-  _->len = 0;
+  const size_t chunk = 4096; // 4 KB, for instance.
   if (not input) return errno;
-  ensure_capacity_Byte_array(_, 4096); // 4 KB, for instance.
   while (not feof(input)) {
-    ensure_capacity_Byte_array(_, _->len + 4096);
-    size_t read = fread(_->start + _->len, sizeof(_->start[0]), 4096, input);
+    if (not ensure_capacity_Byte_array(_, _->len + chunk)) return ENOMEM;
+    size_t read = fread(_->start + _->len, sizeof(_->start[0]), chunk, input);
     if (read is 0) break;
     _->len += read;
   }
@@ -1521,11 +1523,15 @@ error_at(const char * message, Marker_p cursor, mut_Marker_array_p _, mut_Byte_a
   _->len = index_Marker_array(_, cursor);
   mut_Byte_array buffer;
   init_Byte_array(&buffer, 200);
-  push_fmt(&buffer, "\n#line %lu", original_line_number(cursor->start, src));
-  push_str(&buffer, "\n#error ");
-  push_str(&buffer, message);
-  push_str(&buffer, "\n");
-  push_Marker_array(_, Marker_from(src, as_c_string(&buffer), T_PREPROCESSOR));
+  bool ok =
+      push_fmt(&buffer, "\n#line %lu", original_line_number(cursor->start,
+                                                            src)) &&
+      push_str(&buffer, "\n#error ")                              &&
+      push_str(&buffer, message)                                  &&
+      push_str(&buffer, "\n")                                     &&
+      push_Marker_array(_, Marker_from(src, as_c_string(&buffer),
+                                       T_PREPROCESSOR));
+  if (not ok) error("OUT OF MEMORY ERROR.");
   destruct_Byte_array(&buffer);
 }
 
@@ -1893,7 +1899,10 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
             //if (*(cursor-1) is '\n') --cursor;
             mut_Marker inert;
             init_Marker(&inert, start_of_Byte_array(src), cursor, src, T_NONE);
-            push_Marker_array(markers, inert);
+            if (not push_Marker_array(markers, inert)) {
+              error("OUT OF MEMORY ERROR.");
+              return end;
+            }
           }
           cursor = token_end;
           // Skip LF and empty lines after line.
@@ -1924,7 +1933,10 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
     mut_Marker inert;
     init_Marker(&inert,
                 start_of_Byte_array(src), end_of_Byte_array(src), src, T_NONE);
-    push_Marker_array(markers, inert);
+    if (not push_Marker_array(markers, inert)) {
+      error("OUT OF MEMORY ERROR.");
+      return end;
+    }
   }
 
   return cursor;
@@ -2215,7 +2227,10 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
 
     mut_Marker marker;
     init_Marker(&marker, cursor, token_end, src, token_type);
-    push_Marker_array(markers, marker);
+    if (not push_Marker_array(markers, marker)) {
+      error("OUT OF MEMORY ERROR.");
+      return end;
+    }
     cursor = token_end;
 
     switch (token_type) {
@@ -2379,9 +2394,12 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
   }
   switch (arg.start_p->token_type) {
     case T_IDENTIFIER:
-      push_Replacement_array(replacements, (Replacement){
-          arg.start_p, {0}
-        });
+      if (not push_Replacement_array(replacements, (Replacement){
+            arg.start_p, {0}
+          })) {
+        error("OUT OF MEMORY ERROR.");
+        return m_end;
+      }
       ++arg.start_p;
       break;
     case T_BLOCK_START:
@@ -2419,7 +2437,11 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
               goto exit;
             }
           }
-          push_Replacement_array(replacements, (Replacement){arg.start_p, {0}});
+          if (not push_Replacement_array(replacements,
+                                         (Replacement){arg.start_p, {0}})) {
+            error("OUT OF MEMORY ERROR.");
+            return m_end;
+          }
           ++arg.start_p;
           continue;
         }
@@ -2971,7 +2993,10 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           goto exit;
         }
         mut_Byte_array file_name = {0};
-        push_str(&file_name, src_file_name);
+        if (not push_str(&file_name, src_file_name)) {
+          error("OUT OF MEMORY ERROR.");
+          return m_end;
+        }
         Byte_array_mut_slice dirname = bounds_of_Byte_array(&file_name);
         while (dirname.end_p is_not dirname.start_p) {
           switch (*(dirname.end_p-1)) {
@@ -3430,11 +3455,18 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
     push_fmt(&message, LANG("Procesado, línea %lu",
                             "Processed, line %lu"),
              original_line_number(cursor->start, src));
+                     original_line_number(cursor->start, src))) {
+      error("OUT OF MEMORY ERROR.");
+      return false;
+    }
     debug_cursor(cursor, 5, as_c_string(&message), &markers, src);
     if (message.len) truncate_Byte_array(&message, 0);
-    push_fmt(&message, LANG("Referencia, línea %lu",
-                            "Reference, line %lu"),
-             original_line_number(cursor_ref->start, src_ref));
+    if (not push_fmt(&message, LANG("Referencia, línea %lu",
+                                    "Reference, line %lu"),
+                     original_line_number(cursor_ref->start, src_ref))) {
+      error("OUT OF MEMORY ERROR.");
+      return false;
+    }
     debug_cursor(cursor_ref, 5, as_c_string(&message), &markers_ref, src_ref);
     destruct_Byte_array(&message);
   }
@@ -3524,11 +3556,15 @@ int main(int argc, char** argv)
   if (argc > 2 and str_eq("new", argv[1])) {
     mut_Byte_array cmd;
     init_Byte_array(&cmd, 80);
-    push_str(&cmd, argv[0]);
-    push_str(&cmd, "-new");
+    if (not (push_str(&cmd, argv[0]) && push_str(&cmd, "-new"))) {
+      error("OUT OF MEMORY ERROR.");
+      return ENOMEM;
+    }
     for (int i = 2; i < argc; ++i) {
-      push_str(&cmd, " ");
-      push_str(&cmd, argv[i]);
+      if (not (push_str(&cmd, " ") && push_str(&cmd, argv[i]))) {
+        error("OUT OF MEMORY ERROR.");
+        return ENOMEM;
+      }
     }
     err = system(as_c_string(&cmd));
     destruct_Byte_array(&cmd);

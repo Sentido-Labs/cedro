@@ -199,30 +199,38 @@ move_##T##_array(mut_##T##_array_p _)                                   \
                                                                         \
 /** Make sure that the array is ready to hold `minimum` elements,       \
     resizing the array if needed. */                                    \
-static void                                                             \
+static bool                                                             \
 ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 {                                                                       \
   minimum += PADDING;                                                   \
-  if (minimum <= _->capacity) return;                                   \
+  if (minimum <= _->capacity) return true;                              \
+  /* _->capacity == 0 means that _->start is a non-owned pointer. */    \
+  size_t new_size = minimum;                                            \
   if (_->capacity is 0) {                                               \
-    /* _->capacity == 0 means that _->start is a non-owned pointer. */  \
-    _->capacity = minimum + PADDING;                                    \
-    _->start = malloc(_->capacity * sizeof(*_->start));                 \
+    _->start = NULL;                                                    \
   } else {                                                              \
-    _->capacity = 2*_->capacity + PADDING;                              \
-    if (minimum > _->capacity) _->capacity = minimum;                   \
-    _->start = realloc((void*) _->start,                                \
-                       _->capacity * sizeof(*_->start));                \
+    new_size = 2*_->capacity + PADDING;                                 \
+    if (minimum > new_size) new_size = minimum;                         \
   }                                                                     \
+  mut_##T##_p new_block = realloc((void*) _->start,                     \
+                                  new_size * sizeof(*_->start));        \
+  if (!new_block) return false;                                         \
+  _->start    = new_block;                                              \
+  _->capacity = new_size;                                               \
+  return true;                                                          \
 }                                                                       \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
     resizing the array if needed. */                                    \
-static void                                                             \
+static bool                                                             \
 push_##T##_array(mut_##T##_array_p _, T item)                           \
 {                                                                       \
-  ensure_capacity_##T##_array(_, _->len + 1);                           \
-  *((mut_##T##_p) _->start + _->len++) = item;                          \
+  if (ensure_capacity_##T##_array(_, _->len + 1)) {                     \
+    *((mut_##T##_p) _->start + _->len++) = item;                        \
+    return true;                                                        \
+  } else {                                                              \
+    return false;                                                       \
+  }                                                                     \
 }                                                                       \
                                                                         \
 /** Splice the given `insert` slice in place of the removed elements,   \
@@ -234,7 +242,7 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     but copied to that array.                                           \
     The `insert` slice must belong to a different array, or be          \
     empty in which case it can be zero: `(T##_array_slice){0,0}` */     \
-static void                                                             \
+static bool                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
                    mut_##T##_array_p deleted,                           \
@@ -246,7 +254,9 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
       .start_p = (mut_##T##_p) _->start + position,                     \
       .end_p   = (mut_##T##_p) _->start + position + delete             \
     };                                                                  \
-    splice_##T##_array(deleted, deleted->len, 0, NULL, slice);          \
+    if (!splice_##T##_array(deleted, deleted->len, 0, NULL, slice)) {   \
+      return false;                                                     \
+    }                                                                   \
   } else {                                                              \
     destruct_##T##_block((mut_##T##_p) _->start + position,             \
                          _->start + position + delete);                 \
@@ -260,7 +270,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
     assert(insert.end_p >= insert.start_p);                             \
     insert_len = (size_t)(insert.end_p - insert.start_p);               \
     new_len += insert_len;                                              \
-    ensure_capacity_##T##_array(_, new_len);                            \
+    if (!ensure_capacity_##T##_array(_, new_len)) return false;         \
   }                                                                     \
                                                                         \
   size_t gap_end = position + insert_len;                               \
@@ -273,6 +283,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
            insert.start_p,                                              \
            insert_len * sizeof(*_->start));                             \
   }                                                                     \
+  return true;                                                          \
 }                                                                       \
                                                                         \
 /** Append the given `insert` slice to the array.                       \
