@@ -906,6 +906,185 @@ int main(int argc, char **argv) {
         </tr>
       </table>
 
+      <p>Este ejemplo completo muestra un letrero con texto deslizante:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#ifdef _WIN32
+#include &lt;windows.h&gt;
+// Véase https://stackoverflow.com/a/3930716/
+int sleep_ms(int ms) { Sleep(ms); return 0; }
+#else
+#define _XOPEN_SOURCE 500
+#include &lt;unistd.h&gt; // Desfasado pero simple:
+int sleep_ms(int ms) { return usleep(ms*1000); }
+#endif
+
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+typedef char utf8_char[5]; // Como cadena C.
+void
+imprime_porción(const utf8_char* inicio,
+                const utf8_char* final)
+{
+  while (inicio &lt; final) fputs(*inicio++, stdout);
+}
+
+int
+main(int argc, char* argv[])
+{
+  int tamaño_letrero = 8;
+  if (argc &lt; 2) {
+    fprintf(stderr, "Uso: letrero &lt;texto&gt;\n",
+            tamaño_letrero);
+    exit(1);
+  }
+
+  const char separador[] = " *** ";
+  size_t lon_octetos   = strlen(argv[1]);
+  size_t lon_separador = strlen(separador);
+  char* m = malloc(lon_octetos + lon_separador);
+  <b>auto free(m);</b>
+  memcpy(m,               argv[1],   lon_octetos);
+  memcpy(m + lon_octetos, separador, lon_separador);
+  lon_octetos += lon_separador;
+
+  // Extrae cada carácter codificado como UTF-8,
+  // que necesita hasta 4 octetos + 1 terminador.
+  utf8_char* mensaje =
+    malloc(sizeof(utf8_char) * lon_octetos);
+  <b>auto free(mensaje);</b>
+  size_t lon = 0;
+  for (size_t final = 0; final &lt; lon_octetos;) {
+    const char b = m[final];
+    size_t u;
+    if      (0xF0 == (b &amp; 0xF8)) u = 4;
+    else if (0xE0 == (b &amp; 0xF0)) u = 3;
+    else if (0xC0 == (b &amp; 0xE0)) u = 2;
+    else                         u = 1;
+    if (final + u &gt; lon_octetos) break;
+    memcpy(&amp;mensaje[lon], &amp;m[final], u);
+    mensaje[final][u] = '\0';
+    final += u;
+    ++lon;
+  }
+
+  if (lon &lt; 2) {
+    fprintf(stderr, "texto de mensaje demasiado corto.\n");
+    exit(2);
+  } else if (lon &lt; tamaño_letrero) {
+    tamaño_letrero = lon - 1;
+  }
+
+  for (;;) {
+    for (int i = 0; i &lt; lon; ++i) {
+      int resto = i + tamaño_letrero &gt; lon?
+          i + tamaño_letrero - lon: 0;
+      int visible = tamaño_letrero - resto;
+      imprime_porción(<b>mensaje[i .. +visible]</b>);
+      imprime_porción(<b>mensaje[0 .. resto]</b>);
+      putc('\r', stdout);
+      fflush(stdout);
+      sleep_ms(300);
+    }
+  }
+
+  return 0;
+}</code>
+          </td><td><br/><br/><br/><br/>
+            <code>#ifdef _WIN32
+#include &lt;windows.h&gt;
+// Véase: https://stackoverflow.com/a/3930716/
+int sleep_ms(int ms) { Sleep(ms); return 0; }
+#else
+#define _XOPEN_SOURCE 500
+#include &lt;unistd.h&gt; // Desfasado pero simple:
+int sleep_ms(int ms) { return usleep(ms*1000); }
+#endif
+
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+typedef char utf8_char[5]; // Como cadena C.
+void
+imprime_porción(const utf8_char* inicio,
+                const utf8_char* final)
+{
+  while (inicio &lt; final) fputs(*inicio++, stdout);
+}
+
+int
+main(int argc, char* argv[])
+{
+  int tamaño_letrero = 8;
+  if (argc &lt; 2) {
+    fprintf(stderr, "Uso: letrero &lt;texto&gt;\n",
+            tamaño_letrero);
+    exit(1);
+  }
+
+  const char separador[] = " *** ";
+  size_t lon_octetos   = strlen(argv[1]);
+  size_t lon_separador = strlen(separador);
+  char* m = malloc(lon_octetos + lon_separador);
+  memcpy(m,               argv[1],   lon_octetos);
+  memcpy(m + lon_octetos, separador, lon_separador);
+  lon_octetos += lon_separador;
+
+  // Extrae cada carácter codificado como UTF-8,
+  // que necesita hasta 4 octetos + 1 terminador.
+  utf8_char* mensaje =
+    malloc(sizeof(utf8_char) * lon_octetos);
+  size_t lon = 0;
+  for (size_t final = 0; final &lt; lon_octetos;) {
+    const char b = m[final];
+    size_t u;
+    if      (0xF0 == (b &amp; 0xF8)) u = 4;
+    else if (0xE0 == (b &amp; 0xF0)) u = 3;
+    else if (0xC0 == (b &amp; 0xE0)) u = 2;
+    else                         u = 1;
+    if (final + u &gt; lon_octetos) break;
+    memcpy(&amp;mensaje[lon], &amp;m[final], u);
+    mensaje[final][u] = '\0';
+    final += u;
+    ++lon;
+  }
+
+  if (lon &lt; 2) {
+    fprintf(stderr, "texto de mensaje demasiado corto.\n");
+    exit(2);
+  } else if (lon &lt; tamaño_letrero) {
+    tamaño_letrero = lon - 1;
+  }
+
+  for (;;) {
+    for (int i = 0; i &lt; lon; ++i) {
+      int resto = i + tamaño_letrero &gt; lon?
+          i + tamaño_letrero - lon: 0;
+      int visible = tamaño_letrero - resto;
+      imprime_porción(<b>&mensaje[i], &mensaje[i+visible]</b>);
+      imprime_porción(<b>&mensaje[0], &mensaje[resto]</b>);
+      putc('\r', stdout);
+      fflush(stdout);
+      sleep_ms(300);
+    }
+  }
+
+  <b>free(mensaje);</b>
+  <b>free(m);</b>
+
+  return 0;
+}
+</code>
+          </td>
+        </tr>
+      </table>
+
       <h3 id="slice-notation-related-work">Obras relacionadas <a class="anchor" href="#slice-notation-related-work">#…-related-work</a></h3>
       <p>La notación <code>[a..b]</code> para porciones de ristras se
         <a href="https://en.wikipedia.org/wiki/Array_slicing#1968:_Algol_68">definió por primera vez en Algol 68</a>
