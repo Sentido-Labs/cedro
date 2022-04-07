@@ -1326,7 +1326,12 @@ const char* const <b>ConfDePúa</b>_CADENA[] = {
       <table>
         <tr>
           <td>
-            <code>void imprime_double(double n, FILE* salida)
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdint.h&gt;
+
+#pragma Cedro 1.0
+void imprime_double(double n, FILE* salida)
 {
   fprintf(salida, "%f", n);
 }
@@ -1334,7 +1339,11 @@ const char* const <b>ConfDePúa</b>_CADENA[] = {
 typedef uint32_t Color_ARGB;
 void imprime_Color_ARGB(Color_ARGB c, FILE* salida)
 {
-  fprintf(salida, "#%.6X", c);
+  if ((c &amp; 0xFF000000) == 0xFF000000) {
+    fprintf(salida, "#%.6X", c &amp; 0x00FFFFFF);
+  } else {
+    fprintf(salida, "#%.8X", c);
+  }
 }
 
 #foreach { <b>CAMPOS</b> {{                            \
@@ -1355,9 +1364,18 @@ void imprime_Punto(Punto punto, FILE* salida)
 #foreach }
 }
 #foreach }
-</code>
-          </td><td>
-            <code>void imprime_double(double n, FILE* salida)
+
+int main(void)
+{
+  Punto punto = { .x = 12.3, .y = 4.56, .color = 0xFFa3f193 };
+  imprime_Punto(punto, stderr);
+}</code>
+          </td><td><br/>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdint.h&gt;
+
+void imprime_double(double n, FILE* salida)
 {
   fprintf(salida, "%f", n);
 }
@@ -1365,7 +1383,11 @@ void imprime_Punto(Punto punto, FILE* salida)
 typedef uint32_t Color_ARGB;
 void imprime_Color_ARGB(Color_ARGB c, FILE* salida)
 {
-  fprintf(salida, "#%.6X", c);
+  if ((c &amp; 0xFF000000) == 0xFF000000) {
+    fprintf(salida, "#%.6X", c &amp; 0x00FFFFFF);
+  } else {
+    fprintf(salida, "#%.8X", c);
+  }
 }
 
 typedef struct Punto {
@@ -1380,7 +1402,12 @@ void imprime_Punto(Punto punto, FILE* salida)
   imprime_<b>double</b>(punto.<b>y</b>, salida); putc('\n', salida);
   imprime_<b>Color_ARGB</b>(punto.<b>color</b>, salida); putc('\n', salida);
 }
-</code>
+
+int main(void)
+{
+  Punto punto = { .x = 12.3, .y = 4.56, .color = 0xFFa3f193 };
+  imprime_Punto(punto, stderr);
+}</code>
           </td>
         </tr>
       </table>
@@ -1388,7 +1415,7 @@ void imprime_Punto(Punto punto, FILE* salida)
       <p>Este ejemplo completo define variantes para los tipos
         <code>float</code>, <code>str</code>, y <code>cstr</code>
         de una ristra/vector de capacidad variable
-        con una función llamada «añade».
+        con una función llamada <code>añade_Vec_##T()</code> para cada uno.
         Luego usa el
         <code><a href="https://en.cppreference.com/w/c/language/generic">_Generic</a></code>
         del C11 para definir una macro/función

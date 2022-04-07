@@ -1326,7 +1326,12 @@ const char* const <b>PinConfig</b>_STRING[] = {
       <table>
         <tr>
           <td>
-            <code>void print_double(double n, FILE* out)
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdint.h&gt;
+
+#pragma Cedro 1.0
+void print_double(double n, FILE* out)
 {
   fprintf(out, "%f", n);
 }
@@ -1334,7 +1339,11 @@ const char* const <b>PinConfig</b>_STRING[] = {
 typedef uint32_t Colour_ARGB;
 void print_Colour_ARGB(Colour_ARGB c, FILE* out)
 {
-  fprintf(out, "#%.6X", c);
+  if ((c &amp; 0xFF000000) == 0xFF000000) {
+    fprintf(out, "#%.6X", c &amp; 0x00FFFFFF);
+  } else {
+    fprintf(out, "#%.8X", c);
+  }
 }
 
 #foreach { <b>FIELDS</b> {{                              \
@@ -1355,9 +1364,18 @@ void print_Point(Point point, FILE* out)
 #foreach }
 }
 #foreach }
-</code>
-          </td><td>
-            <code>void print_double(double n, FILE* out)
+
+int main(void)
+{
+  Punto punto = { .x = 12.3, .y = 4.56, .color = 0xFFa3f193 };
+  imprime_Punto(punto, stderr);
+}</code>
+          </td><td><br/>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdint.h&gt;
+
+void print_double(double n, FILE* out)
 {
   fprintf(out, "%f", n);
 }
@@ -1365,7 +1383,11 @@ void print_Point(Point point, FILE* out)
 typedef uint32_t Colour_ARGB;
 void print_Colour_ARGB(Colour_ARGB c, FILE* out)
 {
-  fprintf(out, "#%.6X", c);
+  if ((c &amp; 0xFF000000) == 0xFF000000) {
+    fprintf(out, "#%.6X", c &amp; 0x00FFFFFF);
+  } else {
+    fprintf(out, "#%.8X", c);
+  }
 }
 
 typedef struct Point {
@@ -1380,6 +1402,12 @@ void print_Point(Point point, FILE* out)
   print_<b>double</b>(point.<b>y</b>, out); putc('\n', out);
   print_<b>Colour_ARGB</b>(point.<b>colour</b>, out); putc('\n', out);
 }
+
+int main(void)
+{
+  Punto punto = { .x = 12.3, .y = 4.56, .color = 0xFFa3f193 };
+  imprime_Punto(punto, stderr);
+}
 </code>
           </td>
         </tr>
@@ -1388,7 +1416,7 @@ void print_Point(Point point, FILE* out)
       <p>This complete example defines variants for the types
         <code>float</code>, <code>str</code>, y <code>cstr</code>
         of an array/vector of variable length
-        with a function called «append».
+        with a function called <code>append_Vec_##T()</code> for each one.
         It then uses C11’s
         <code><a href="https://en.cppreference.com/w/c/language/generic">_Generic</a></code>
         to define a pseudo-<a href="https://en.wikipedia.org/wiki/Polymorphism_(computer_science)">polymorphic</a>
