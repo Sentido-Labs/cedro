@@ -172,42 +172,6 @@ nvgFillColor(graphics_context, nvgRGBA(255,192,0,255));
 nvgFill(graphics_context);</code>
           </td>
         </tr>
-        <tr>
-          <td><code>// <a href="https://github.com/rryqszq4/ngx_sqlite/blob/785dbf1485bf347c260fa540c4d0955d4d079901/src/ngx_http_sqlite_module.c#L734">ngx_http_sqlite_module.c#L734</a>
-
-r @ ngx_http_sqlite_echo...
-    ("\"", 1),
-    ((char *)sqlite3_column_name(stmt, i), ngx_strlen(sqlite3_column_name(stmt, i))),
-    ("\":\"", 3),
-    ((char *)result, ngx_strlen(result)),
-    ("\"", 1);</code></td>
-          <td><br/><code>// <a href="https://github.com/rryqszq4/ngx_sqlite/blob/785dbf1485bf347c260fa540c4d0955d4d079901/src/ngx_http_sqlite_module.c#L734">ngx_http_sqlite_module.c#L734</a>
-
-ngx_http_sqlite_echo(r, "\"", 1);
-ngx_http_sqlite_echo(r, (char *)sqlite3_column_name(stmt, i), ngx_strlen(sqlite3_column_name(stmt, i)));
-ngx_http_sqlite_echo(r, "\":\"", 3);
-ngx_http_sqlite_echo(r, (char *)result, ngx_strlen(result));
-ngx_http_sqlite_echo(r, "\"", 1);
-</code></td>
-        </tr>
-        <tr>
-          <td><code>// <a href="https://github.com/rryqszq4/ngx_sqlite/blob/785dbf1485bf347c260fa540c4d0955d4d079901/src/ngx_http_sqlite_module.c#L734">ngx_http_sqlite_module.c#L734</a>
-
-r @ ngx_http_sqlite_...
-    echo("\"", 1),
-    echo((char *)sqlite3_column_name(stmt, i), ngx_strlen(sqlite3_column_name(stmt, i))),
-    echo("\":\"", 3),
-    echo((char *)result, ngx_strlen(result)),
-    echo("\"", 1);</code></td>
-          <td><br/><code>// <a href="https://github.com/rryqszq4/ngx_sqlite/blob/785dbf1485bf347c260fa540c4d0955d4d079901/src/ngx_http_sqlite_module.c#L734">ngx_http_sqlite_module.c#L734</a>
-
-ngx_http_sqlite_echo(r, "\"", 1);
-ngx_http_sqlite_echo(r, (char *)sqlite3_column_name(stmt, i), ngx_strlen(sqlite3_column_name(stmt, i)));
-ngx_http_sqlite_echo(r, "\":\"", 3);
-ngx_http_sqlite_echo(r, (char *)result, ngx_strlen(result));
-ngx_http_sqlite_echo(r, "\"", 1);
-</code></td>
-        </tr>
       </table>
 
       <p>For each comma-separated segment,
