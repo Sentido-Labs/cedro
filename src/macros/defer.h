@@ -125,6 +125,8 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker space       = Marker_from(src, " ", T_SPACE);
   Marker block_start = Marker_from(src, "{", T_BLOCK_START);
   Marker block_end   = Marker_from(src, "}", T_BLOCK_END);
+  Marker break_goto    = Marker_from(src, "goto", T_CONTROL_FLOW_BREAK);
+  Marker continue_goto = Marker_from(src, "goto", T_CONTROL_FLOW_CONTINUE);
   mut_Marker indent_one_level = { .start = 0, .len = 0, .token_type = T_NONE };
 
   mut_TokenType_array block_stack  = init_TokenType_array(20);
@@ -261,6 +263,10 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           err.message = NULL;
           break;
         }
+        if (label_p) { // Label break.
+          *cursor = break_goto; // Text “goto”, type T_CONTROL_FLOW_BREAK.
+          goto handle_as_goto;
+        }
         while (block_level) {
           --block_level;
           TokenType block_type =
@@ -280,6 +286,10 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           err.message = NULL;
           break;
         }
+        if (label_p) { // Label continue.
+          *cursor = continue_goto; // Text “goto”, type T_CONTROL_FLOW_CONTINUE.
+          goto handle_as_goto;
+        }
         while (block_level) {
           --block_level;
           TokenType block_type =
@@ -297,6 +307,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
                    cursor - 1, markers, src);
           break;
         }
+     handle_as_goto:;
         size_t function_level = block_level + 1;
         while (block_level) {
           --block_level;
@@ -308,8 +319,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
         }
 
-        Marker_mut_p label_p = skip_space_forward(cursor + 1, end);
-        if (label_p is end or label_p->token_type is_not T_IDENTIFIER) {
+        if (not label_p) {
           error_at(LANG("goto sin etiqueta.",
                         "goto without label."),
                    cursor - 1, markers, src);
@@ -322,18 +332,18 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         // Find minimum block level traversed to reach label.
         label_p = NULL;
         Marker_mut_p m;
-        size_t nesting;
+        size_t nesting, low_watermark;
         block_level = block_stack.len;
 
         // First forward, because that’s the most usual case:
         m = cursor + 1;
-        nesting = block_level;
+        low_watermark = nesting = block_level;
         while (m is_not end and nesting >= function_level) {
           if        (m->token_type is T_BLOCK_START) {
             ++nesting;
           } else if (m->token_type is T_BLOCK_END) {
             --nesting;
-            if (nesting < block_level) block_level = nesting;
+            low_watermark = nesting;
           } else if (m->token_type is T_CONTROL_FLOW_LABEL) {
             if (src_eq(m, &label, src)) {
               label_p = m;
@@ -343,16 +353,20 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           ++m;
         }
 
-        if (not label_p) {
+        if (label_p) {
+          if (low_watermark < nesting) {
+            eprintln("Warning: forward goto jumps to another control flow branch.");
+          }
+        } else {
           // Then backwards:
           m = cursor - 1;
-          nesting = block_level;
+          low_watermark = nesting = block_level;
           while (m is_not start and nesting >= function_level) {
             if        (m->token_type is T_BLOCK_END) {
               ++nesting;
             } else if (m->token_type is T_BLOCK_START) {
               --nesting;
-              if (nesting < block_level) block_level = nesting;
+              low_watermark = nesting;
             } else if (m->token_type is T_CONTROL_FLOW_LABEL) {
               if (src_eq(m, &label, src)) {
                 label_p = m;
@@ -363,8 +377,65 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
           }
         }
 
-        if (label_p) ++block_level;
-        else         block_level = block_stack.len;
+        if (label_p) {
+          if (low_watermark < block_level) block_level = low_watermark;
+          if (cursor->token_type is T_CONTROL_FLOW_BREAK) {
+            if (label_p < cursor) {
+              error_at(LANG("no se permiten saltos atrás con «break».",
+                            "backward jumps are not allowed with “break”."),
+                       skip_space_forward(cursor + 1, end) + 1, markers, src);
+              label_p = NULL;
+              break;
+            }
+            Marker_p before_label = label_p - 1 > cursor?
+                skip_space_back(cursor, label_p - 1): label_p;
+            if (low_watermark < nesting or
+                before_label is_not start and
+                (before_label-1)->token_type is_not T_BLOCK_END) {
+              error_at(LANG("la etiqueta objetivo debe ir"
+                            " justo después del bucle.",
+                            "the target label must be"
+                            " right after the loop."),
+                       skip_space_forward(cursor + 1, end) + 1, markers, src);
+              label_p = NULL;
+              break;
+            }
+          } else if (cursor->token_type is T_CONTROL_FLOW_CONTINUE) {
+            if (label_p > cursor) {
+              error_at(LANG("no se permiten saltos adelante con «continue».",
+                            "forward jumps are not allowed with “continue”."),
+                       skip_space_forward(cursor + 1, end) + 1, markers, src);
+              label_p = NULL;
+              break;
+            }
+            Marker_p after_label = label_p + 2 < cursor?
+                skip_space_forward(label_p + 2, cursor): label_p;
+            if (low_watermark < nesting or
+                after_label->token_type is_not T_CONTROL_FLOW_LOOP) {
+              error_at(LANG("la etiqueta objetivo debe ir"
+                            " justo antes del bucle.",
+                            "the target label must be"
+                            " right before the loop."),
+                       skip_space_forward(cursor + 1, end) + 1, markers, src);
+              label_p = NULL;
+              break;
+            }
+          }
+        }
+
+        if (label_p) {
+          ++block_level;
+        } else {
+          mut_Byte_array message = {0};
+          push_fmt(&message,
+                   LANG("no se encuentra la etiqueta «%s».",
+                        "label “%s” not found."),
+                   as_c_string(&label));
+          error_at(as_c_string(&message),
+                   skip_space_forward(cursor + 1, end), markers, src);
+          destruct_Byte_array(&message);
+          break;
+        }
 
         destruct_Byte_array(&label);
       }

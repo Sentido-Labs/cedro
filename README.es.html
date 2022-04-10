@@ -17,6 +17,7 @@
       <ol>
         <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>] (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
         <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> [«<em>defer</em>»] (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
+        <li><a href="#label-break">Salida de <em>bucles anidados</em> <code>break <em>etiqueta</em>;</code></a> (<a href="#label-break-related-work">obras relacionadas</a>).</li>
         <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code><em>ristra</em>[<em>inicio</em>..<em>fin</em>]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
         <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">obras relacionadas</a>)-->.</li>
         <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">obras relacionadas</a>)-->.</li>
@@ -809,6 +810,194 @@ int main(int argc, char **argv) {
           </td>
         </tr>
       </table>
+    </section>
+
+    <section id="label-break">
+      <h2>Salida de <em>bucles anidados</em>: <a class="anchor" href="#label-break">#label-break</a></h2>
+      <p>Convierte <code><b>break</b> <em>etiqueta</em>;</code> o <code><b>continue</b> <em>etiqueta</em>;</code> en <code><b>goto</b> <em>etiqueta</em>;</code>. En C sólo es posible salir de un bucle cada vez al usar <code>break</code>, lo que también es un problema cuando la interrupción viene de un bloque <code>switch</code>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    for (y = 0; y &lt; 100; ++y) {
+      switch (x + y) {
+        case 157:
+          <b>break</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>continue</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+    }
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td><td>
+            <br/><br/><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    for (y = 0; y &lt; 100; ++y) {
+      switch (x + y) {
+        case 157:
+          <b>goto</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>goto</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+    }
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>La diferencia entre <code>break …</code>, <code>continue …</code>, y <code>goto …</code> está en las restricciones:</p>
+      <ul>
+        <li><code>break <em>etiqueta</em></code> sólo permite saltos hacia adelante, y la etiqueta debe ir justo tras el fin del bucle.</li>
+        <li><code>continue <em>etiqueta</em></code> sólo saltos hacia atrás, y la etiqueta debe ir justo antes del inicio del bucle.</li>
+        <li><code>goto <em>etiqueta</em></code> no tiene restricciones.</li>
+      </uL>
+
+      <p>Es parte de la macro de <a href="#deferred-resource-release">devolución diferida de recursos</a>:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  char *nivel1 = malloc(1);
+  <b>auto free(nivel1);</b>
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    char *nivel2 = malloc(2);
+    <b>auto free(nivel2);</b>
+    for (y = 0; y &lt; 100; ++y) {
+      char *nivel3 = malloc(3);
+      <b>auto free(nivel3);</b>
+      switch (x + y) {
+        case 157:
+          <b>break</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>continue</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+    }
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td><td>
+            <br/><br/><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  char *nivel1 = malloc(1);
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    char *nivel2 = malloc(2);
+    for (y = 0; y &lt; 100; ++y) {
+      char *nivel3 = malloc(3);
+      switch (x + y) {
+        case 157:
+          <b>free(nivel3);</b>
+          <b>free(nivel2);</b>
+          <b>goto</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>free(nivel3);</b>
+          <b>free(nivel2);</b>
+          <b>goto</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+      <b>free(nivel3);</b>
+    }
+    <b>free(nivel2);</b>
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  <b>free(nivel1);</b>
+
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>Usando <code>goto</code> en general no se puede garantizar que los recursos vayan a devolverse correctamente, pero con las restricciones al usar <code>break …</code> y <code>continue …</code> sí que funciona.</p>
+      <table>
+        <tr><td><code>$ bin/cedrocc test/defer-label-break.c -std=c99 -pedantic-errors -Wall -fanalyzer -o /tmp/find-number-decomposition
+$ valgrind --leak-check=yes /tmp/find-number-decomposition
+…
+Saltamos de x=11 a x=37
+Encontrada 157 = 58 + 99
+==1077== 
+==1077== HEAP SUMMARY:
+==1077==     in use at exit: 0 bytes in 0 blocks
+==1077==   total heap usage: 2,236 allocs, 2,236 frees, 6,683 bytes allocated
+==1077== 
+==1077== All heap blocks were freed -- no leaks are possible
+==1077== 
+==1077== For lists of detected and suppressed errors, rerun with: -s
+==1077== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)</code></td></tr>
+        </table>
+
+      <h3 id="label-break-related-work">Obras relacionadas <a class="anchor" href="#label-break-related-work">#…-related-work</a></h3>
+      <p>El lenguaje de programación <a href="https://en.wikipedia.org/wiki/Structured_program_theorem#Implications_and_refinements">BLISS 11</a> fue el primero que <a href="https://www.cs.tufts.edu/~nr/cs257/archive/ronald-brender/bliss.pdf#9">introdujo etiquetas para su palabra clave <code>leave</code></a> (análogo al <code>break</code> del C) alrededor de 1974, y luego otros lenguajes como Java, Javascript, y Go hicieron lo mismo con <code>continue</code> y <code>break</code>.</p>
     </section>
 
     <section id="slice-notation">

@@ -17,6 +17,7 @@
       <ol>
         <li>The <a href="#backstitch-macro"><em>backstitch</em> <code>@</code> macro</a> (<a href="#backstitch-macro-related-work">related work</a>).</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release <code>auto ...</code></a> (<a href="#deferred-resource-release-related-work">related work</a>).</li>
+        <li><a href="#label-break">Break out of <em>nested loops</em> <code>break <em>label</em>;</code></a> (<a href="#label-break-">related work</a>).</li>
         <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a> (<a href="#slice-notation-related-work">related work</a>).</li>
         <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">related work</a>)-->.</li>
         <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">related work</a>)-->.</li>
@@ -810,6 +811,194 @@ int main(int argc, char **argv) {
           </td>
         </tr>
       </table>
+    </section>
+
+    <section id="label-break">
+      <h2>Break out of <em>nested loops</em>: <a class="anchor" href="#label-break">#label-break</a></h2>
+      <p>Converts <code><b>break</b> <em>label</em>;</code> or <code><b>continue</b> <em>label</em>;</code> into <code><b>goto</b> <em>label</em>;</code>. In C it’s only possible to break out of one loop at a time when using <code>break</code>, which is also a problem when the interruption comes from a <code>switch</code> block.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  int initial_x = 0;
+
+<em>search_from_initial_x</em>:
+  for (x = initial_x; x &lt; 100; ++x) {
+    for (y = 0; y &lt; 100; ++y) {
+      switch (x + y) {
+        case 157:
+          <b>break</b> <em>found_number_decomposition</em>;
+        case 11:
+          initial_x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n",
+                  initial_x);
+          <b>continue</b> <em>search_from_initial_x</em>;
+      }
+    }
+  } <em>found_number_decomposition</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Found %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td><td>
+            <br/><br/><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  int initial_x = 0;
+
+<em>search_from_initial_x</em>:
+  for (x = initial_x; x &lt; 100; ++x) {
+    for (y = 0; y &lt; 100; ++y) {
+      switch (x + y) {
+        case 157:
+          <b>goto</b> <em>found_number_decomposition</em>;
+        case 11:
+          initial_x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n",
+                  initial_x);
+          <b>goto</b> <em>search_from_initial_x</em>;
+      }
+    }
+  } <em>found_number_decomposition</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Found %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>The difference between <code>break …</code>, <code>continue …</code>, and <code>goto …</code> is in the restrictions:</p>
+      <ul>
+        <li><code>break <em>etiqueta</em></code> only allows forward jumps, and the label must go right after the end of the loop.</li>
+        <li><code>continue <em>etiqueta</em></code> only backward jumps, and the label must go right before the start of the loop.</li>
+        <li><code>goto <em>etiqueta</em></code> has no restrictions.</li>
+      </uL>
+
+      <p>It is part of the <a href="#deferred-resource-release">deferred resource release</a> macro:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  char *level1 = malloc(1);
+  <b>auto free(level1);</b>
+  int initial_x = 0;
+
+<em>search_from_initial_x</em>:
+  for (x = initial_x; x &lt; 100; ++x) {
+    char *level2 = malloc(2);
+    <b>auto free(level2);</b>
+    for (y = 0; y &lt; 100; ++y) {
+      char *level3 = malloc(3);
+      <b>auto free(level3);</b>
+      switch (x + y) {
+        case 157:
+          <b>break</b> <em>found_number_decomposition</em>;
+        case 11:
+          initial_x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n",
+                  initial_x);
+          <b>continue</b> <em>search_from_initial_x</em>;
+      }
+    }
+  } <em>found_number_decomposition</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Found %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td><td>
+            <br/><br/><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  char *level1 = malloc(1);
+  int initial_x = 0;
+
+<em>search_from_initial_x</em>:
+  for (x = initial_x; x &lt; 100; ++x) {
+    char *level2 = malloc(2);
+    for (y = 0; y &lt; 100; ++y) {
+      char *level3 = malloc(3);
+      switch (x + y) {
+        case 157:
+          <b>free(level3);</b>
+          <b>free(level2);</b>
+          <b>goto</b> <em>found_number_decomposition</em>;
+        case 11:
+          initial_x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n",
+                  initial_x);
+          <b>free(level3);</b>
+          <b>free(level2);</b>
+          <b>goto</b> <em>search_from_initial_x</em>;
+      }
+      <b>free(level3);</b>
+    }
+    <b>free(level2);</b>
+  } <em>found_number_decomposition</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Found %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  <b>free(level1);</b>
+
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>Using <code>goto</code> in general it can’t be guaranteed that the resources will be released correctly, but with the restrictions when using <code>break …</code> and <code>continue …</code> it does work.</p>
+      <table>
+        <tr><td><code>$ bin/cedrocc test/defer-label-break.c -std=c99 -pedantic-errors -Wall -fanalyzer -o /tmp/find-number-decomposition
+$ valgrind --leak-check=yes /tmp/find-number-decomposition
+…
+Saltamos de x=11 a x=37
+Encontrada 157 = 58 + 99
+==1077== 
+==1077== HEAP SUMMARY:
+==1077==     in use at exit: 0 bytes in 0 blocks
+==1077==   total heap usage: 2,236 allocs, 2,236 frees, 6,683 bytes allocated
+==1077== 
+==1077== All heap blocks were freed -- no leaks are possible
+==1077== 
+==1077== For lists of detected and suppressed errors, rerun with: -s
+==1077== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)</code></td></tr>
+        </table>
+
+      <h3 id="label-break-related-work">Related work <a class="anchor" href="#label-break-related-work">#…-related-work</a></h3>
+      <p>The <a href="https://en.wikipedia.org/wiki/Structured_program_theorem#Implications_and_refinements">BLISS 11</a> programming language was the first that <a href="https://www.cs.tufts.edu/~nr/cs257/archive/ronald-brender/bliss.pdf#9">introduced labels for its <code>leave</code></a> keyword (analogous to C’s <code>break</code>) around 1974, and later other languages like Java, Javascript, and Go did the same with <code>continue</code> and <code>break</code>.</p>
     </section>
 
     <section id="slice-notation">
