@@ -77,7 +77,6 @@ typedef unsigned char uint8_t;
 
 #include <stb_image.h> // Comes from lib/nanovg.
 
-#include <time.h>
 #include <math.h>
 
 #pragma Cedro 1.0
@@ -143,21 +142,19 @@ const char* const usage_es =
         "  Muestra un paisaje minimalista iluminado por un sol múltiple.\n"
         "  --no-vsync       Deactiva vsync. (inicialmente activado)\n"
         "  --adaptive-vsync Activa el vsync adaptivo si está disponible.\n"
-        "  --perf           En tarjetas gráficas AMD,"
-        " activa los indicadores de rendimiento.\n"
-        "                   Lo mismo que:"
-        " GALLIUM_HUD=fps,VRAM-usage {template}\n"
         "  --exit-after-brief-delay Sale tras 100ms, para pruebas.\n"
+        "\n En tarjetas gráficas AMD"
+        " se pueden activar los indicadores de rendimiento:\n"
+        " GALLIUM_HUD=fps,VRAM-usage {template}\n"
         ;
 const char* const usage_en =
         "Usage: {template} [options]\n"
         "  --no-vsync       Disable vsync. (default is enabled)\n"
         "  --adaptive-vsync Enable adaptive vsync if available.\n"
-        "  --perf           On AMD graphic cards,"
-        " enable the performance overlay.\n"
-        "                   Same as:"
-        " GALLIUM_HUD=fps,VRAM-usage {template}\n"
         "  --exit-after-brief-delay Exit after 1 cycle, for testing.\n"
+        "\n On AMD graphic cards"
+        " you can enable the performance overlay:\n"
+        " GALLIUM_HUD=fps,VRAM-usage {template}\n"
         ;
 
 typedef struct Options {
@@ -185,9 +182,6 @@ main(int argc, char* argv[])
             options.vsync = 0;
         } else if (str_eq("--adaptive-vsync", arg)) {
             options.vsync = -1;
-        } else if (str_eq("--perf", arg)) {
-            // Enable Gallium performance overlay:
-            setenv("GALLIUM_HUD", "fps,VRAM-usage", 1);
         } else {
             eprintln("Unknown option %s", arg);
             err = 1;
@@ -253,9 +247,6 @@ main(int argc, char* argv[])
                              (unsigned char*) font_sans, sizeof_font_sans,
                              false);
 
-    struct timespec timespec;
-    const double nsec_to_sec = 1.0 / 1000000000.0;
-
     char text_buffer[300] = {0};
     const double π = 3.1415926535;
     const double rad_to_deg = 180.0 / π;
@@ -287,14 +278,7 @@ main(int argc, char* argv[])
 
         glFinish();
 
-        if (clock_gettime(CLOCK_MONOTONIC, &timespec) != 0) {
-            eprintln("FAILED TO READ SYSTEM CLOCK");
-            break;
-        }
-
-        double t =
-                (double)timespec.tv_sec +
-                (double)timespec.tv_nsec * nsec_to_sec;
+        double t = glfwGetTime();
 
         const double r = 100;
         const double period = 0.5/*s*/;
