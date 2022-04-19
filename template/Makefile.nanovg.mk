@@ -3,13 +3,22 @@
 
 # nanovg needs: premake4
 # glew and glfw need: cmake, libgl-dev, glu-devel
+NANOVG_VERSION=5f65b43f7abf044a6afa60504382f52bc4325b92
+NANOVG_ARCHIVE=$(NANOVG_VERSION).tar.gz
+NANOVG_CHECKSUM=3c67bfec3d5ff39f0fd9e565ed2f4dfdad44dcb70703b593079b227bdc209a30
 # --location is to follow redirects which GitHub uses.
-NANOVG_FETCH=curl --location 'https://github.com/memononen/nanovg/archive/5f65b43f7abf044a6afa60504382f52bc4325b92.tar.gz' | tar zxf -
-NANOVG_DIR=lib/nanovg-5f65b43f7abf044a6afa60504382f52bc4325b92
-GLEW_FETCH=curl --location 'https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.tgz' | tar zxf -
-GLEW_DIR=lib/glew-2.2.0
-GLFW_FETCH=curl --location 'https://github.com/glfw/glfw/archive/refs/tags/3.3.6.tar.gz' | tar zxf -
-GLFW_DIR=lib/glfw-3.3.6
+NANOVG_FETCH=curl --location --output $(NANOVG_ARCHIVE) "https://github.com/memononen/nanovg/archive/$(NANOVG_ARCHIVE)" && echo "$(NANOVG_CHECKSUM)  $(NANOVG_ARCHIVE)" | sha256sum --check && tar zxf $(NANOVG_ARCHIVE)
+NANOVG_DIR=lib/nanovg-$(NANOVG_VERSION)
+GLEW_VERSION=2.2.0
+GLEW_ARCHIVE=glew-$(GLEW_VERSION).tgz
+GLEW_CHECKSUM=d4fc82893cfb00109578d0a1a2337fb8ca335b3ceccf97b97e5cc7f08e4353e1
+GLEW_FETCH=curl --location --output $(GLEW_ARCHIVE) "https://github.com/nigels-com/glew/releases/download/glew-$(GLEW_VERSION)/$(GLEW_ARCHIVE)" && echo "$(GLEW_CHECKSUM)  $(GLEW_ARCHIVE)" | sha256sum --check && tar zxf $(GLEW_ARCHIVE)
+GLEW_DIR=lib/glew-$(GLEW_VERSION)
+GLFW_VERSION=3.3.6
+GLFW_ARCHIVE=glfw-$(GLFW_VERSION).tar.gz
+GLFW_CHECKSUM=ed07b90e334dcd39903e6288d90fa1ae0cf2d2119fec516cf743a0a404527c02
+GLFW_FETCH=curl --location --output $(GLFW_ARCHIVE) "https://github.com/glfw/glfw/archive/refs/tags/$(GLFW_VERSION).tar.gz" && echo "$(GLFW_CHECKSUM)  $(GLFW_ARCHIVE)" | sha256sum --check && tar zxf $(GLFW_ARCHIVE)
+GLFW_DIR=lib/glfw-$(GLFW_VERSION)
 
 # If you prefer to fetch the current development version of e.g. nanovg:
 #NANOVG_FECTH=git clone https://github.com/memononen/nanovg.git
