@@ -21,9 +21,9 @@ build/assets.o: src/assets.c $(CEDROCC)
 
 LIBRARIES:=build/assets.o $(LIBRARIES) $(NANOVG_DIR)/build/libnanovg.a $(GLEW_DIR)/build/lib/libGLEW.a -ldl -lX11 -lpthread $(GLFW_DIR)/build/src/libglfw3.a -lGL -lGLU -lm
 # “C99 compliance / user side #306” https://github.com/nanovg/nanovg/issues/306
-CFLAGS:=$(CFLAGS) -I$(NANOVG_DIR)/src -DNANOVG_GLEW -I$(GLEW_DIR)/include -I$(GLFW_DIR)/include
+CFLAGS:=$(CFLAGS) -I$(NANOVG_DIR)/src -DNANOVG_GLEW -I$(GLEW_DIR)/include -I$(GLFW_DIR)/include -L$(GLEW_DIR)/build -L$(GLFW_DIR)/build -std=c11
 
-$(NANOVG_DIR)/build/libnanovg.a: $(NANOVG_DIR)/build $(NANOVG_DIR)/src/*
+$(NANOVG_DIR)/build/libnanovg.a: $(NANOVG_DIR)/build $(NANOVG_DIR)/src/* $(GLEW_DIR)/build/lib/libGLEW.a $(GLFW_DIR)/build/src/libglfw3.a
 	$(MAKE) -C $(NANOVG_DIR)/build config=release nanovg
 $(GLEW_DIR)/build/lib/libGLEW.a: $(GLEW_DIR)/build $(GLEW_DIR)/src/*
 	$(MAKE) -C $(GLEW_DIR)/build
@@ -31,9 +31,10 @@ $(GLFW_DIR)/build/src/libglfw3.a: $(GLFW_DIR)/build $(GLFW_DIR)/src/*
 	$(MAKE) -C $(GLFW_DIR)/build
 
 $(NANOVG_DIR)/src/*: $(NANOVG_DIR)
-$(NANOVG_DIR)/build: $(NANOVG_DIR)
+$(NANOVG_DIR)/build: $(NANOVG_DIR) $(GLEW_DIR)/build $(GLFW_DIR)/build
 	@echo '============== Generating nanovg makefile =============='
-	mkdir -p "$@" && cd $(NANOVG_DIR) && premake4 gmake
+# Replace pkg-config so that we do not depend on having glfw-devel installed.
+	mkdir -p "$@" && cd $(NANOVG_DIR) && sed -i 's/"`pkg-config --libs glfw3`"/"-lglfw3"/' premake4.lua && premake4 gmake
 
 $(GLEW_DIR)/src/*: $(GLEW_DIR)
 $(GLEW_DIR)/build: $(GLEW_DIR)
