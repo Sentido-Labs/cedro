@@ -3002,7 +3002,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           fprintf(out, ";\n#error %s: %s\n", strerror(errno), included_file);
           break;
         }
-        const char*    basename = strrchr(included_file, '/');
+        const char* basename = strrchr(included_file, '/');
         if (not basename) basename = strrchr(included_file, '\\');
         if (basename) ++basename; else basename = included_file;
         fprintf(out, "[%lu] = { /* %s */\n0x%02X",
@@ -3031,7 +3031,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             goto exit;
           }
         }
-        ++m;
+        m = skip_space_forward(m + 1, m_end);
         continue;
       }
 
