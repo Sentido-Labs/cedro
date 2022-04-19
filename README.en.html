@@ -887,9 +887,9 @@ int main(int argc, char* argv[])
       </table>
       <p>The difference between <code>break …</code>, <code>continue …</code>, and <code>goto …</code> is in the restrictions:</p>
       <ul>
-        <li><code>break <em>etiqueta</em></code> only allows forward jumps, and the label must go right after the end of the loop.</li>
-        <li><code>continue <em>etiqueta</em></code> only backward jumps, and the label must go right before the start of the loop.</li>
-        <li><code>goto <em>etiqueta</em></code> has no restrictions.</li>
+        <li><code>break <em>label</em></code> only allows forward jumps, and the label must go right after the end of the loop.</li>
+        <li><code>continue <em>label</em></code> only backward jumps, and the label must go right before the start of the loop.</li>
+        <li><code>goto <em>label</em></code> has no restrictions.</li>
       </uL>
 
       <p>It is part of the <a href="#deferred-resource-release">deferred resource release</a> macro:</p>
@@ -984,8 +984,8 @@ int main(int argc, char* argv[])
         <tr><td><code>$ bin/cedrocc test/defer-label-break.c -std=c99 -pedantic-errors -Wall -fanalyzer -o /tmp/find-number-decomposition
 $ valgrind --leak-check=yes /tmp/find-number-decomposition
 …
-Saltamos de x=11 a x=37
-Encontrada 157 = 58 + 99
+Jump from x=11 to x=37
+Found 157 = 58 + 99
 ==1077== 
 ==1077== HEAP SUMMARY:
 ==1077==     in use at exit: 0 bytes in 0 blocks
