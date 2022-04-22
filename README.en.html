@@ -1059,6 +1059,53 @@ Found 157 = 58 + 99
         </tr>
       </table>
 
+      <p>It can be used in initializers, in which case the braces can be omitted:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+
+#pragma Cedro 1.0
+
+typedef struct {
+  const char* a;
+  const char* b;
+} char_slice_t;
+const char* text = "uno dos tres";
+
+/** Extract "dos" from `text`. */
+int main(void)
+{
+  char_slice_t slice = <b>text</b>[<b>4</b>..+<b>3</b>]</b>;
+  const char* cursor;
+  for (cursor = slice.a; cursor != slice.b; ++cursor) {
+    putc(*cursor, stderr);
+  }
+  putc('\n', stderr);
+}</code>
+          </td><td><br/><br/>
+            <code>#include &lt;stdio.h&gt;
+
+typedef struct {
+  const char* a;
+  const char* b;
+} char_slice_t;
+const char* text = "uno dos tres";
+
+/** Extract "dos" from `text`. */
+int main(void)
+{
+  char_slice_t slice = { <b>&amp;text</b>[<b>4</b>], <b>&amp;text</b>[<b>4+3</b>] };
+  const char* cursor;
+  for (cursor = slice.a; cursor != slice.b; ++cursor) {
+    putc(*cursor, stderr);
+  }
+  putc('\n', stderr);
+}</code>
+          </td>
+        </tr>
+      </table>
+
       <p>This complete example shows a scrolling text marquee:</p>
       <table>
         <tr>

@@ -21,6 +21,8 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker closeBrackets    = Marker_from(src, "]", T_INDEX_END);
   Marker  openParenthesis = Marker_from(src, "(", T_INDEX_START);
   Marker closeParenthesis = Marker_from(src, ")", T_INDEX_END);
+  Marker  openBraces      = Marker_from(src, "{", T_BLOCK_START);
+  Marker closeBraces      = Marker_from(src, "}", T_BLOCK_END);
   Marker addressOf        = Marker_from(src, "&", T_OP_2);
 
   mut_Marker_array replacement = init_Marker_array(30);
@@ -53,6 +55,7 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
           .end_p   = a.start_p-1
         };
         size_t nesting = 0;
+        bool needs_braces_around_it = false;
         while (array.start_p is_not start) {
           switch ((array.start_p - 1)->token_type) {
             case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
@@ -67,11 +70,8 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
               break;
             case T_OP_14: /* = += -= *= /= %= <<= >>= &= ^= |= */
               if (not nesting) {
-                error_at(LANG("esta porción necesita llaves {...} alrededor",
-                              "this slice needs braces {...} around it"),
-                         array.start_p, markers, src);
-                destruct_Marker_array(&replacement);
-                return;
+                needs_braces_around_it = true;
+                goto found_pointer_expression_start;
               }
               break;
             default:
@@ -87,7 +87,12 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
         array.start_p = skip_space_forward(array.start_p, array.end_p);
         array.end_p   = skip_space_back   (array.start_p, array.end_p);
         bool array_is_expression = array.end_p - array.start_p > 1;
+
         replacement.len = 0;
+        if (needs_braces_around_it) {
+          push_Marker_array(&replacement, openBraces);
+          push_Marker_array(&replacement, space);
+        }
         push_Marker_array(&replacement, addressOf);
         if (array_is_expression) {
           push_Marker_array(&replacement, openParenthesis);
@@ -120,6 +125,10 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
         }
         append_Marker_array(&replacement, b);
         push_Marker_array(&replacement, closeBrackets);
+        if (needs_braces_around_it) {
+          push_Marker_array(&replacement, space);
+          push_Marker_array(&replacement, closeBraces);
+        }
         // Invalidates: markers
         size_t cursor_position = (size_t)(array.start_p - start);
         splice_Marker_array(markers, cursor_position,

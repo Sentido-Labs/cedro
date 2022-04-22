@@ -1058,6 +1058,53 @@ Encontrada 157 = 58 + 99
         </tr>
       </table>
 
+      <p>Se puede usar en inicializadores, en cuyo caso las llaves pueden omitirse:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+
+#pragma Cedro 1.0
+
+typedef struct {
+  const char* a;
+  const char* b;
+} char_slice_t;
+const char* texto = "uno dos tres";
+
+/** Extrae "dos" de `texto`. */
+int main(void)
+{
+  char_slice_t porción = <b>texto</b>[<b>4</b>..+<b>3</b>]</b>;
+  const char* cursor;
+  for (cursor = porción.a; cursor != porción.b; ++cursor) {
+    putc(*cursor, stderr);
+  }
+  putc('\n', stderr);
+}</code>
+          </td><td><br/><br/>
+            <code>#include &lt;stdio.h&gt;
+
+typedef struct {
+  const char* a;
+  const char* b;
+} char_slice_t;
+const char* texto = "uno dos tres";
+
+/** Extrae "dos" de `texto`. */
+int main(void)
+{
+  char_slice_t porción = { <b>&amp;texto</b>[<b>4</b>], <b>&amp;texto</b>[<b>4+3</b>] };
+  const char* cursor;
+  for (cursor = porción.a; cursor != porción.b; ++cursor) {
+    putc(*cursor, stderr);
+  }
+  putc('\n', stderr);
+}</code>
+          </td>
+        </tr>
+      </table>
+
       <p>Este ejemplo completo muestra un letrero con texto deslizante:</p>
       <table>
         <tr>
