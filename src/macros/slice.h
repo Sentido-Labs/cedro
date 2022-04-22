@@ -31,12 +31,20 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
         .start_p = find_line_start(cursor, start, &err),
         .end_p = cursor
       };
-      if (err.message) break;
+      if (err.message) {
+        error_at(err.message, err.position, markers, src);
+        err.message = NULL;
+        break;
+      }
       Marker_array_mut_slice b = {
         .start_p = cursor + 1,
         .end_p = find_line_end(cursor, end, &err),
       };
-      if (err.message) break;
+      if (err.message) {
+        error_at(err.message, err.position, markers, src);
+        err.message = NULL;
+        break;
+      }
       if (a.start_p > start+2 and b.end_p is_not end and
           (a.start_p-1)->token_type is T_INDEX_START and
           (b.end_p    )->token_type is T_INDEX_END) {
@@ -62,7 +70,8 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
                 error_at(LANG("esta porción necesita llaves {...} alrededor",
                               "this slice needs braces {...} around it"),
                          array.start_p, markers, src);
-                goto exit;
+                destruct_Marker_array(&replacement);
+                return;
               }
               break;
             default:
@@ -123,13 +132,7 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
       }
     }
     ++cursor;
-  } exit:
+  }
 
   destruct_Marker_array(&replacement);
-
-  if (err.message) {
-    eprintln("Error: %lu: %s",
-             line_number(src, markers, err.position), err.message);
-    err.message = NULL;
-  }
 }
