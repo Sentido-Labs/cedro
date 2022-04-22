@@ -45,7 +45,7 @@ macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
         err.message = NULL;
         break;
       }
-      if (a.start_p > start+2 and b.end_p is_not end and
+      if (a.start_p > start+1 and b.end_p is_not end and
           (a.start_p-1)->token_type is T_INDEX_START and
           (b.end_p    )->token_type is T_INDEX_END) {
         Marker_array_mut_slice array = {
