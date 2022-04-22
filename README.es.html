@@ -1003,6 +1003,9 @@ Encontrada 157 = 58 + 99
     <section id="slice-notation">
       <h2>Notación para porciones de ristras: <a class="anchor" href="#slice-notation">#slice-notation</a></h2>
       <p>Convierte <code><b>ristra</b>[<b>inicio</b>..<b>fin</b>]</code> en <code>&amp;<b>ristra</b>[<b>inicio</b>], &amp;<b>ristra</b>[<b>fin</b>]</code>. El valor ristra/puntero <code>ristra</code> puede ser simplemente un identificador o en general una expresión que, al evaluarse dos veces, no debe tener efecto secundario alguno, tal <a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Duplication-of-Side-Effects.html#Duplication-of-Side-Effects">como las macros del preprocesador C estándar</a>.</p>
+      <p>Podemos usarlo para mejorar el
+        <a href="#loop-macros-vec-example">ejemplo de vectores</a>
+        de la sección de macros de bucles:</p>
       <table>
         <tr>
           <td>
@@ -1469,14 +1472,14 @@ const char* const TipoDePieza_CADENA[] = {
       <table>
         <tr>
           <td>
-            <code>#foreach { {<b>TIPO</b>, <b>VALORES</b>} {                                \
-  { <b>TipoDePieza</b>, {<b>ESPACIO</b>, <b>NÚMERO</b>,                          \
-                  <b>PALABRA_CLAVE</b>, <b>IDENTIFICADOR</b>, <b>OPERADOR</b>} },\
-  { <b>ConfDePúa</b>, {<b>ENTRADA</b>, <b>SALIDA</b>} }                          \
+            <code>#foreach { {<b>TIPO</b>, <b>PREFIJO</b>, <b>VALORES</b>} {                            \
+  { <b>TipoDePieza</b>, <b>T_</b>, {<b>ESPACIO</b>, <b>NÚMERO</b>,                           \
+                      <b>PALABRA_CLAVE</b>, <b>IDENTIFICADOR</b>, <b>OPERADOR</b>} }, \
+  { <b>ConfDePúa</b>,   <b>M_</b>, {<b>ENTRADA</b>, <b>SALIDA</b>} }                         \
   }
 typedef enum {
 #foreach { <b>V</b> <b>VALORES</b>
-  T_##<b>V</b>#,
+  PREFIJO##<b>V</b>#,
 #foreach }
 } <b>TIPO</b>;
 
@@ -1489,11 +1492,11 @@ const char* const <b>TIPO</b>##_CADENA[] = {
 #foreach }</code>
           </td><td>
             <code>typedef enum {
-  T_<b>ESPACIO</b>,
-  T_<b>NÚMERO</b>,
-  T_<b>PALABRA_CLAVE</b>,
-  T_<b>IDENTIFICADOR</b>,
-  T_<b>OPERADOR</b>
+  <b>T_ESPACIO</b>,
+  <b>T_NÚMERO</b>,
+  <b>T_PALABRA_CLAVE</b>,
+  <b>T_IDENTIFICADOR</b>,
+  <b>T_OPERADOR</b>
 } <b>TipoDePieza</b>;
 
 const char* const <b>TipoDePieza</b>_CADENA[] = {
@@ -1505,8 +1508,8 @@ const char* const <b>TipoDePieza</b>_CADENA[] = {
 };
 
 typedef enum {
-  T_<b>ENTRADA</b>,
-  T_<b>SALIDA</b>
+  <b>M_ENTRADA</b>,
+  <b>M_SALIDA</b>
 } <b>ConfDePúa</b>;
 
 const char* const <b>ConfDePúa</b>_CADENA[] = {
@@ -1611,7 +1614,8 @@ int main(void)
         </tr>
       </table>
 
-      <p>Este ejemplo completo define variantes para los tipos
+      <p id="loop-macros-vec-example">Este ejemplo completo
+        define variantes para los tipos
         <code>float</code>, <code>str</code>, y <code>cstr</code>
         de una ristra/vector de capacidad variable
         con una función llamada <code>añade_Vec_##T()</code> para cada uno.

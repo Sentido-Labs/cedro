@@ -13,3 +13,13 @@ const char* const TipoDePieza_CADENA[] = {
   "IDENTIFICADOR",
   "OPERADOR"
 };
+
+typedef enum {
+  M_ENTRADA,
+  M_SALIDA
+} ConfDePúa;
+
+const char* const ConfDePúa_CADENA[] = {
+  "ENTRADA",
+  "SALIDA"
+};

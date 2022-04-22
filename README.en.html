@@ -1004,6 +1004,9 @@ Found 157 = 58 + 99
     <section id="slice-notation">
       <h2>Notation for array slices: <a class="anchor" href="#slice-notation">#slice-notation</a></h2>
       <p>Converts <code><b>array</b>[<b>start</b>..<b>end</b>]</code> into <code>&amp;<b>array</b>[<b>start</b>], &amp;<b>array</b>[<b>end</b>]</code>. The array/pointer value <code>array</code> can be just an identifier or in general an expression which, as it will be evaluated twice, must not have any side effects, just <a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Duplication-of-Side-Effects.html#Duplication-of-Side-Effects">like standard C preprocessor macros</a>.</p>
+      <p>We can use it to improve the
+        <a href="#loop-macros-vec-example">vector example</a>
+        from the loop macro section:</p>
       <table>
         <tr>
           <td>
@@ -1042,7 +1045,7 @@ Found 157 = 58 + 99
         </tr>
       </table>
 
-      <p>If the slice is composed of more than one token, it will be wrapped in parentheses to make sure it’s correct.</p>
+      <p>If the slice is composed of more than one token, it will be wrapped in parentheses to make sure it is correct.</p>
       <table>
         <tr>
           <td>
@@ -1469,14 +1472,14 @@ const char* const TokenType_STRING[] = {
       <table>
         <tr>
           <td>
-            <code>#foreach { {<b>TYPE</b>, <b>VALUES</b>} {                       \
-  { <b>TokenType</b>, {<b>SPACE</b>, <b>NUMBER</b>,                    \
-                <b>KEYWORD</b>, <b>IDENTIFIER</b>, <b>OPERATOR</b>} }, \
-  { <b>PinConfig</b>, {<b>INPUT</b>, <b>OUTPUT</b>} }                  \
+            <code>#foreach { {<b>TYPE</b>, <b>PREFIX</b>, <b>VALUES</b>} {                   \
+  { <b>TokenType</b>, <b>T_</b>, {<b>SPACE</b>, <b>NUMBER</b>,                    \
+                    <b>KEYWORD</b>, <b>IDENTIFIER</b>, <b>OPERATOR</b>} }, \
+  { <b>PinConfig</b>, <b>M_</b>, {<b>INPUT</b>, <b>OUTPUT</b>} }                  \
   }
 typedef enum {
 #foreach { <b>V</b> <b>VALUES</b>
-  T_##<b>V</b>#,
+  PREFIX##<b>V</b>#,
 #foreach }
 } <b>TYPE</b>;
 
@@ -1489,11 +1492,11 @@ const char* const <b>TYPE</b>##_STRING[] = {
 #foreach }</code>
           </td><td>
             <code>typedef enum {
-  T_<b>SPACE</b>,
-  T_<b>NUMBER</b>,
-  T_<b>KEYWORD</b>,
-  T_<b>IDENTIFIER</b>,
-  T_<b>OPERATOR</b>
+  <b>T_SPACE</b>,
+  <b>T_NUMBER</b>,
+  <b>T_KEYWORD</b>,
+  <b>T_IDENTIFIER</b>,
+  <b>T_OPERATOR</b>
 } <b>TokenType</b>;
 
 const char* const <b>TokenType</b>_STRING[] = {
@@ -1505,8 +1508,8 @@ const char* const <b>TokenType</b>_STRING[] = {
 };
 
 typedef enum {
-  T_<b>INPUT</b>,
-  T_<b>OUTPUT</b>
+  <b>M_INPUT</b>,
+  <b>M_OUTPUT</b>
 } <b>PinConfig</b>;
 
 const char* const <b>PinConfig</b>_STRING[] = {
@@ -1612,7 +1615,8 @@ int main(void)
         </tr>
       </table>
 
-      <p>This complete example defines variants for the types
+      <p id="loop-macros-vec-example">This complete example
+        defines variants for the types
         <code>float</code>, <code>str</code>, y <code>cstr</code>
         of an array/vector of variable length
         with a function called <code>append_Vec_##T()</code> for each one.

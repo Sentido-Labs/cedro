@@ -1,15 +1,19 @@
 #pragma Cedro 1.0
-#foreach { VALORES {{ESPACIO, NÚMERO,                           \
-                     PALABRA_CLAVE, IDENTIFICADOR, OPERADOR}}
+#foreach { {TIPO, PREFIJO, VALORES} {                        \
+  { TipoDePieza, T_, {ESPACIO, NÚMERO,                       \
+                  PALABRA_CLAVE, IDENTIFICADOR, OPERADOR} }, \
+  { ConfDePúa,   M_, {ENTRADA, SALIDA} }                     \
+  }
 typedef enum {
 #foreach { V VALORES
-  T_##V#,
+  PREFIJO##V#,
 #foreach }
-} TipoDePieza;
+} TIPO;
 
-const char* const TipoDePieza_CADENA[] = {
+const char* const TIPO##_CADENA[] = {
 #foreach { V VALORES
   #V#,
 #foreach }
 };
+
 #foreach }
