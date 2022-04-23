@@ -276,9 +276,14 @@ main(int argc, char* argv[])
 
         vg @nvg... BeginFrame(winWidth, winHeight, pxRatio);
 
+        /* Calling glFinish() before polling the events reduces latency
+           because we get the values after all pending GL operations
+           are done, closer to the time when we swap buffers. */
         glFinish();
 
         double t = glfwGetTime();
+        glfwPollEvents();
+        window @glfw... GetCursorPos(&mx, &my);
 
         const double r = 100;
         const double period = 0.5/*s*/;
@@ -306,9 +311,6 @@ main(int argc, char* argv[])
                                @nvg...
                                HSLA(0.34, 0.73, 0.20*luma, 255),
                                HSLA(0.34, 0.73, 0.67*luma, 255));
-
-        glfwPollEvents();
-        window @glfw... GetCursorPos(&mx, &my);
 
         vg @nvg...
                 Save(),
@@ -338,19 +340,20 @@ main(int argc, char* argv[])
                 Text(10, fbHeight - 40,
                      (snprintf(text_buffer, sizeof(text_buffer),
                                "X: %4.0f  α: %6.2f  β: %6.2f  θ: %6.2f"
-                               " luma: %1.2f",
+                               "  luma: %1.2f",
                                mx,
-                               fmod(alpha_x * rad_to_deg, 360.0),
-                               fmod( beta_x * rad_to_deg, 360.0),
-                               fmod(theta_x * rad_to_deg, 360.0), luma),
+                               /* Adding 360 avoids negative numbers. */
+                               fmod(alpha_x * rad_to_deg + 360.0, 360.0),
+                               fmod( beta_x * rad_to_deg + 360.0, 360.0),
+                               fmod(theta_x * rad_to_deg + 360.0, 360.0), luma),
                       text_buffer), NULL),
                 Text(10, fbHeight - 18,
                      (snprintf(text_buffer, sizeof(text_buffer),
                                "Y: %4.0f  α: %6.2f  β: %6.2f  θ: %6.2f",
                                my,
-                               fmod(alpha_y * rad_to_deg, 360.0),
-                               fmod( beta_y * rad_to_deg, 360.0),
-                               fmod(theta_y * rad_to_deg, 360.0)),
+                               fmod(alpha_y * rad_to_deg + 360.0, 360.0),
+                               fmod( beta_y * rad_to_deg + 360.0, 360.0),
+                               fmod(theta_y * rad_to_deg + 360.0, 360.0)),
                       text_buffer), NULL),
                 Restore();
 
