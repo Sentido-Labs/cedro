@@ -1540,9 +1540,7 @@ write_error_at(const char * message,
                FILE* out)
 {
   fprintf(out, "\n#line %lu", original_line_number(cursor->start, src));
-  fprintf(out, "\n#error ");
-  fprintf(out, message);
-  fprintf(out, "\n");
+  fprintf(out, "\n#error %s\n", message);
 }
 
 /** ISO/IEC 9899:TC3 WG14/N1256 §6.7.8 page 126:
@@ -2778,7 +2776,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
 
     if (options.discard_comments and m->token_type is T_COMMENT) {
       if (options.discard_space and not eol_pending and
-          m+1 is_not m_end and (m+1)->token_type is T_SPACE) ++m;
+          m+1 is_not m_end and (m+1)->token_type is T_SPACE) {
+        if (++m is m_end) break;
+      }
       if (pending_space) {
         if (not write_pending_space(&line_directive_pending, src_file_name,
                                     pending_space, m_end, src,
@@ -3000,6 +3000,12 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         if (err) {
           print_file_error(err, included_file, &bin);
           fprintf(out, ";\n#error %s: %s\n", strerror(errno), included_file);
+          destruct_Byte_array(&file_name);
+          break;
+        }
+        if (bin.len is 0) {
+          fprintf(out, ";\n#error file is empty: %s\n", included_file);
+          destruct_Byte_array(&file_name);
           break;
         }
         const char* basename = strrchr(included_file, '/');
@@ -3054,7 +3060,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
               options.insert_line_directives = false;
             }
           }
-          rest += len;
+          // Not used afterwards: rest += len;
           previous_marker_end = m->start;
           m = unparse_foreach((Marker_array_slice){ m, m_end },
                               previous_marker_end,
@@ -3136,7 +3142,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         m = skip_space_forward(m + 1, m_end);
         continue;
       } else if (m->len is 1 and replacements) {
-        ++m;
+        if (++m is m_end) break;
         // Token as string literal like in the standard #define.
         // https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing
         // Cedro extension: conditional operator, e.g. `#,`
@@ -3307,11 +3313,11 @@ unparse(Marker_array_slice markers,
   }
 
   mut_Replacement_array replacements = {0};
-  m = unparse_fragment(m, markers.end_p, 0,
-                       src, original_src_len,
-                       src_file_name, NULL,
-                       &replacements, false,
-                       options, out);
+  unparse_fragment(m, markers.end_p, 0,
+                   src, original_src_len,
+                   src_file_name, NULL,
+                   &replacements, false,
+                   options, out);
   destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
 
   if (error_buffer[0]) {
