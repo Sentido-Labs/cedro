@@ -100,7 +100,7 @@ bin/%: src/%.c Makefile bin/$(NAME)cc
 	@mkdir -p bin
 	bin/$(NAME)cc $< -I src $(CFLAGS_MINIZ) -o $@ $(OPTIMIZATION)
 
-%.zip: % %/** bin/zip-template template/*
+%.zip: % %/* %/*/* bin/zip-template
 	bin/zip-template $@ $<
 
 doc:
