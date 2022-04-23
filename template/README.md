@@ -3,13 +3,26 @@
 Just an example of using Cedro together with some utility functions,
 that you can use as base for new programs.
 
-It includes my customized hash table library derived from
+The template includes several project drafts, that can be activated
+in the generated Makefile:
+
+- The default is a command line (“CLI”) tool that identifies the type of each argument, and uses a btree to count how many times each one is repeated. This gets built if you do not modify the Makefile.
+  It uses a customized hash table library derived from
 [khash](http://attractivechaos.github.io/klib/#About),
 and also Josh Baker’s [btree.c](https://github.com/tidwall/btree.c).
-
   - [main](doc/api/main_8c.html)
   - [hash-table](doc/api/hash-table_8h.html)
   - [btree](doc/api/btree_8c.html)
+
+- Graphical application with nanovg. Downloads (with curl) and compiles automatically nanovg, GLFW, and GLEW.
+
+    include Makefile.nanovg.mk
+    MAIN=src/main.nanovg.c
+
+- HTTP/1.1 server using libuv. Downloads (with curl) and compiles automatically libuv.
+
+    include Makefile.libuv.mk
+    MAIN=src/main.libuv.c
 
 ## Build
 `make` to build the executable as `bin/{template}`,
