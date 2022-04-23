@@ -33,8 +33,8 @@ using [Doxygen](https://www.doxygen.nl/index.html).
 TODO: put license here (also `src/main.cc`), for instance GPL or MIT.
 You can get help picking one at: https://choosealicense.com/
 
-The copy of Cedro under `tools/cedro/` has the same licence as Cedro,
-but that does not affect your code if you do not include or link it
+The copy of Cedro under `tools/cedro/` is under the Apache License 2.0,
+and anyway it does not affect your code if you do not include or link it
 into your program.
 Here it is used only to process the source code, and the result
 is of course not a derivative work of Cedro.
