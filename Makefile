@@ -73,11 +73,11 @@ bin/$(NAME):       src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 bin/$(NAME)cc-debug: src/cedrocc.c Makefile bin/$(NAME)-debug
 	@mkdir -p bin
 	bin/$(NAME)-debug --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@
-	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
+	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ -o /dev/null $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 bin/$(NAME)cc:       src/cedrocc.c Makefile bin/$(NAME)
 	@mkdir -p bin
 	bin/$(NAME)       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@  $(OPTIMIZATION)
-	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
+	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ -o /dev/null $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 
 bin/$(NAME)-new-debug: src/cedro-new.c template.zip Makefile bin/$(NAME)cc-debug
 	@mkdir -p bin
@@ -111,22 +111,24 @@ test: src/$(NAME)-test.c test/* bin/$(NAME) bin/$(NAME)-debug
 	@bin/$@
 	@for f in test/*.c; do echo -n "$${f} ... "; OPTS=""; if [ -z "$${f##*-line-directives*}" ]; then OPTS="--insert-line-directives"; fi; ERROR=$$(bin/$(NAME) $${OPTS} "$${f}" | bin/$(NAME) - $${OPTS} --validate="test/reference/$${f##test/}" 2>&1); if [ "$$ERROR" ]; then echo "ERROR"; echo "$${ERROR}"; exit 7; else echo "OK"; fi; done
 
-# gcc -fanalyzer needs at least GCC 10.
-# http://cppcheck.sourceforge.net/
+# gcc -fanalyzer needs at least GCC 11. GCC 10 gives false positives.
+# https://valgrind.org/
 # https://sparse.docs.kernel.org/en/latest/
+# http://cppcheck.sourceforge.net/  https://github.com/danmar/cppcheck
 check: bin/$(NAME)
-	mkdir -p doc/cppcheck
+# The sed filter is to avoid “warning: directive in macro's argument list”.
 	$(CPP) src/$(NAME).c | sed 's/^\(\s*\)# /\1\/\/ # /' >bin/$(NAME).i
-	sparse -Wall bin/$(NAME).i
-	valgrind --leak-check=yes bin/$(NAME) src/$(NAME)cc.c >/dev/null
+	@if which sparse >/dev/null; then echo 'Checking with sparse...'; sparse -Wall bin/$(NAME).i; else echo 'sparse not installed.'; fi
+	@if which valgrind >/dev/null; then echo 'Checking with Valgrind...'; valgrind --leak-check=yes bin/$(NAME) src/$(NAME)cc.c >/dev/null; else echo 'valgrind not installed.'; fi
 	@echo
-	@echo This was useful when Cedro was simpler, but it has become way too slow:
-	@echo '    cppcheck bin/$(NAME).i --std=c99 --enable=performance,portability --xml 2>&1 | cppcheck-htmlreport --report-dir=doc/cppcheck --source-dir=src'
-	@echo ''
-	@echo 'GCC should be version 11.2 or later because older releases such as 10.2 produce false negatives on Cedro.'
-	@echo 'Running GCC version: '`$(CC) -dumpversion`
-	$(CC) -fanalyzer -o /dev/null -std=c99 -pedantic-errors -Wall -Wno-unused-function -Wno-unused-const-variable src/$(NAME).c
-# Used to work:	scan-bin -o doc/clang bin/$(NAME)
+	@echo 'Omitted because Clang 12 gives several false positives:'
+	@echo "if which clang >/dev/null; then echo 'Checking with Clang...'; clang --analyze src/$(NAME).c; else echo 'clang not installed.'; fi"
+	@echo
+	@echo 'GCC should be version 11.2 or later because older releases such as 10.2 produce false positives on Cedro.'
+	@if which gcc >/dev/null; then echo 'Checking with gcc '`gcc -dumpversion`'...'; gcc -fanalyzer -c -o /dev/null -std=c99 src/$(NAME).c; fi
+	@echo
+	@echo 'Omitted because it has become way too slow (around 25 minutes):'
+	@echo "@if which cppcheck >/dev/null; then echo 'Checking with Cpphheck...'; cppcheck src/$(NAME).c --std=c99 --report-progress --enable=performance,portability; else echo 'cppcheck not installed.'; fi"
 
 clean:
 	rm -rf bin
