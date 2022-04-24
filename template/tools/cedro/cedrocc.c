@@ -74,11 +74,13 @@ typedef struct IncludePaths {
   mut_Byte_array text;
   mut_size_t_array lengths;
 } MUT_CONST_TYPE_VARIANTS(IncludePaths);
-void
-init_IncludePaths(mut_IncludePaths_p _, size_t initial_capacity)
+mut_IncludePaths
+init_IncludePaths(size_t initial_capacity)
 {
-  init_Byte_array(&_->text, initial_capacity * 40);
-  init_size_t_array(&_->lengths, initial_capacity);
+  return (mut_IncludePaths){
+    .text    = init_Byte_array(initial_capacity * 40),
+    .lengths = init_size_t_array(initial_capacity)
+  };
 }
 static void
 destruct_IncludePaths(mut_IncludePaths_p _)
@@ -193,8 +195,7 @@ find_include_file(IncludePaths_p _, Byte_array_slice path,
 {
   bool found = false;
 
-  mut_Byte_array path_buffer;
-  init_Byte_array(&path_buffer, 256);
+  mut_Byte_array path_buffer = init_Byte_array(256);
   size_t i = len_IncludePaths(_);
   while (i is_not 0) {
     --i;
@@ -318,8 +319,7 @@ include(const char* file_name,
     .insert_line_directives = true
   };
 
-  mut_Marker_array markers;
-  init_Marker_array(&markers, 8192);
+  mut_Marker_array markers = init_Marker_array(8192);
   auto destruct_Marker_array(&markers);
 
   mut_Byte_array src = {0};
@@ -331,7 +331,18 @@ include(const char* file_name,
   } else {
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
-    parse(&src, region, &markers);
+    Byte_p parse_end = parse(&src, region, &markers);
+    if (parse_end is_not region.end_p) {
+      if (fprintf(cc_stdin, "#line %lu \"%s\"\n#error %s\n",
+                  original_line_number((size_t)(parse_end - src.start), &src),
+                  file_name,
+                  error_buffer) < 0) {
+        eprintln(LANG("error al escribir la directiva #line",
+                      "error when writing #line directive"));
+      }
+      error_buffer[0] = 0;
+    }
+
     if (context->level is_not 0) {
       if (markers.len is 1) {
         // Included file is not a Cedro file.
@@ -356,11 +367,18 @@ include(const char* file_name,
       &include_callback,
       context
     };
+    mut_Replacement_array replacements = {0};
     unparse_fragment(markers.start, end_of_Marker_array(&markers), 0,
                      &src, original_src_len,
                      file_name, &include,
-                     NULL, false,
+                     &replacements, false,
                      options, cc_stdin);
+    destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
+
+    if (error_buffer[0]) {
+      fprintf(cc_stdin, "\n#error %s\n", error_buffer);
+      error_buffer[0] = 0;
+    }
   }
 
   return return_code;
@@ -379,9 +397,10 @@ int main(int argc, char* argv[])
 
   char* file_name = NULL;
 
-  mut_IncludeContext include_context = {0};
-  init_IncludePaths(&include_context.paths,       10);
-  init_IncludePaths(&include_context.paths_quote, 10);
+  mut_IncludeContext include_context = (mut_IncludeContext){
+    .paths       = init_IncludePaths(10),
+    .paths_quote = init_IncludePaths(10)
+  };
   auto destruct_IncludePaths(&include_context.paths);
   auto destruct_IncludePaths(&include_context.paths_quote);
 

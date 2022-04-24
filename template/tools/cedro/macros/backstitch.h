@@ -18,6 +18,9 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
   Marker empty     = {0};
   Marker_array_mut_slice object;
   Marker_array_mut_slice slice;
+
+  mut_Marker_array replacement = init_Marker_array(30);
+
   while (cursor is_not end) {
     if (cursor->token_type is T_BACKSTITCH) {
       Marker_mut_p first_segment_start = cursor + 1;
@@ -135,10 +138,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
 
           // TODO: check that there is a group opening before the line if
           //       it is not a statement.
-          mut_Marker_array replacement;
-          // The factor of 2 here is a heuristic to avoid relocations.
-          init_Marker_array(&replacement,
-                            2 * (size_t)(end_of_line - object.start_p));
+          replacement.len = 0;
           Marker_mut_p segment_start = first_segment_start;
           Marker_mut_p segment_end   = segment_start;
           do {
@@ -234,7 +234,7 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
                 if (slice.end_p->token_type is T_IDENTIFIER) break;
               }
               append_Marker_array(&replacement, slice);
-              mut_Marker affix = {0};
+              mut_Marker affix;
               if (empty_segments) {
                 // Modifying object is not a problem because there are
                 // no further segments, so we won’t use it again.
@@ -336,4 +336,6 @@ macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
     }
     ++cursor;
   }
+
+  destruct_Marker_array(&replacement);
 }

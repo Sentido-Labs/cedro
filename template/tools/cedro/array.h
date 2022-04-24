@@ -117,23 +117,26 @@ destruct_##T##_block(mut_##T##_mut_p cursor, T##_p end)                 \
   DESTRUCT_BLOCK                                                        \
 }                                                                       \
                                                                         \
-/** Initialize the array at the given pointer.                       \n \
+/** Initialize an array and return by value.                         \n \
     For local variables, use it like this:                           \n \
     \code{.c}                                                           \
-    mut_##T##_array things;                                          \n \
-    init_##T##_array(&things, 100); // We expect around 100 items.   \n \
+    // We expect around 100 items.                                   \n \
+    mut_##T##_array things = init_##T##_array(100);                  \n \
     {...}                                                            \n \
     destruct_##T##_array(&things);                                   \n \
     \endcode                                                            \
  */                                                                     \
-static void                                                             \
-init_##T##_array(mut_##T##_array_p _, size_t initial_capacity)          \
+static mut_##T##_array                                                  \
+init_##T##_array(size_t initial_capacity)                               \
 {                                                                       \
-  _->len = 0;                                                           \
-  _->capacity = initial_capacity + PADDING;                             \
-  _->start = _->capacity? malloc(_->capacity * sizeof(*_->start)): NULL;\
+  initial_capacity += PADDING;                                          \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
+  return (mut_##T##_array){                                             \
+    .len = 0,                                                           \
+    .capacity = initial_capacity,                                       \
+    .start = malloc(initial_capacity * sizeof(T))                       \
+  };                                                                    \
 }                                                                       \
 /** Heap-allocate and initialize a mut_##T##_array.                     \
  * This is the one that works more similarly to `new` in C++ or Java,   \
@@ -143,12 +146,13 @@ static mut_##T##_array_p                                                \
 new_##T##_array_p(size_t initial_capacity)                              \
 {                                                                       \
   mut_##T##_array_p _ = malloc(sizeof(T##_array));                      \
-  if (_) init_##T##_array(_, initial_capacity);                         \
+  if (_) *_ = init_##T##_array(initial_capacity);                       \
   return _;                                                             \
 }                                                                       \
 /** Release any resources allocated for this struct.                 \n \
     Safe to call also for objects initialized as views over constants   \
-    with `init_from_constant_##T##_array()`.                            \
+    with e.g. `T##_array a = (T##_array){ .start = "abc", .len = 3 }`,  \
+    and to be called again on an already-destructed array.              \
  */                                                                     \
 static void                                                             \
 destruct_##T##_array(mut_##T##_array_p _)                               \
@@ -166,7 +170,7 @@ destruct_##T##_array(mut_##T##_array_p _)                               \
     and release any resources allocated for it.                      \n \
     Same as `destruct_##T##_array(_); free(_);`.                     \n \
     Safe to call also for objects initialized as views over constants   \
-    with `init_from_constant_##T##_array()`.                            \
+    with e.g. `T##_array a = (T##_array){ .start = "abc", .len = 3 }`.  \
  */                                                                     \
 static void                                                             \
 free_##T##_array(mut_##T##_array_p _)                                   \
@@ -198,30 +202,38 @@ move_##T##_array(mut_##T##_array_p _)                                   \
                                                                         \
 /** Make sure that the array is ready to hold `minimum` elements,       \
     resizing the array if needed. */                                    \
-static void                                                             \
+static bool                                                             \
 ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 {                                                                       \
   minimum += PADDING;                                                   \
-  if (minimum <= _->capacity) return;                                   \
+  if (minimum <= _->capacity) return true;                              \
+  /* _->capacity == 0 means that _->start is a non-owned pointer. */    \
+  size_t new_size = minimum;                                            \
   if (_->capacity is 0) {                                               \
-    /* _->capacity == 0 means that _->start is a non-owned pointer. */  \
-    _->capacity = minimum + PADDING;                                    \
-    _->start = malloc(_->capacity * sizeof(*_->start));                 \
+    _->start = NULL;                                                    \
   } else {                                                              \
-    _->capacity = 2*_->capacity + PADDING;                              \
-    if (minimum > _->capacity) _->capacity = minimum;                   \
-    _->start = realloc((void*) _->start,                                \
-                       _->capacity * sizeof(*_->start));                \
+    new_size = 2*_->capacity + PADDING;                                 \
+    if (minimum > new_size) new_size = minimum;                         \
   }                                                                     \
+  mut_##T##_p new_block = realloc((void*) _->start,                     \
+                                  new_size * sizeof(*_->start));        \
+  if (!new_block) return false;                                         \
+  _->start    = new_block;                                              \
+  _->capacity = new_size;                                               \
+  return true;                                                          \
 }                                                                       \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
     resizing the array if needed. */                                    \
-static void                                                             \
+static bool                                                             \
 push_##T##_array(mut_##T##_array_p _, T item)                           \
 {                                                                       \
-  ensure_capacity_##T##_array(_, _->len + 1);                           \
-  *((mut_##T##_p) _->start + _->len++) = item;                          \
+  if (ensure_capacity_##T##_array(_, _->len + 1)) {                     \
+    *((mut_##T##_p) _->start + _->len++) = item;                        \
+    return true;                                                        \
+  } else {                                                              \
+    return false;                                                       \
+  }                                                                     \
 }                                                                       \
                                                                         \
 /** Splice the given `insert` slice in place of the removed elements,   \
@@ -233,7 +245,7 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     but copied to that array.                                           \
     The `insert` slice must belong to a different array, or be          \
     empty in which case it can be zero: `(T##_array_slice){0,0}` */     \
-static void                                                             \
+static bool                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
                    mut_##T##_array_p deleted,                           \
@@ -245,7 +257,9 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
       .start_p = (mut_##T##_p) _->start + position,                     \
       .end_p   = (mut_##T##_p) _->start + position + delete             \
     };                                                                  \
-    splice_##T##_array(deleted, deleted->len, 0, NULL, slice);          \
+    if (!splice_##T##_array(deleted, deleted->len, 0, NULL, slice)) {   \
+      return false;                                                     \
+    }                                                                   \
   } else {                                                              \
     destruct_##T##_block((mut_##T##_p) _->start + position,             \
                          _->start + position + delete);                 \
@@ -259,7 +273,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
     assert(insert.end_p >= insert.start_p);                             \
     insert_len = (size_t)(insert.end_p - insert.start_p);               \
     new_len += insert_len;                                              \
-    ensure_capacity_##T##_array(_, new_len);                            \
+    if (!ensure_capacity_##T##_array(_, new_len)) return false;         \
   }                                                                     \
                                                                         \
   size_t gap_end = position + insert_len;                               \
@@ -272,6 +286,7 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
            insert.start_p,                                              \
            insert_len * sizeof(*_->start));                             \
   }                                                                     \
+  return true;                                                          \
 }                                                                       \
                                                                         \
 /** Append the given `insert` slice to the array.                       \

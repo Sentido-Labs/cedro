@@ -28,42 +28,6 @@ typedef enum UTF8Error {
   UTF8_ERROR_INTERRUPTED_2 = 0x80,
   UTF8_ERROR_INTERRUPTED_3 = 0xC0
 } UTF8Error, * UTF8Error_p;
-/** Store the error message corresponding to the error code `err`.
- *
- * If you want to assume that the input is valid UTF-8, you can do this
- * to disable UTF-8 decoding error checking and get a notable boost
- * with optimizing compilers:
- *#define utf8_error(_) false
- *
- * If you want to do it only is specific cases, use `decode_utf8_unchecked()`.
- */
-static bool
-utf8_error(UTF8Error err)
-{
-  switch (err) {
-    case UTF8_NO_ERROR: return false;
-    case UTF8_ERROR:
-      error(LANG("Error descodificando UTF-8.",
-                 "UTF-8 decode error."));
-      break;
-    case UTF8_ERROR_OVERLONG:
-      error(LANG("Error UTF-8, secuencia sobrelarga.",
-                 "UTF-8 error, overlong sequence."));
-      break;
-    case UTF8_ERROR_INTERRUPTED_1:
-    case UTF8_ERROR_INTERRUPTED_2:
-    case UTF8_ERROR_INTERRUPTED_3:
-      error(LANG("Error UTF-8, secuencia interrumpida.",
-                 "UTF-8 error, interrupted sequence."));
-      break;
-    default:
-      error(LANG("Error UTF-8 inesperado: 0x%02X",
-                 "UTF-8 error, unexpected: 0x%02X"),
-            err);
-  }
-
-  return true;
-}
 
 /** Decode one Unicode® code point from a UTF-8 byte buffer.
  *  Assumes `end` > `cursor`.
@@ -104,7 +68,7 @@ decode_utf8(const uint8_t* cursor, const uint8_t* end, uint32_t* codepoint, UTF8
 }
 
 /** Decode one Unicode® code point from a UTF-8 byte buffer
- * without checkding for errors which makes it much faster.
+ * without checkding for errors which makes it faster.
  *  Assumes `end` > `cursor`.
  * @param[in] cursor current byte.
  * @param[in] end byte buffer end.
