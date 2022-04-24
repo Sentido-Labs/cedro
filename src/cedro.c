@@ -1970,17 +1970,16 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
     mut_TokenType token_type = T_NONE;
     Byte_mut_p token_end = NULL;
     if        ((token_end = preprocessor(cursor, end))) {
-      if (cursor + CEDRO_PRAGMA_LEN < token_end) {
-        if (mem_eq(CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
-          eprintln(
-              LANG("Aviso: %lu: #pragma Cedro duplicada.\n"
-                   "  puede hacer que algún código se malinterprete,\n"
-                   "  por ejemplo si usa `auto` con su significado normal.",
-                   "Warning: %lu: duplicated Cedro #pragma.\n"
-                   "  This might cause some code to be misinterpreted,\n"
-                   "  for instance if it uses `auto` in its standard meaning."),
-              original_line_number((size_t)(cursor - src->start), src));
-        }
+      if (cursor + CEDRO_PRAGMA_LEN < token_end and
+          mem_eq(CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
+        eprintln(
+            LANG("Aviso: %lu: #pragma Cedro duplicada.\n"
+                 "  puede hacer que algún código se malinterprete,\n"
+                 "  por ejemplo si usa `auto` con su significado normal.",
+                 "Warning: %lu: duplicated Cedro #pragma.\n"
+                 "  This might cause some code to be misinterpreted,\n"
+                 "  for instance if it uses `auto` in its standard meaning."),
+            original_line_number((size_t)(cursor - src->start), src));
       } else if (cursor + 8/*strlen("#assert ")*/ <= token_end and
                  mem_eq("#assert ", cursor, 8/*strlen("#assert ")*/)) {
         error(LANG("La directiva #assert es incompatible con Cedro.",
