@@ -16,6 +16,7 @@ LIBUV_DIR=lib/libuv-$(LIBUV_VERSION)
 LIBRARIES:=$(LIBRARIES) $(LIBUV_DIR)/.libs/libuv.a -lpthread -ldl
 # “C99 compliance / user side #306” https://github.com/libuv/libuv/issues/306
 CFLAGS:=$(CFLAGS) -I$(LIBUV_DIR)/include -D_XOPEN_SOURCE=600
+LDFLAGS:=$(LDFLAGS)
 
 $(LIBUV_DIR)/.libs/libuv.a: $(LIBUV_DIR)/.libs $(LIBUV_DIR)/src/*
 	cd $(LIBUV_DIR); $(MAKE) $(MAKEFLAGS)

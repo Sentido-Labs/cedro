@@ -3,10 +3,9 @@
 
 # nanovg needs: premake4
 # glew and glfw need: cmake, libgl-dev, glu-devel
-NANOVG_VERSION=5f65b43f7abf044a6afa60504382f52bc4325b92
+NANOVG_VERSION=616f18942c3e5864b2f3d615d56d901fcfed56e7
 NANOVG_ARCHIVE=$(NANOVG_VERSION).tar.gz
-NANOVG_CHECKSUM=3c67bfec3d5ff39f0fd9e565ed2f4dfdad44dcb70703b593079b227bdc209a30
-# --location is to follow redirects which GitHub uses.
+NANOVG_CHECKSUM=8c3061dd419ea7e7eea8b1510dfb53caf35339cbf8a4b0b235b6e058b220e34d
 NANOVG_FETCH=curl --location --output $(NANOVG_ARCHIVE) "https://github.com/memononen/nanovg/archive/$(NANOVG_ARCHIVE)" && echo "$(NANOVG_CHECKSUM)  $(NANOVG_ARCHIVE)" | sha256sum --check && tar zxf $(NANOVG_ARCHIVE)
 NANOVG_DIR=lib/nanovg-$(NANOVG_VERSION)
 GLEW_VERSION=2.2.0
@@ -30,7 +29,8 @@ build/assets.o: src/assets.c $(CEDROCC)
 
 LIBRARIES:=build/assets.o $(LIBRARIES) $(NANOVG_DIR)/build/libnanovg.a $(GLEW_DIR)/build/lib/libGLEW.a -ldl -lX11 -lpthread $(GLFW_DIR)/build/src/libglfw3.a -lGL -lGLU -lm
 # “C99 compliance / user side #306” https://github.com/nanovg/nanovg/issues/306
-CFLAGS:=$(CFLAGS) -I$(NANOVG_DIR)/src -DNANOVG_GLEW -I$(GLEW_DIR)/include -I$(GLFW_DIR)/include -L$(GLEW_DIR)/build -L$(GLFW_DIR)/build -std=c11
+CFLAGS:=$(CFLAGS) -I$(NANOVG_DIR)/src -DNANOVG_GLEW -I$(GLEW_DIR)/include -I$(GLFW_DIR)/include -std=c11
+LDFLAGS:=-L$(GLEW_DIR)/build -L$(GLFW_DIR)/build
 
 $(NANOVG_DIR)/build/libnanovg.a: $(NANOVG_DIR)/build $(NANOVG_DIR)/src/* $(GLEW_DIR)/build/lib/libGLEW.a $(GLFW_DIR)/build/src/libglfw3.a
 	$(MAKE) -C $(NANOVG_DIR)/build config=release nanovg
