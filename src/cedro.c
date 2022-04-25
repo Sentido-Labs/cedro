@@ -183,7 +183,7 @@ eprint(const char * const fmt, ...)
         error(LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
                    "Out of memory error. %lu bytes needed.\n"),
               needed);
-        return;
+        goto exit;
       }
       vsnprintf(buffer, needed, fmt, args);
     }
@@ -193,7 +193,7 @@ eprint(const char * const fmt, ...)
       uint32_t u = 0;
       UTF8Error err = UTF8_NO_ERROR;
       p = decode_utf8(p, end, &u, &err);
-      if (utf8_error(err, (size_t)(p - (uint8_t*)buffer))) return;
+      if (utf8_error(err, (size_t)(p - (uint8_t*)buffer))) goto exit;
       if (not u) break;
       if ((u & 0xFFFFFF00) is 0) {
         fputc((unsigned char) u, stderr); // Latin-1 / ISO-8859-1 / ISO-8859-15
@@ -210,6 +210,7 @@ eprint(const char * const fmt, ...)
         }
       }
     }
+ exit:
     if (buffer is_not &small[0]) free(buffer);
   }
 
@@ -404,12 +405,18 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
   va_list args;
   va_start(args, fmt);
 
-  if (not ensure_capacity_Byte_array(_, _->len + 80)) return false;
+  if (not ensure_capacity_Byte_array(_, _->len + 80)) {
+    va_end(args);
+    return false;
+  }
   size_t available = _->capacity - _->len;
   size_t needed = (size_t)
       vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   if (needed > available) {
-    if (not ensure_capacity_Byte_array(_, _->len + needed + 1)) return false;
+    if (not ensure_capacity_Byte_array(_, _->len + needed + 1)) {
+      va_end(args);
+      return false;
+    }
     available = _->capacity - _->len;
     vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   }
