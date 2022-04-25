@@ -132,6 +132,13 @@ init_##T##_array(size_t initial_capacity)                               \
   initial_capacity += PADDING;                                          \
   /* Used malloc() here instead of calloc() because we need realloc()   \
      later anyway, so better keep the exact same behaviour. */          \
+  /* This causes a false positive in clang 12’s analyzer:               \
+     “The right operand of '==' is a garbage value                      \
+     [core.UndefinedBinaryOperatorResult]”                              \
+     Using calloc here and memset after realloc makes that go away,     \
+     but there are still other false positives and a smarter analyzer   \
+     might catch future mistakes if we leve it uninitialized            \
+     so it is better this way. */                                       \
   return (mut_##T##_array){                                             \
     .len = 0,                                                           \
     .capacity = initial_capacity,                                       \
