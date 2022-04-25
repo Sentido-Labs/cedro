@@ -564,9 +564,9 @@ Marker_from(mut_Byte_array_p src, const char * const text, TokenType token_type)
   }
   mut_Marker marker;
   if (not match) {
-    match = end_of_Byte_array(src);
     Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
     splice_Byte_array(src, src->len, 0, NULL, insert);
+    match = end_of_Byte_array(src) - text_len;
   }
   init_Marker(&marker, match, match + text_len, src, token_type);
   marker.synthetic = true;
