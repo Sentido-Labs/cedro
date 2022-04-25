@@ -438,11 +438,9 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 static const char *
 as_c_string(mut_Byte_array_p _)
 {
-  if (_->len is _->capacity) {
-    if (not ensure_capacity_Byte_array(_, _->len + 1)) {
-      if (not _->len) return "ERROR<as_c_string()>";
-      --_->len;
-    }
+  if (_->len is _->capacity and
+      not ensure_capacity_Byte_array(_, _->len + 1)) {
+    return "OUT OF MEMORY ERROR IN as_c_string()";
   }
   *(_->start + _->len) = 0;
   return (const char *) _->start;
