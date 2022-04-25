@@ -2684,7 +2684,6 @@ exit:
   if (replacements->len > initial_replacements_len) {
     truncate_Replacement_array(replacements, initial_replacements_len);
   }
-  if (initial_replacements_len is 0) destruct_Replacement_array(replacements);
 
   return m;
 }
@@ -3322,7 +3321,7 @@ unparse(Marker_array_slice markers,
                    src_file_name, NULL,
                    &replacements, false,
                    options, out);
-  destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
+  destruct_Replacement_array(&replacements);
 
   if (error_buffer[0]) {
     fprintf(out, "\n#error %s\n", error_buffer);

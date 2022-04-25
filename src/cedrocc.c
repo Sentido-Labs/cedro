@@ -373,7 +373,7 @@ include(const char* file_name,
                      file_name, &include,
                      &replacements, false,
                      options, cc_stdin);
-    destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
+    destruct_Replacement_array(&replacements);
 
     if (error_buffer[0]) {
       fprintf(cc_stdin, "\n#error %s\n", error_buffer);
