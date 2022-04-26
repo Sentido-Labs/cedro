@@ -392,7 +392,7 @@ int main(int argc, char* argv[])
   if (cc) {
     eprintln(LANG("Usando CEDRO_CC='%s'\n", "Using CEDRO_CC='%s'\n"), cc);
   } else {
-    cc = "cc -x c -";
+    cc = "cc -x c - -x none";
   }
 
   char* file_name = NULL;
