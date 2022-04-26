@@ -373,7 +373,7 @@ include(const char* file_name,
                      file_name, &include,
                      &replacements, false,
                      options, cc_stdin);
-    destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
+    destruct_Replacement_array(&replacements);
 
     if (error_buffer[0]) {
       fprintf(cc_stdin, "\n#error %s\n", error_buffer);
@@ -392,7 +392,7 @@ int main(int argc, char* argv[])
   if (cc) {
     eprintln(LANG("Usando CEDRO_CC='%s'\n", "Using CEDRO_CC='%s'\n"), cc);
   } else {
-    cc = "cc -x c -";
+    cc = "cc -x c - -x none";
   }
 
   char* file_name = NULL;

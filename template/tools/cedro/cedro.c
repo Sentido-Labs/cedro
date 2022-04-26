@@ -183,7 +183,7 @@ eprint(const char * const fmt, ...)
         error(LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
                    "Out of memory error. %lu bytes needed.\n"),
               needed);
-        return;
+        goto exit;
       }
       vsnprintf(buffer, needed, fmt, args);
     }
@@ -193,7 +193,7 @@ eprint(const char * const fmt, ...)
       uint32_t u = 0;
       UTF8Error err = UTF8_NO_ERROR;
       p = decode_utf8(p, end, &u, &err);
-      if (utf8_error(err, (size_t)(p - (uint8_t*)buffer))) return;
+      if (utf8_error(err, (size_t)(p - (uint8_t*)buffer))) goto exit;
       if (not u) break;
       if ((u & 0xFFFFFF00) is 0) {
         fputc((unsigned char) u, stderr); // Latin-1 / ISO-8859-1 / ISO-8859-15
@@ -210,6 +210,7 @@ eprint(const char * const fmt, ...)
         }
       }
     }
+ exit:
     if (buffer is_not &small[0]) free(buffer);
   }
 
@@ -404,12 +405,18 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
   va_list args;
   va_start(args, fmt);
 
-  if (not ensure_capacity_Byte_array(_, _->len + 80)) return false;
+  if (not ensure_capacity_Byte_array(_, _->len + 80)) {
+    va_end(args);
+    return false;
+  }
   size_t available = _->capacity - _->len;
   size_t needed = (size_t)
       vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   if (needed > available) {
-    if (not ensure_capacity_Byte_array(_, _->len + needed + 1)) return false;
+    if (not ensure_capacity_Byte_array(_, _->len + needed + 1)) {
+      va_end(args);
+      return false;
+    }
     available = _->capacity - _->len;
     vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
   }
@@ -431,11 +438,9 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
 static const char *
 as_c_string(mut_Byte_array_p _)
 {
-  if (_->len is _->capacity) {
-    if (not ensure_capacity_Byte_array(_, _->len + 1)) {
-      if (not _->len) return "ERROR<as_c_string()>";
-      --_->len;
-    }
+  if (_->len is _->capacity and
+      not ensure_capacity_Byte_array(_, _->len + 1)) {
+    return "OUT OF MEMORY ERROR IN as_c_string()";
   }
   *(_->start + _->len) = 0;
   return (const char *) _->start;
@@ -559,9 +564,9 @@ Marker_from(mut_Byte_array_p src, const char * const text, TokenType token_type)
   }
   mut_Marker marker;
   if (not match) {
-    match = end_of_Byte_array(src);
     Byte_array_slice insert = { (Byte_p)text, (Byte_p)text + text_len };
     splice_Byte_array(src, src->len, 0, NULL, insert);
+    match = end_of_Byte_array(src) - text_len;
   }
   init_Marker(&marker, match, match + text_len, src, token_type);
   marker.synthetic = true;
@@ -2383,7 +2388,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
             arg.start_p, {0}
           })) {
         error("OUT OF MEMORY ERROR.");
-        return m_end;
+        m = m_end;
+        goto exit;
       }
       ++arg.start_p;
       break;
@@ -2425,7 +2431,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
           if (not push_Replacement_array(replacements,
                                          (Replacement){arg.start_p, {0}})) {
             error("OUT OF MEMORY ERROR.");
-            return m_end;
+            m = m_end;
+            goto exit;
           }
           ++arg.start_p;
           continue;
@@ -2679,7 +2686,6 @@ exit:
   if (replacements->len > initial_replacements_len) {
     truncate_Replacement_array(replacements, initial_replacements_len);
   }
-  if (initial_replacements_len is 0) destruct_Replacement_array(replacements);
 
   return m;
 }
@@ -3317,7 +3323,7 @@ unparse(Marker_array_slice markers,
                    src_file_name, NULL,
                    &replacements, false,
                    options, out);
-  destruct_Replacement_array(&replacements); // Not needed, it’s a NOP.
+  destruct_Replacement_array(&replacements);
 
   if (error_buffer[0]) {
     fprintf(out, "\n#error %s\n", error_buffer);
@@ -3445,7 +3451,8 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
                                     "Processed, line %lu"),
                      original_line_number(cursor->start, src))) {
       error("OUT OF MEMORY ERROR.");
-      return false;
+      destruct_Byte_array(&message);
+      goto exit;
     }
     debug_cursor(cursor, 5, as_c_string(&message), &markers, src);
     if (message.len) truncate_Byte_array(&message, 0);
@@ -3453,7 +3460,8 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
                                     "Reference, line %lu"),
                      original_line_number(cursor_ref->start, src_ref))) {
       error("OUT OF MEMORY ERROR.");
-      return false;
+      destruct_Byte_array(&message);
+      goto exit;
     }
     debug_cursor(cursor_ref, 5, as_c_string(&message), &markers_ref, src_ref);
     destruct_Byte_array(&message);
