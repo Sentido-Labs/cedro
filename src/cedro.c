@@ -2780,19 +2780,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
     }
 
     if (options.discard_comments and m->token_type is T_COMMENT) {
-      if (options.discard_space and not eol_pending and
-          m+1 is_not m_end and (m+1)->token_type is T_SPACE) {
-        if (++m is m_end) break;
-      }
-      if (pending_space) {
-        if (not write_pending_space(&line_directive_pending, src_file_name,
-                                    pending_space, m_end, src,
-                                    options, out)) {
-          m = m_end;
-          goto exit;
-        }
-        pending_space = NULL;
-      }
+      ++m;
       // Skipping the following T_SPACE token would work for a comment that
       // were alone in this line, but not if there is something in front of it.
       continue;
