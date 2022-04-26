@@ -3051,6 +3051,10 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                 (space.end_p is_not space.start_p and
                  *(space.end_p - 1) is '\\')) {
               options.insert_line_directives = false;
+              if (insert_line_directives) {
+                fputc('\n', out); // Keep line numbering without #line.
+                fputc('\\', out);
+              }
             }
           }
           // Not used afterwards: rest += len;
