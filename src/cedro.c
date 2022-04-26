@@ -2299,7 +2299,8 @@ get_replacement_value(Replacement_array_p _, Marker_p m, Byte_array_p src)
  */
 typedef int (*IncludeCallbackFunction_p)(Marker_p m, Byte_array_p src,
                                          FILE* cc_stdin,
-                                         void* const context);
+                                         void* const context,
+                                         Options options);
 typedef struct IncludeCallback {
   IncludeCallbackFunction_p function;
   void* context;
@@ -3106,7 +3107,8 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
       len = 8;// = strlen("#include")
       if (m->len >= len) {
         if (strn_eq("#include", (char*)rest, len) and include) {
-          int result = include->function(m, src, out, include->context);
+          int result = include->function(m, src, out,
+                                         include->context, options);
           if (result is -1) {
             // The included file is not a Cedro file, output the #include line.
           } else if (result is 0) {
@@ -3383,8 +3385,7 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
  */
 static bool
 validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
-            const char* src_file_name, const char* src_ref_file_name,
-            Options_p options)
+            const char* src_file_name, const char* src_ref_file_name)
 {
   bool result = true;
   mut_Marker_array markers     = init_Marker_array(8192);
@@ -3670,8 +3671,7 @@ int main(int argc, char** argv)
         print_file_error(err, opt_validate, &src_ref);
         err = 12;
       } else if (not validate_eq(&src,      &src_ref,
-                                 file_name, opt_validate,
-                                 &options)) {
+                                 file_name, opt_validate)) {
         err = 27;
       }
       destruct_Byte_array(&src_ref);

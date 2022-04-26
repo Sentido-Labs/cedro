@@ -41,6 +41,11 @@ usage_es =
     " y compila el resultado con «%s» mas los otros argumentos.\n"
     "    cedrocc -o fichero fichero.c\n"
     "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  Las opciones se pasan tal cual al compilador, excepto las que\n"
+    " empiecen con «--cedro:…» que corresponden a opciones de cedro,\n"
+    " por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».\n"
+    "  Las siguientes opciones son implícitas:\n"
+    "    --cedro:discard-comments --cedro:insert-line-directives\n"
     "  Además, para cada #include, si encuentra el fichero lo lée y\n"
     " si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado\n"
     " en lugar del #include.\n"
@@ -57,6 +62,11 @@ usage_en =
     " and compiles the result with “%s” plus the other arguments.\n"
     "    cedrocc -o fichero fichero.c\n"
     "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  The options get passed as is to the compiler, except for those that\n"
+    " start with “--cedro:…” that correspond to cedro options,\n"
+    " for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.\n"
+    "  The following options are the defaults:\n"
+    "    --cedro:discard-comments --cedro:insert-line-directives\n"
     "  In addition, for each #include, if it finds the file it reads it and\n"
     " if it finds `#pragma Cedro 1.0` processes it and inserts the result\n"
     " in place of the #include.\n"
@@ -224,16 +234,16 @@ typedef const struct IncludeContext IncludeContext,
   * const IncludeContext_p, * IncludeContext_mut_p;
 
 static int
-include(const char* file_name,
+include(const char* file_name, FILE* cc_stdin,
         mut_IncludeContext_p context,
-        FILE* cc_stdin);
+        Options options);
 
 /**
  * @param[in] m marker for the `#include` line.
  */
 static int
 include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
-                 void* context)
+                 void* context, Options options)
 {
   mut_IncludeContext_p _ = context;
 
@@ -268,7 +278,7 @@ include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
         append_path(&_->paths_quote, as_c_string(&s),
                     (size_t)(file_dir_name_end - as_c_string(&s)));
       }
-      return_code = include(as_c_string(&s), _, cc_stdin);
+      return_code = include(as_c_string(&s), cc_stdin, _, options);
       truncate_IncludePaths(&_->paths_quote, previous_len);
       if (return_code is EXIT_SUCCESS) {
         fprintf(cc_stdin, "\n#line %lu \"",
@@ -298,9 +308,9 @@ include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
    the Cedro `#pragma` so it does not need to be expanded in place.
  */
 static int
-include(const char* file_name,
+include(const char* file_name, FILE* cc_stdin,
         mut_IncludeContext_p context,
-        FILE* cc_stdin)
+        Options options)
 {
   if (context->level > 10) {
     eprintln(LANG("Error: demasiada recursión de «include» en: %s",
@@ -310,14 +320,6 @@ include(const char* file_name,
   }
 
   int return_code = EXIT_SUCCESS;
-
-  Options options = {
-    .apply_macros           = true,
-    .escape_ucn             = false,
-    .discard_comments       = false,
-    .discard_space          = false,
-    .insert_line_directives = true
-  };
 
   mut_Marker_array markers = init_Marker_array(8192);
   auto destruct_Marker_array(&markers);
@@ -404,6 +406,14 @@ int main(int argc, char* argv[])
   auto destruct_IncludePaths(&include_context.paths);
   auto destruct_IncludePaths(&include_context.paths_quote);
 
+  mut_Options options = {
+    .apply_macros           = true,
+    .escape_ucn             = false,
+    .discard_comments       = true,
+    .discard_space          = false,
+    .insert_line_directives = true
+  };
+
   // The number of arguments is either the same if no .c file name given,
   // or one less when extracting the .c file name.
   char** args = malloc(sizeof(char*) * (size_t)argc);
@@ -419,7 +429,36 @@ int main(int argc, char* argv[])
         continue;
       }
     }
-    if (str_eq(arg, "-h") or str_eq(arg, "--help")) {
+    if (strn_eq(arg, "--cedro:", 8/*strlen("--cedro:")*/)) {
+      /* Derived from cedro.c/main(): */
+      bool flag_value = !strn_eq("--cedro:no-", arg, 11);
+      if        (str_eq("--cedro:apply-macros", arg) or
+                 str_eq("--cedro:no-apply-macros", arg)) {
+        options.apply_macros = flag_value;
+      } else if (str_eq("--cedro:escape-ucn", arg) or
+                 str_eq("--cedro:no-escape-ucn", arg)) {
+        options.escape_ucn = flag_value;
+      } else if (str_eq("--cedro:discard-comments", arg) or
+                 str_eq("--cedro:no-discard-comments", arg)) {
+        options.discard_comments = flag_value;
+      } else if (str_eq("--cedro:discard-space", arg) or
+                 str_eq("--cedro:no-discard-space", arg)) {
+        options.discard_space = flag_value;
+      } else if (str_eq("--cedro:insert-line-directives", arg) or
+                 str_eq("--cedro:no-insert-line-directives", arg)) {
+        options.insert_line_directives = flag_value;
+      } else if (str_eq("--cedro:version", arg)) {
+        eprintln(CEDRO_VERSION);
+        return EXIT_SUCCESS;
+      } else {
+        eprintln(LANG("Error: opción desconocida: %s",
+                      "Error: unknown option: %s"),
+                 arg);
+        eprintln(LANG(usage_es, usage_en), args[0]);
+        return EINVAL;
+      }
+      continue;
+    } else if (str_eq(arg, "-h") or str_eq(arg, "--help")) {
       eprintln(LANG(usage_es, usage_en), args[0]);
       return EXIT_SUCCESS;
     } else if (strn_eq(arg, "-I", 2) /* Ignore -isystem, -idirafter */) {
@@ -474,7 +513,7 @@ int main(int argc, char* argv[])
 
     FILE* cc_stdin = popen(as_c_string(&cmd), "w");
     if (cc_stdin) {
-      return_code = include(file_name, &include_context, cc_stdin);
+      return_code = include(file_name, cc_stdin, &include_context, options);
       if (return_code is_not EXIT_SUCCESS) {
         pclose(cc_stdin);
       } else {
@@ -485,7 +524,7 @@ int main(int argc, char* argv[])
       return_code = errno;
     }
   } else {
-    return_code = include(file_name, &include_context, stdout);
+    return_code = include(file_name, stdout, &include_context, options);
   }
 
   fflush(stdout);
