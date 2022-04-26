@@ -2388,7 +2388,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
             arg.start_p, {0}
           })) {
         error("OUT OF MEMORY ERROR.");
-        return m_end;
+        m = m_end;
+        goto exit;
       }
       ++arg.start_p;
       break;
@@ -2430,7 +2431,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
           if (not push_Replacement_array(replacements,
                                          (Replacement){arg.start_p, {0}})) {
             error("OUT OF MEMORY ERROR.");
-            return m_end;
+            m = m_end;
+            goto exit;
           }
           ++arg.start_p;
           continue;
@@ -3449,7 +3451,8 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
                                     "Processed, line %lu"),
                      original_line_number(cursor->start, src))) {
       error("OUT OF MEMORY ERROR.");
-      return false;
+      destruct_Byte_array(&message);
+      goto exit;
     }
     debug_cursor(cursor, 5, as_c_string(&message), &markers, src);
     if (message.len) truncate_Byte_array(&message, 0);
@@ -3457,7 +3460,8 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
                                     "Reference, line %lu"),
                      original_line_number(cursor_ref->start, src_ref))) {
       error("OUT OF MEMORY ERROR.");
-      return false;
+      destruct_Byte_array(&message);
+      goto exit;
     }
     debug_cursor(cursor_ref, 5, as_c_string(&message), &markers_ref, src_ref);
     destruct_Byte_array(&message);
