@@ -2,8 +2,8 @@
 default: release
 all: debug release check
 
-CMDNAME={template}
-NAME={Template}
+CMDNAME={#template}
+NAME={#Template}
 LOGO=logo.png
 CSS=doc/api.css
 

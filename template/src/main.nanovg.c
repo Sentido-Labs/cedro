@@ -10,7 +10,7 @@
  *   include Makefile.nanovg.mk
  *   MAIN=src/main.nanovg.c
  *
- * {Template} 0.1a
+ * {#Template} 0.1a
  *
  * Just an example of using Cedro together with nanovg,
  * that you can use as base for new programs.
@@ -40,8 +40,8 @@
  * Here it is used only to process the source code, and the result
  * is of course not a derivative work of Cedro.
  *
- * \author {Author}
- * \copyright {year} {Author}
+ * \author {#Author}
+ * \copyright {#year} {#Author}
  */
 
 #include <stdio.h>
@@ -138,23 +138,23 @@ extern const uint8_t icon[];      extern const size_t sizeof_icon;
 
 
 const char* const usage_es =
-        "Uso: {template} [opciones]\n"
+        "Uso: {#template} [opciones]\n"
         "  Muestra un paisaje minimalista iluminado por un sol múltiple.\n"
         "  --no-vsync       Deactiva vsync. (inicialmente activado)\n"
         "  --adaptive-vsync Activa el vsync adaptivo si está disponible.\n"
         "  --exit-after-brief-delay Sale tras 100ms, para pruebas.\n"
         "\n En tarjetas gráficas AMD"
         " se pueden activar los indicadores de rendimiento:\n"
-        " GALLIUM_HUD=fps,VRAM-usage {template}\n"
+        " GALLIUM_HUD=fps,VRAM-usage {#template}\n"
         ;
 const char* const usage_en =
-        "Usage: {template} [options]\n"
+        "Usage: {#template} [options]\n"
         "  --no-vsync       Disable vsync. (default is enabled)\n"
         "  --adaptive-vsync Enable adaptive vsync if available.\n"
         "  --exit-after-brief-delay Exit after 1 cycle, for testing.\n"
         "\n On AMD graphic cards"
         " you can enable the performance overlay:\n"
-        " GALLIUM_HUD=fps,VRAM-usage {template}\n"
+        " GALLIUM_HUD=fps,VRAM-usage {#template}\n"
         ;
 
 typedef struct Options {

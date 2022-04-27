@@ -391,26 +391,26 @@ int main(int argc, char* argv[])
       while (cursor is_not end and not ferror(output)) {
         cursor = memchr(cursor, '{', (size_t)(end - cursor));
         if (cursor is NULL) { cursor = end; break; }
-        if (cursor + 6 < end and mem_eq(cursor, "{year}", 6)) {
+        if (cursor + 7 < end and mem_eq(cursor, "{#year}", 7)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
           struct tm tm = *localtime(&(time_t){time(NULL)});
           fprintf(output, "%d", 1900 + tm.tm_year);
-          cursor += 6;
+          cursor += 7;
           previous = cursor;
-        } else if (cursor + 8 < end and mem_eq(cursor, "{Author}", 8)) {
+        } else if (cursor + 9 < end and mem_eq(cursor, "{#Author}", 9)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
           fprintf(output, "%s <%s>", user_name, user_email);
-          cursor += 8;
+          cursor += 9;
           previous = cursor;
-        } else if (cursor + 10 < end and mem_eq(cursor, "{Template}", 10)) {
+        } else if (cursor + 11 < end and mem_eq(cursor, "{#Template}", 11)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
           fwrite(project_name.start, 1, project_name.len, output);
-          cursor += 10;
+          cursor += 11;
           previous = cursor;
-        } else if (cursor + 10 < end and mem_eq(cursor, "{template}", 10)) {
+        } else if (cursor + 11 < end and mem_eq(cursor, "{#template}", 11)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
           fwrite(command_name.start, 1, command_name.len, output);
-          cursor += 10;
+          cursor += 11;
           previous = cursor;
         } else {
           cursor += 1;

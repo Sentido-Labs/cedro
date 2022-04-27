@@ -9,7 +9,7 @@
  *  include Makefile.libuv.mk
  *  MAIN=src/main.libuv.c
  *
- * {Template} 0.1a
+ * {#Template} 0.1a
  *
  * Just an example of using Cedro together with libuv,
  * that you can use as base for new programs.
@@ -39,8 +39,8 @@
  * Here it is used only to process the source code, and the result
  * is of course not a derivative work of Cedro.
  *
- * \author {Author}
- * \copyright {year} {Author}
+ * \author {#Author}
+ * \copyright {#year} {#Author}
  */
 
 #include <stdio.h>
@@ -391,14 +391,14 @@ on_sigint(uv_signal_t *handle, int signum)
 
 
 const char* const usage_es =
-        "Uso: {template} [opciones]\n"
+        "Uso: {#template} [opciones]\n"
         "  Sirve la fecha actual y la cuenta de visitas como HTML.\n"
         "  --address=0.0.0.0 IP en la que escuchar las peticiones.\n"
         "  --port=7000       Puerto.\n"
         "  --exit-after-brief-delay Sale tras 100ms, para pruebas.\n"
         ;
 const char* const usage_en =
-        "Usage: {template} [options]\n"
+        "Usage: {#template} [options]\n"
         "  Serves the current date and visit count as HTML."
         "  --address=0.0.0.0 IP at which to listen for queries.\n"
         "  --port=7000       Port.\n"

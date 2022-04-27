@@ -2,7 +2,7 @@
  * vi: set et ts=4 sw=4: */
 /** \file */
 /** \mainpage
- * {Template} 0.1a
+ * {#Template} 0.1a
  *
  * Just an example of using Cedro together with some utility functions,
  * that you can use as base for new programs.
@@ -32,8 +32,8 @@
  * Here it is used only to process the source code, and the result
  * is of course not a derivative work of Cedro.
  *
- * \author {Author}
- * \copyright {year} {Author}
+ * \author {#Author}
+ * \copyright {#year} {#Author}
  */
 
 #include <stdio.h>
@@ -78,11 +78,11 @@ string_count_cmp(const void* a, const void* b, void* udata)
 
 #define LANG(es, en) (strncmp(getenv("LANG"), "es", 2) == 0? es: en)
 const char* const usage_es =
-    "Uso: {template} <argumento> [<argumento> ...]\n"
+    "Uso: {#template} <argumento> [<argumento> ...]\n"
     "  Imprime los argumentos dados."
     ;
 const char* const usage_en =
-    "Usage: {template} <argument> [<argument> ...]\n"
+    "Usage: {#template} <argument> [<argument> ...]\n"
     "  Prints the given arguments."
     ;
 

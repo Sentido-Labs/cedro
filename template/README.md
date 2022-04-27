@@ -1,4 +1,4 @@
-# {Template} 0.1a
+# {#Template} 0.1a
 
 Just an example of using Cedro together with some utility functions,
 that you can use as base for new programs.
@@ -25,7 +25,7 @@ and also Josh Baker’s [btree.c](https://github.com/tidwall/btree.c).
     MAIN=src/main.libuv.c
 
 ## Build
-`make` to build the executable as `bin/{template}`,
+`make` to build the executable as `bin/{#template}`,
 and `make doc` to build the API documentation
 using [Doxygen](https://www.doxygen.nl/index.html).
 
