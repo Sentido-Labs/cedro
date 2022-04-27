@@ -135,7 +135,10 @@ Doxyfile:
 # https://sparse.docs.kernel.org/en/latest/
 # http://cppcheck.sourceforge.net/  https://github.com/danmar/cppcheck
 check: debug
-	CEDRO_CC='' $(CEDROCC) $(CFLAGS) $(MAIN) | sed 's/^\(\s*\)# /\1\/\/ # /' >build/$(CMDNAME).i
+# The sed filters are to:
+# - convert escaped non-ASCII characters \uxxxx into uxxxx for Cppcheck.
+# - avoid “warning: directive in macro's argument list”.
+	CEDRO_CC='' $(CEDROCC) $(CFLAGS) $(MAIN) --cedro:escape-ucn | sed 's/\\\([uU]\)/\1/' | sed 's/^\(\s*\)# /\1\/\/ # /' >build/$(CMDNAME).i
 	@if which valgrind >/dev/null; then echo 'Checking with Valgrind...'; valgrind --leak-check=yes build/$(CMDNAME)-debug $(TEST_ARGUMENTS) >/dev/null; else echo 'valgrind not installed.'; fi
 	@echo
 	@if which clang >/dev/null; then echo 'Checking with Clang...'; CEDRO_CC='' $(CEDROCC) $(CFLAGS) $(MAIN) | $(CEDRO) --escape-ucn | clang --analyze $(CFLAGS) -o /dev/null -x c -; else echo 'clang not installed.'; fi
@@ -143,8 +146,7 @@ check: debug
 	@echo 'The analyzer in GCC 11 is much better than in 10, this is '`gcc -dumpversion`'.'
 	@if which gcc >/dev/null; then echo 'Checking with gcc...'; CEDRO_CC='' $(CEDROCC) $(CFLAGS) $(MAIN) | gcc -fanalyzer -c -o /dev/null $(CFLAGS) -x c -; fi
 	@echo
-	@echo 'Omitted because it can’t handle the non-ASCII chars in the NanoVG template:'
-	@echo "@if which cppcheck >/dev/null; then cppcheck build/$(CMDNAME).i --std=c99 --report-progress --enable=performance,portability; else echo 'cppcheck not installed.'; fi"
+	@if which cppcheck >/dev/null; then cppcheck build/$(CMDNAME).i --std=c99 --report-progress --enable=performance,portability; else echo 'cppcheck not installed.'; fi
 
 clean:
 	rm -rf build lib/build doc/api
