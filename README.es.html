@@ -90,12 +90,29 @@
   -i, --interactive Pregunta por los nombres de programa y proyecto.
                     Si no, se eligen a partir del nombre del directorio.</code>
 
+      <p>Al producir el borrador, se reemplazan ciertos patrones en
+        <url>Makefile</url>, <url>README.md</url>, y todos los ficheros
+        bajo <url>src/</url>:</p>
+      <ul>
+        <li><code>{#year}</code>: el año corriente.</li>
+        <li><code>{#Author}</code>: nombre y dirección de correo electrónico
+          reportados por
+          <code>git config user.name</code> y <code>… user.email</code>
+          si están disponibles, y si no
+          «Your Name Here &lt;email@example.com&gt;».</li>
+        <li><code>{#Template}</code>: el nombre de proyecto,
+          p.ej. «Cedro».</li>
+        <li><code>{#template}</code>: el nombre de programa,
+          p.ej. «cedro».</li>
+      </ul>
+
       <p>La plantilla incluye varios borradores de proyectos, que se pueden activar en el <url>Makefile</url> generado:</p>
       <ul>
         <li><p>Herramienta de línea de comandos («CLI»)
             que identifica el tipo de cada argumento,
             y usa un árbol <code>btree</code>
-            para contar cuántas veces se repite cada uno.</p></li>
+            para contar cuántas veces se repite cada uno.
+            Se construye si no se modifica el <url>Makefile</url></p></li>
         <li><p>Aplicación gráfica con <em><a href="https://github.com/memononen/nanovg">nanovg</a></em>.
             Descarga (con <code>curl</code>) y
             compila automáticamente nanovg, <a href="https://www.glfw.org/">GLFW</a>, y <a href="https://github.com/nigels-com/glew">GLEW</a>.</p>

@@ -90,13 +90,29 @@
   -i, --interactive Asks for the names for command and project.
                     Otherwise, they will be derived from the directory name.</code>
 
+      <p>When producing the draft, certain patterns get replaced in
+        <url>Makefile</url>, <url>README.md</url>, and all the files
+        under <url>src/</url>:</p>
+      <ul>
+        <li><code>{#year}</code>: the current year.</li>
+        <li><code>{#Author}</code>: name and email address
+          reported by
+          <code>git config user.name</code> and <code>… user.email</code>
+          if they are available, and if not
+          “Your Name Here &lt;email@example.com&gt;”.</li>
+        <li><code>{#Template}</code>: the project name,
+          e.g. «Cedro».</li>
+        <li><code>{#template}</code>: the program name,
+          e.g. «cedro».</li>
+      </ul>
+
       <p>The template includes several project drafts, that can be activated in the generated <url>Makefile</url>:</p>
       <ul>
         <li><p>Command line (“CLI”) tool
             that identifies the type of each argument,
             and uses a <code>btree</code>
             to count how many times each one is repeated.
-            This gets built if you do not modify the <url>Makefile</url></p></li>
+            This gets built if the <url>Makefile</url> is not modified.</p></li>
         <li><p>Graphical application with <em><a href="https://github.com/memononen/nanovg">nanovg</a></em>.
             Downloads (with <code>curl</code>) and
             compiles automatically nanovg, <a href="https://www.glfw.org/">GLFW</a>, and <a href="https://github.com/nigels-com/glew">GLEW</a>.</p>
