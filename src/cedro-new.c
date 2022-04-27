@@ -382,7 +382,8 @@ int main(int argc, char* argv[])
 
     if (str_eq("template/Makefile",   file_stat.m_filename) or
         str_eq("template/README.md",  file_stat.m_filename) or
-        str_eq("template/src/main.c", file_stat.m_filename)) {
+        strn_eq("template/src/", file_stat.m_filename,
+                strlen("template/src/"))) {
       Byte_p start = (Byte_p)extracted_bytes;
       Byte_p end   = (Byte_p)extracted_bytes + extracted_size;
       Byte_mut_p cursor = start;
