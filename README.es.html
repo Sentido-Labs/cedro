@@ -70,11 +70,19 @@
       <p>El segundo ejecutable, <code>cedrocc</code>, permite usar Cedro como si fuera parte del compilador C.</p>
       <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [&lt;fichero2.o&gt;…]
   Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,
-  y compila el resultado con «cc -x c -» mas los otros argumentos.
+  y compila el resultado con «cc -x c - -x none» mas los otros argumentos.
     cedrocc -o fichero fichero.c
     cedro fichero.c | cc -x c - -o fichero
+  Las opciones se pasan tal cual al compilador, excepto las que
+ empiecen con «--cedro:…» que corresponden a opciones de cedro,
+ por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».
+  Las siguientes opciones son implícitas:
+    --cedro:discard-comments --cedro:insert-line-directives
+  Además, para cada #include, si encuentra el fichero lo lee y
+ si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado
+ en lugar del #include.
   Se puede especificar el compilador, p.ej. gcc:
-    CEDRO_CC='gcc -x c -' cedrocc …
+    CEDRO_CC='gcc -x c - -x none' cedrocc …
   Para depuración, esto escribe el código que iría entubado a cc,
   en stdout:
     CEDRO_CC='' cedrocc …</code>

@@ -68,11 +68,19 @@
 
       <h2><code id="cedrocc">cedrocc</code> <a class="anchor" href="#cedrocc">#cedrocc</a></h2>
       <p>The second executable, <code>cedrocc</code>, allows using Cedro as if it was part of the C compiler.</p>
-      <code>Usage: cedrocc [options] &lt;file.c&gt; [ file2.o … ]
+      <code>Usage: cedrocc [options] &lt;file.c&gt; [&lt;file2.o&gt;…]
   Runs Cedro on the first file name that ends with “.c”,
-  and compiles the result with “cc -x c -” plus the other arguments.
+ and compiles the result with “cc -x c - -x none” plus the other arguments.
     cedrocc -o file file.c
     cedro file.c | cc -x c - -o file
+  The options get passed as is to the compiler, except for those that
+ start with “--cedro:…” that correspond to cedro options,
+ for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.
+  The following options are the defaults:
+    --cedro:discard-comments --cedro:insert-line-directives
+  In addition, for each #include, if it finds the file it reads it and
+ if it finds `#pragma Cedro 1.0` processes it and inserts the result
+ in place of the #include.
   You can specify the compiler, e.g. gcc:
     CEDRO_CC='gcc -x c -' cedrocc …
   For debugging, this writes the code that would be piped into cc,
