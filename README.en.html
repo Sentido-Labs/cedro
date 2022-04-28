@@ -334,16 +334,24 @@ int main() {
         pre-processor which has the inconvenient of needing the Common Lisp
         <a href="http://www.sbcl.org/">SBCL</a> compiler
         in addition to the C compiler.</p>
+      <p>Clojure also has a macro called <code>doto</code> which works
+        in a similar manner,
+        por ejemplo para hacer <code>f₁(x); f₂(x); f₃(x);</code>:</p>
+      <table>
+        <tr><th><a href="https://github.com/eudoxia0/magma">Magma</a></th><td><code>doto</code></td><td><em><a href="https://github.com/eudoxia0/magma#doto">doto</a></em> macro</td><td><code>doto(x) { f₁(); f₂(); f₃(); }</code></td></tr>
+        <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code>doto</code></td><td><em><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/doto">doto</a></em> macro</td><td><code>(doto x f₁ f₂ f₃)</code></td></tr>
+        <tr><th><a href="#">Cedro</a></th><td><code>@</code></td><td><em><a href="#backstitch-macro">backstitch</a></em> macro</td><td><code>x @ f₁(), f₂(), f₃()</code></td></tr>
+      </table>
       <p>Functional languages often have a similar operator
         without the ability to thread a same value
         through several functions.
         For instance, the equivalent of <code>f₃(f₂(f₁(x)))</code>:</p>
       <table>
-        <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code><a href="http://doc.cat-v.org/unix/pipes/">|</a></code></td><td><em>pipe</em> operator</td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
-        <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">&</a></code></td><td><em>reverse application</em> operator</td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
-        <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">|&gt;</a></code></td><td><em>pipe</em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
-        <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">-></a></code></td><td><em>threading</em> macro</td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
-        <tr><th><a href="#backstitch-macro">Cedro</a></th><td><code>@</code></td><td><em>backstitch</em> macro</td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
+        <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code>|</code></td><td><em><a href="http://doc.cat-v.org/unix/pipes/">pipe</a></em> operator</td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
+        <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code>&</code></td><td><em><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">reverse application</a></em> operator</td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
+        <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code>|&gt;</code></td><td><em><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">pipe</a></em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
+        <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code>-&gt;</code></td><td><em><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">threading</a></em> macro</td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
+        <tr><th><a href="#">Cedro</a></th><td><code>@</code></td><td><em><a href="#backstitch-macro">backstitch</a></em> macro</td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
       </table>
       <p>Ada 2005 introduced a feature called
         <a href="https://www.adaic.org/resources/add_content/standards/05rat/html/Rat-2-3.html">prefixed-view notation</a>

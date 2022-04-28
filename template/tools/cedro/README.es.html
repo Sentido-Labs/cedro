@@ -1,9 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="utf-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Extensión del lenguaje de programación C: pre-procesador Cedro</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:70em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code { display:inline; vertical-align:baseline; padding:0; background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; font-family:Input, monospace; white-space:pre-wrap; } section > code, td > code { display:inline-block; vertical-align:top; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } td { vertical-align:top; border:thin solid #777; padding:0.5em; } p { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#aaa; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } h2, h3, h4 { color:#222; } }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } /* WebKit-specific: */ :root { color-scheme: light dark; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code>b { background:#000; } url, code { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th { font-weight:normal; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } code>b { background:#fff; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -12,20 +13,25 @@
         <span class="language-selector">Español, <a href="README.en.html">English</a></span>
         <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><img alt="Sentido-Labs.com" src="doc/sentido-labs-mono.svg" style="width:5em"/></a>
       </h1>
-      <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con cuatro prestaciones:</p>
+      <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con seis prestaciones:</p>
       <ol>
-        <li>El <a href="#backstitch-operator">operador <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>].</li>
-        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos</a> [«<em>defer</em>»].</li>
-        <li><a href="#block-macros"><em>Macros de bloque</em></a>.</li>
-        <li><a href="#binary-include"><em>Inclusión binaria</em></a>.</li>
+        <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>] (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
+        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> [«<em>defer</em>»] (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
+        <li><a href="#label-break">Salida de <em>bucles anidados</em> <code>break <em>etiqueta</em>;</code></a> (<a href="#label-break-related-work">obras relacionadas</a>).</li>
+        <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code><em>ristra</em>[<em>inicio</em>..<em>fin</em>]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
+        <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">obras relacionadas</a>)-->.</li>
+        <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">obras relacionadas</a>)-->.</li>
+        <li><a href="#binary-include">Inclusión <em>binaria</em> <code>#include {...}</code></a> (<a href="#binary-include-related-work">obras relacionadas</a>).</li>
       </ol>
       <p>Para activarlo, el fichero fuente debe contener esta línea:
         <code>#pragma Cedro 1.0</code><br/>
         Si no, el fichero se copia directamente a la salida.</p>
-      <code>Uso: cedro [opciones] fichero.c [fichero2.c … ]
-  El resultado va a stdout, puede usarse sin fichero intermedio así:
+      <code>Uso: cedro [opciones] &lt;fichero.c&gt;…
+     cedro new nombre # Ejecuta: <a href="#cedro-new">cedro-new</a> &lt;nombre&gt;
+  Para leer desde stdin, se pone - en vez de &lt;fichero.c&gt;.
+  El resultado va a stdout, se puede compilar sin fichero intermedio:
  cedro fichero.c | cc -x c - -o fichero
-  Es lo que hace el programa cedrocc:
+  Es lo que hace el programa <a href="#cedrocc">cedrocc</a>:
  cedrocc -o fichero fichero.c
   Con cedrocc, las siguientes opciones son implícitas:
     --discard-comments --insert-line-directives
@@ -43,9 +49,11 @@
 
   --print-markers    Imprime los marcadores.
   --no-print-markers No imprime los marcadores. (implícito)
-  --enable-core-dump    Activa el volcado de memoria al estrellarse.
-  --no-enable-core-dump No activa el volcado de memoria al estrellarse. (implícito)
   --benchmark        Realiza una medición de rendimiento.
+  --validate=ref.c   Compara el resultado con el fichero «ref.c» dado.
+      No aplica las macros: para comparar el resultado de aplicar Cedro
+      a un fichero, pase la salida a través de esta opción, por ejemplo:
+      cedro fichero.c | cedro - --validate=ref.c
   --version          Muestra la versión: 1.0
                      El «pragma» correspondiente es: #pragma Cedro 1.0</code>
       <p>La opción <code>--escape-ucn</code> encapsula los caracteres Unicode®
@@ -54,63 +62,124 @@
         («C99 standard», página 65, «<a href="http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf#65">6.4.3 Universal character names</a>»),
         lo que puede servir para compiladores más antiguos sin capacidad UTF-8 como
         <a href="https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67224#c32">GCC antes de la versión 10</a>.</p>
-      <p>Para la documentación (en inglés) de la API, véase <a href="doc/api/index.html">doc/api/index.html</a>
+      <p>Para la documentación (en inglés) de la API, véase <url><a href="doc/api/index.html">doc/api/index.html</a></url>
         tras ejecutar <code>make doc</code> que necesita tener
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> instalado.</p>
+
+      <h2><code id="cedrocc">cedrocc</code> <a class="anchor" href="#cedrocc">#cedrocc</a></h2>
       <p>El segundo ejecutable, <code>cedrocc</code>, permite usar Cedro como si fuera parte del compilador C.</p>
-      <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [ fichero2.o … ]
+      <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [&lt;fichero2.o&gt;…]
   Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,
-  y compila el resultado con «cc -x c -» mas los otros argumentos.
+  y compila el resultado con «cc -x c - -x none» mas los otros argumentos.
     cedrocc -o fichero fichero.c
     cedro fichero.c | cc -x c - -o fichero
+  Las opciones se pasan tal cual al compilador, excepto las que
+ empiecen con «--cedro:…» que corresponden a opciones de cedro,
+ por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».
+  Las siguientes opciones son implícitas:
+    --cedro:discard-comments --cedro:insert-line-directives
+  Además, para cada #include, si encuentra el fichero lo lee y
+ si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado
+ en lugar del #include.
   Se puede especificar el compilador, p.ej. gcc:
-    CEDRO_CC='gcc -x c -' cedrocc …
+    CEDRO_CC='gcc -x c - -x none' cedrocc …
   Para depuración, esto escribe el código que iría entubado a cc,
   en stdout:
     CEDRO_CC='' cedrocc …</code>
       <p>Si recibes un mensaje de error como «embedding a directive within macro arguments is not portable» (GCC) o «embedding a directive within macro arguments has undefined behavior» (clang), significa que usas Cedro con <code>--insert-line-directives</code> dentro de los parámetros de una macro. Puedes bien expandir el código dado a la macro manualmente, o evitar el <code>--insert-line-directives</code> reemplazando <code>cedrocc -o fichero fichero.c</code> con <code>cedro fichero.c | cc -x c - -o fichero</code>.</p>
-      <p>Hay un tercer ejecutable, <code>cedro-new</code>, que produce un borrador de programa de manera similar a <code>cargo new</code> en Rust. <code>cedro new …</code> en realidad ejecuta <code>cedro-new …</code>. El contenido se produce a partir de la plantilla en el directorio <code>template/</code>, que se incluye en el ejecutable <code>cedro-new</code> al compilarlo.</p>
+      <p><code>cedrocc</code> hace otra cosa además de <code>cedro fichero.c | cc -x c - -o fichero</code>:
+        para cada <code>#include</code>, si encuentra el fichero busca <code>#pragma Cedro 1.0</code> y si lo encuentra (<code>-I ...</code>), procesa el fichero e inserta el resultado en lugar del <code>#include</code>. El motivo es poder compilar de una tacada programas que usen Cedro en varios ficheros, en vez de tener que transformar cada uno en ficheros temporales para compilarlos después.</p>
+
+      <h2 id="cedro-new"><code>cedro-new</code> <a class="anchor" href="#cedro-new">#cedro-new</a></h2>
+      <p>Hay un tercer ejecutable, <code>cedro-new</code>, que produce un borrador de programa de manera similar a <code>cargo new</code> en Rust. <code>cedro new …</code> en realidad ejecuta <code>cedro-new …</code>. El contenido se produce a partir de la plantilla en el directorio <url>template/</url>, que se incluye en el ejecutable <code>cedro-new</code> al compilarlo.</p>
       <code>Uso: cedro-new [opciones] &lt;nombre&gt;
   Crea un directorio llamado &lt;nombre&gt;/ con la plantilla.
   -h, --help        Muestra este mensaje.
   -i, --interactive Pregunta por los nombres de programa y proyecto.
                     Si no, se eligen a partir del nombre del directorio.</code>
+
+      <p>Al producir el borrador, se reemplazan ciertos patrones en
+        <url>Makefile</url>, <url>README.md</url>, y todos los ficheros
+        bajo <url>src/</url>:</p>
+      <ul>
+        <li><code>{#year}</code>: el año corriente.</li>
+        <li><code>{#Author}</code>: nombre y dirección de correo electrónico
+          reportados por
+          <code>git config user.name</code> y <code>… user.email</code>
+          si están disponibles, y si no
+          «Your Name Here &lt;email@example.com&gt;».</li>
+        <li><code>{#Template}</code>: el nombre de proyecto,
+          p.ej. «Cedro».</li>
+        <li><code>{#template}</code>: el nombre de programa,
+          p.ej. «cedro».</li>
+      </ul>
+
+      <p>La plantilla incluye varios borradores de proyectos, que se pueden activar en el <url>Makefile</url> generado:</p>
+      <ul>
+        <li><p>Herramienta de línea de comandos («CLI»)
+            que identifica el tipo de cada argumento,
+            y usa un árbol <code>btree</code>
+            para contar cuántas veces se repite cada uno.
+            Se construye si no se modifica el <url>Makefile</url></p></li>
+        <li><p>Aplicación gráfica con <em><a href="https://github.com/memononen/nanovg">nanovg</a></em>.
+            Descarga (con <code>curl</code>) y
+            compila automáticamente nanovg, <a href="https://www.glfw.org/">GLFW</a>, y <a href="https://github.com/nigels-com/glew">GLEW</a>.</p>
+          <code style="display:inline-block;vertical-align:top">include Makefile.nanovg.mk
+MAIN=src/main.nanovg.c</code></li>
+        <li><p>Servidor HTTP/1.1 usando <em><a href="https://libuv.org/">libuv</a></em>.
+            Descarga (con <code>curl</code>) y
+            compila automáticamente libuv.</p>
+          <code style="display:inline-block;vertical-align:top">include Makefile.libuv.mk
+MAIN=src/main.libuv.c</code></li>
+      </ul>
+
     </section>
 
-    <section id="backstitch-operator">
-      <h2>Operador <a href="https://es.wikipedia.org/wiki/Pespunte">pespunte</a>: @ <a class="anchor" href="#backstitch-operator">#backstitch-operator</a></h2>
+    <section id="backstitch-macro">
+      <h2>Macro <a href="https://es.wikipedia.org/wiki/Pespunte">pespunte</a>: @ <a class="anchor" href="#backstitch-macro">#backstitch-macro</a></h2>
       <p>Hilvana un valor a través de una secuencia de llamadas de función,
         como primer parámetro para cada una.</p>
       <p>Es una versión explícita de lo que hacen otros lenguajes de programación
         para implementar funciones miembro, y el resultado es un patrón habitual
         en bibliotecas en C.</p>
+      <p>Nota: el símbolo <code>@</code> no se reconoce
+        cuando se escribe <code>\u0040</code>,
+        pero se convierte en <code>@</code> en la salida.
+        Esto sirve para encapsularlo al encadenar Cedro con otro
+        pre-procesador que lo use.</p>
       <table>
         <tr>
           <td><code>objeto @ f(a), g(b);</code></td>
           <td><code>f(objeto, a);
 g(objeto, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>&amp;objeto @ f(a), g(b);</code></td>
           <td><code>f(&amp;objeto, a);
 g(&amp;objeto, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>objeto.casilla @ f(a), g(b);</code></td>
           <td><code>f(objeto.casilla, a);
 g(objeto.casilla, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>int x = (objeto @ f(a), g(b));</code></td>
           <td><code>int x = (f(objeto, a), g(objeto, b));</code>
             <p>Esto es el <a href="https://en.wikipedia.org/wiki/Comma_operator">operador coma</a> del C, lo mismo que</p>
             <code>f(objeto, a); int x = g(objeto, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>objeto @prefijo_... f(a), g(b);</code></td>
           <td><code>prefijo_f(objeto, a);
 prefijo_g(objeto, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>objeto @..._sufijo f(a), g(b);</code></td>
           <td><code>f_sufijo(objeto, a);
 g_sufijo(objeto, b);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td>
 <code>contexto_gráfico @<a href="https://github.com/memononen/nanovg">nvg</a>...
     BeginPath(),
@@ -131,10 +200,10 @@ nvgFill(contexto_gráfico);</code>
       </table>
 
       <p>Para cada segmento separado por comas,
-      si empieza con uno de los <em>tokens</em>
-      «<code>[</code>»,
-      «<code>++</code>», «<code>--</code>», «<code>.</code>», «<code>-></code>»,
-      «<code>=</code>», «<code>+=</code>», «<code>-=</code>», «<code>*=</code>», «<code>/=</code>», «<code>%=</code>», «<code>&lt;&lt;=</code>», «<code>&gt;&gt;=</code>», «<code>&amp;=</code>», «<code>^=</code>», «<code>|=</code>»,
+      si empieza con una de las piezas
+      <code>[</code>,
+      <code>++</code>, <code>--</code>, <code>.</code>, <code>-></code>,
+      <code>=</code>, <code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, <code>%=</code>, <code>&lt;&lt;=</code>, <code>&gt;&gt;=</code>, <code>&amp;=</code>, <code>^=</code>, <code>|=</code>,
       o si no hay nada que parezca una llamada de función,
       el punto de inserción es el comienzo del segmento:</p>
 
@@ -153,15 +222,22 @@ nvgFill(contexto_gráfico);</code>
         </tr>
       </table>
 
-      <p>Es un operador asociativo por la izquierda:</p>
-
+      <p>Se pueden usar expresiones complejas como prefijos poniéndolas
+        a la izquierda del <code>@</code> y dejando los puntos suspensivos
+        sin prefijo ni sufijo:</p>
       <table>
         <tr>
-          <td><code>objeto @ f(a) @ g(b);</code></td>
-          <td><code>g(f(objeto, a), b);</code></td>
-        </tr><tr>
-          <td><code>x @ uno() @ dos() @ tres() @ cuatro();</code></td>
-          <td><code>cuatro(tres(dos(uno(x))));</code></td>
+          <td><code>// <a href="https://github.com/rryqszq4/ngx_sqlite/blob/785dbf1485bf347c260fa540c4d0955d4d079901/src/ngx_http_sqlite_module.c#L802">ngx_http_sqlite_module.c#L802</a>
+
+(*chain->last)->buf->@ ...
+    pos = u_str,
+    last = u_str + ns.len,
+    memory = 1;</code></td>
+          <td><br/><code>// <a href="https://github.com/rryqszq4/ngx_sqlite/blob/785dbf1485bf347c260fa540c4d0955d4d079901/src/ngx_http_sqlite_module.c#L802">ngx_http_sqlite_module.c#L802</a>
+
+(*chain->last)->buf->pos = u_str;
+(*chain->last)->buf->last = u_str + ns.len;
+(*chain->last)->buf->memory = 1;</code></td>
         </tr>
       </table>
 
@@ -172,14 +248,49 @@ nvgFill(contexto_gráfico);</code>
         <tr>
           <td>
 <code>typedef enum {
-    @TOKEN_... ESPACIO, PALABRA, NÚMERO
-} TipoDeToken;</code>
+    @PIEZA_... ESPACIO, PALABRA, NÚMERO
+} TipoDePieza;</code>
           </td>
           <td>
 <code>typedef enum {
-    TOKEN_ESPACIO, TOKEN_PALABRA, TOKEN_NÚMERO
-} TipoDeToken;</code>
+    PIEZA_ESPACIO, PIEZA_PALABRA, PIEZA_NÚMERO
+} TipoDePieza;</code>
           </td>
+        </tr>
+        <tr>
+          <td><code>// <a href="http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations">http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations</a>
+// `liebre` y `tortuga` son funciones.
+int main() {
+    int lon_pista = 10;
+    @uv_thread_...
+        t id_liebre,
+        t id_tortuga,
+        create(&amp;id_liebre, liebre, &amp;lon_pista),
+        create(&amp;id_tortuga, tortuga, &amp;lon_pista),
+
+        join(&amp;id_liebre),
+        join(&amp;id_tortuga);
+    return 0;
+}
+</code></td>
+          <td><br/><code>// <a href="http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations">http://docs.libuv.org/en/v1.x/guide/threads.html#core-thread-operations</a>
+// `liebre` y `tortuga` son funciones.
+int main() {
+    int lon_pista = 10;
+    uv_thread_t id_liebre;
+    uv_thread_t id_tortuga;
+    uv_thread_create(&amp;id_liebre, liebre, &amp;lon_pista);
+    uv_thread_create(&amp;id_tortuga, tortuga, &amp;lon_pista);
+
+    uv_thread_join(&amp;id_liebre);
+    uv_thread_join(&amp;id_tortuga);
+    return 0;
+}
+</code></td>
+        </tr>
+        <tr>
+          <td><code>función(a, @prefijo_... b, c)</code></td>
+          <td><code>función(a, prefijo_b, prefijo_c)</code></td>
         </tr>
       </table>
 
@@ -189,19 +300,31 @@ nvgFill(contexto_gráfico);</code>
         <tr>
           <td><code>Next(lector) @xmlTextReader...;</code></td>
           <td><code>xmlTextReaderNext(lector);</code></td>
-        </tr><tr>
+        </tr>
+        <tr>
           <td><code>get(&amp;vector, índice) @..._Byte_vec;</code></td>
           <td><code>get_Byte_vec(&amp;vector, índice);</code></td>
         </tr>
+        <tr>
+          <td><code>función(a, b @prefijo_..., c)</code></td>
+          <td><code>función(a, prefijo_b, c)</code></td>
+        </tr>
       </table>
 
-      <p>Nota: el símbolo <code>@</code> no se reconoce
-        cuando se escribe <code>\u0040</code>,
-        pero se convierte en <code>@</code> en la salida.
-        Esto se puede usar para encapsularlo al encadenar Cedro con otro
-        pre-procesador que lo use.</p>
+      <p>Es un operador asociativo por la izquierda:</p>
 
-      <h3 id="backstitch-operator-related-work">Obras relacionadas <a class="anchor" href="#backstitch-operator-related-work">#…-related-work</a></h3>
+      <table>
+        <tr>
+          <td><code>objeto @ f(a) @ g(b);</code></td>
+          <td><code>g(f(objeto, a), b);</code></td>
+        </tr>
+        <tr>
+          <td><code>x @ uno() @ dos() @ tres() @ cuatro();</code></td>
+          <td><code>cuatro(tres(dos(uno(x))));</code></td>
+        </tr>
+      </table>
+
+      <h3 id="backstitch-macro-related-work">Obras relacionadas <a class="anchor" href="#backstitch-macro-related-work">#…-related-work</a></h3>
       <p>Buscando realizaciones anteriores de esta idea he encontrado
         <a href="https://github.com/eudoxia0/magma">magma</a> (2014),
         donde se llama
@@ -209,21 +332,27 @@ nvgFill(contexto_gráfico);</code>
         Es una macro para el pre-procesador
         <a href="https://github.com/eudoxia0/cmacro">cmacro</a>
         que tiene el inconveniente de necesitar el compilador Common Lisp
-        <a href="http://www.sbcl.org/">SBCL</a>.</p>
-      <p>Los lenguajes funcionales suelen tener un operador similar aunque
-        hilvana el <em>resultado</em> de la primera función
-        como primer parámetro de la siguiente etc.
-        en vez del mismo valor para todas las funciones.
-        En Cedro se puede hacer también encadenando operadores pespunte
-        ya que son asociativos por la izquierda.
+        <a href="http://www.sbcl.org/">SBCL</a>
+        además del compilador C.</p>
+      <p>Clojure también tiene una macro llamada <code>doto</code> que funciona
+        de manera parecida,
+        for instance to do <code>f₁(x); f₂(x); f₃(x);</code>:</p>
+      <table>
+        <tr><th><a href="https://github.com/eudoxia0/magma">Magma</a></th><td><code>doto</code></td><td>macro <em><a href="https://github.com/eudoxia0/magma#doto">doto</a></em></td><td><code>doto(x) { f₁(); f₂(); f₃(); }</code></td></tr>
+        <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code>doto</code></td><td>macro <em><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/doto">doto</a></em></td><td><code>(doto x f₁ f₂ f₃)</code></td></tr>
+        <tr><th><a href="#">Cedro</a></th><td><code>@</code></td><td>macro <em><a href="#backstitch-macro">pespunte</a></em></td><td><code>x @ f₁(), f₂(), f₃()</code></td></tr>
+      </table>
+      <p>Los lenguajes funcionales suelen tener un operador similar
+        sin la capacidad de hilvanar un mismo valor
+        a través de varias funciones.
         Por ejemplo, el equivalente de <code>f₃(f₂(f₁(x)))</code>:</p>
-      <ul>
-        <li><a href="https://es.wikipedia.org/wiki/Thompson_shell">Shell</a>: operador <a href="http://doc.cat-v.org/unix/pipes/"><code>|</code></a> (tubería), <code>echo x | f₁ | f₂ | f₃</code></li>
-        <li><a href="https://www.haskell.org/">Haskell</a>: operador <a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-"><code>&</code></a> (aplicación inversa), <code>x & f₁ & f₂ & f₃</code></li>
-        <li><a href="https://elixir-lang.org/">Elixir</a>: operador <a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2"><code>|&gt;</code></a> (tubería), <code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code>
-        <li><a href="https://clojure.org/guides/threading_macros">Clojure</a>: macro <a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E"><code>-&gt;</code></a> (hilvanado), <code>(-&gt; x f₁ f₂ f₃)</code></li>
-        <li><a>Cedro</a>: operador <code>@</code> (pespunte), <code>x @ f₁() @ f₂() @ f₃()</code></li>
-      </ul>
+      <table>
+        <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code>|</code></td><td>operador <em><a href="http://doc.cat-v.org/unix/pipes/">tubería</a></em></td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
+        <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code>&</code></td><td>operador <em><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">aplicación inversa</a></em></td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
+        <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code>|&gt;</code></td><td>operador <em><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">tubería</a></em></td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
+        <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code>-&gt;</code></td><td>macro <em><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">hilvanado</a></em></td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
+        <tr><th><a href="#">Cedro</a></th><td><code>@</code></td><td>macro <em><a href="#backstitch-macro">pespunte</a></em></td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
+      </table>
       <p>Ada 2005 introdujo una prestación llamada
         <a href="https://www.adaic.org/resources/add_content/standards/05rat/html/Rat-2-3.html">notación prefija [«prefixed-view notation»]</a>
         que es más parecida al C++
@@ -267,7 +396,10 @@ nvgFill(contexto_gráfico);</code>
       que no se necesita en código estándar C porque es implícita.
       Si quiere usar Cedro con código estándar C que ya usa <code>auto</code>,
       puede primero reemplazarla con <code>signed</code> ya que
-      <a href="https://stackoverflow.com/a/60890064/291462">tiene el mismo efecto</a>.</p>
+      <a href="https://stackoverflow.com/a/60890064/291462">tiene el mismo efecto</a>.
+      También es posible usar <code>defer</code>
+      definiendo la constante <code>USE_DEFER_AS_KEYWORD</code> en
+      <url>src/cedro.c</url> (línea 40) antes de compilarlo.</p>
       <p>En este ejemplo, hay un depósito de <code>texto</code> y un <code>fichero</code> que deben ser devueltos al sistema:</p>
       <table>
         <tr>
@@ -316,7 +448,7 @@ int repite_letra(char letra, size_t cuenta,
     for (size_t i = 0; i &lt; cuenta; ++i) {
         texto[i] = letra;
     }
-    text[cuenta] = 0;
+    texto[cuenta] = 0;
     if (nombre_de_fichero) {
         FILE* fichero = fopen(nombre_de_fichero, "w");
         if (!fichero) {
@@ -342,8 +474,7 @@ int main(void)
 
       <p>Compilación con GCC or clang,
         a la izquierda ejecutando explícitamente el compilador,
-        y a la derecha usando <code>cedrocc</code>
-        que tiene el mismo efecto:</p>
+        y a la derecha usando <code>cedrocc</code>:</p>
       <table>
         <tr>
 <td><code>$ cedro repite.c | cc -o repite -x c -
@@ -430,12 +561,10 @@ int f1(void) {
         </tr>
       </table>
 
-      <h3 id="deferred-resource-release-related-work">Obras relacionadas <a class="anchor" href="#deferred-resource-release-related-work">#…-related-work</a></h3>
-
       <p>Andrew Kelley comparó la gestión de recursos entre C y su
         <a href="https://ziglang.org/es/">lenguaje de programación Zig</a>
         en una presentación de 2019 titulada
-        <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">«The Road to Zig 1.0" a los 29:21″</a>,
+        <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">«The Road to Zig 1.0» a los 29:21s</a>,
         y aquí he re-creado su ejemplo en C usando Cedro para producir
         la función tal cual la mostró, excepto que Cedro no sabe
         que el bucle <code>for</code> al final nunca termina así que añade
@@ -446,7 +575,7 @@ int f1(void) {
             <code>// Example retrofitted from C example by Andrew Kelley:
 // <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s</a>
 
-#pragma Cedro 1.0
+<b>#pragma Cedro 1.0</b>
 
 int main(int argc, char **argv) {
     struct SoundIo *soundio = soundio_create();
@@ -561,7 +690,7 @@ int main(int argc, char **argv) {
             <code>// Example retrofitted from Zig example by Andrew Kelley:
 // <a href="https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s">https://www.youtube.com/watch?v=Gv2I7qTux7g&amp;t=1761s</a>
 
-#pragma Cedro 1.0
+<b>#pragma Cedro 1.0</b>
 
 int main(int argc, char **argv) {
     struct SoundIo *soundio = soundio_create();
@@ -658,6 +787,7 @@ int main(int argc, char **argv) {
         Y por supuesto Zig tiene
         <a href="https://ziglang.org/es/learn/overview/">muchas otras prestaciones estupendas</a>.</p>
 
+      <h3 id="deferred-resource-release-related-work">Obras relacionadas <a class="anchor" href="#deferred-resource-release-related-work">#…-related-work</a></h3>
       <p>Aparte de la ya mencionada
         «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
         hay macros que usan un bucle <code>for</code> como
@@ -715,50 +845,1064 @@ int main(int argc, char **argv) {
       </table>
     </section>
 
-    <section ="block-macros">
+    <section id="label-break">
+      <h2>Salida de <em>bucles anidados</em>: <a class="anchor" href="#label-break">#label-break</a></h2>
+      <p>Convierte <code><b>break</b> <em>etiqueta</em>;</code> o <code><b>continue</b> <em>etiqueta</em>;</code> en <code><b>goto</b> <em>etiqueta</em>;</code>. En C sólo es posible salir de un bucle cada vez al usar <code>break</code>, lo que también es un problema cuando la interrupción viene de un bloque <code>switch</code>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    for (y = 0; y &lt; 100; ++y) {
+      switch (x + y) {
+        case 157:
+          <b>break</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>continue</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+    }
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td><td>
+            <br/><br/><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    for (y = 0; y &lt; 100; ++y) {
+      switch (x + y) {
+        case 157:
+          <b>goto</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>goto</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+    }
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>La diferencia entre <code>break …</code>, <code>continue …</code>, y <code>goto …</code> está en las restricciones:</p>
+      <ul>
+        <li><code>break <em>etiqueta</em></code> sólo permite saltos hacia adelante, y la etiqueta debe ir justo tras el fin del bucle.</li>
+        <li><code>continue <em>etiqueta</em></code> sólo saltos hacia atrás, y la etiqueta debe ir justo antes del inicio del bucle.</li>
+        <li><code>goto <em>etiqueta</em></code> no tiene restricciones.</li>
+      </uL>
+
+      <p>Es parte de la macro de <a href="#deferred-resource-release">devolución diferida de recursos</a>:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  char *nivel1 = malloc(1);
+  <b>auto free(nivel1);</b>
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    char *nivel2 = malloc(2);
+    <b>auto free(nivel2);</b>
+    for (y = 0; y &lt; 100; ++y) {
+      char *nivel3 = malloc(3);
+      <b>auto free(nivel3);</b>
+      switch (x + y) {
+        case 157:
+          <b>break</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>continue</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+    }
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  return 0;
+}</code>
+          </td><td>
+            <br/><br/><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main(int argc, char* argv[])
+{
+  int x = 0, y = 0;
+  char *nivel1 = malloc(1);
+  int x_inicial = 0;
+
+<em>busca_a_partir_de_x_inicial</em>:
+  for (x = x_inicial; x &lt; 100; ++x) {
+    char *nivel2 = malloc(2);
+    for (y = 0; y &lt; 100; ++y) {
+      char *nivel3 = malloc(3);
+      switch (x + y) {
+        case 157:
+          <b>free(nivel3);</b>
+          <b>free(nivel2);</b>
+          <b>goto</b> <em>encontrada_descomposición_del_número</em>;
+        case 11:
+          x_inicial = 37;
+          fprintf(stderr, "Saltamos de x=11 a x=%d\n",
+                  x_inicial);
+          <b>free(nivel3);</b>
+          <b>free(nivel2);</b>
+          <b>goto</b> <em>busca_a_partir_de_x_inicial</em>;
+      }
+      <b>free(nivel3);</b>
+    }
+    <b>free(nivel2);</b>
+  } <em>encontrada_descomposición_del_número</em>:
+
+  if (x &lt; 100 || y &lt; 100) {
+    fprintf(stderr, "Encontrada %d = %d + %d\n",
+            x + y, x, y);
+  }
+
+  <b>free(nivel1);</b>
+
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>Usando <code>goto</code> en general no se puede garantizar que los recursos vayan a devolverse correctamente, pero con las restricciones al usar <code>break …</code> y <code>continue …</code> sí que funciona.</p>
+      <table>
+        <tr><td><code>$ bin/cedrocc test/defer-label-break.c -std=c99 -pedantic-errors -Wall -fanalyzer -o /tmp/find-number-decomposition
+$ valgrind --leak-check=yes /tmp/find-number-decomposition
+…
+Saltamos de x=11 a x=37
+Encontrada 157 = 58 + 99
+==1077== 
+==1077== HEAP SUMMARY:
+==1077==     in use at exit: 0 bytes in 0 blocks
+==1077==   total heap usage: 2,236 allocs, 2,236 frees, 6,683 bytes allocated
+==1077== 
+==1077== All heap blocks were freed -- no leaks are possible
+==1077== 
+==1077== For lists of detected and suppressed errors, rerun with: -s
+==1077== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)</code></td></tr>
+        </table>
+
+      <h3 id="label-break-related-work">Obras relacionadas <a class="anchor" href="#label-break-related-work">#…-related-work</a></h3>
+      <p>El lenguaje de programación <a href="https://en.wikipedia.org/wiki/Structured_program_theorem#Implications_and_refinements">BLISS 11</a> fue el primero que <a href="https://www.cs.tufts.edu/~nr/cs257/archive/ronald-brender/bliss.pdf#9">introdujo etiquetas para su palabra clave <code>leave</code></a> (análogo al <code>break</code> del C) alrededor de 1974, y luego otros lenguajes como Java, Javascript, y Go hicieron lo mismo con <code>continue</code> y <code>break</code>.</p>
+    </section>
+
+    <section id="slice-notation">
+      <h2>Notación para porciones de ristras: <a class="anchor" href="#slice-notation">#slice-notation</a></h2>
+      <p>Convierte <code><b>ristra</b>[<b>inicio</b>..<b>fin</b>]</code> en <code>&amp;<b>ristra</b>[<b>inicio</b>], &amp;<b>ristra</b>[<b>fin</b>]</code>. El valor ristra/puntero <code>ristra</code> puede ser simplemente un identificador o en general una expresión que, al evaluarse dos veces, no debe tener efecto secundario alguno, tal <a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Duplication-of-Side-Effects.html#Duplication-of-Side-Effects">como las macros del preprocesador C estándar</a>.</p>
+      <p>Podemos usarlo para mejorar el
+        <a href="#loop-macros-vec-example">ejemplo de vectores</a>
+        de la sección de macros de bucles:</p>
+      <table>
+        <tr>
+          <td>
+            <code>  añade(&amp;palabras, <b>animales</b>[<b>0</b>..<b>2</b>]);
+  añade(&amp;palabras, <b>plantas</b>[<b>0</b>..<b>3</b>]);
+  añade(&amp;palabras, <b>animales</b>[<b>2</b>..<b>4</b>]);
+</code>
+          </td><td>
+            <code>  añade(&amp;palabras, &amp;<b>animales</b>[<b>0</b>], &amp;<b>animales</b>[<b>2</b>]);
+  añade(&amp;palabras, &amp;<b>plantas</b>[<b>0</b>], &amp;<b>plantas</b>[<b>3</b>]);
+  añade(&amp;palabras, &amp;<b>animales</b>[<b>2</b>], &amp;<b>animales</b>[<b>4</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>El fin de la porción puede llevar un signo positivo para indicar que
+        es una posición relativa al inicio de la porción:
+        <code><b>ristra</b>[<b>inicio</b>..+<b>fin</b>]</code> se convierte en
+        <code>&amp;<b>ristra</b>[<b>inicio</b>], &amp;<b>ristra</b>[<b>inicio</b>+<b>fin</b>]</code>.
+        En este caso, la advertencia sobre doble ejecución de efectos secundarios se aplica también a
+        <code>inicio</code> además de a <code>ristra</code>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  añade(&amp;palabras, <b>animales</b>[<b>0</b>..<b>+2</b>]);
+  añade(&amp;palabras, <b>plantas</b>[<b>0</b>..<b>3</b>]);
+  añade(&amp;palabras, <b>animales</b>[<b>2</b>..<b>+2</b>]);
+</code>
+          </td><td>
+            <code>  añade(&amp;palabras, &amp;<b>animales</b>[<b>0</b>], &amp;<b>animales</b>[<b>0+2</b>]);
+  añade(&amp;palabras, &amp;<b>plantas</b>[<b>0</b>], &amp;<b>plantas</b>[<b>3</b>]);
+  añade(&amp;palabras, &amp;<b>animales</b>[<b>2</b>], &amp;<b>animales</b>[<b>2+2</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>Si la ristra se compone de más de una pieza, se envuelve con paréntesis para asegurar que sea correcto.</p>
+      <table>
+        <tr>
+          <td>
+            <code>  añade(&amp;palabras, <b>(uint8_t*)animales</b>[<b>0</b>..<b>+2</b>]);
+  añade(&amp;palabras, <b>(uint8_t*)plantas</b>[<b>0</b>..<b>3</b>]);
+  añade(&amp;palabras, <b>(uint8_t*)animales</b>[<b>2</b>..<b>+2</b>]);
+</code>
+          </td><td>
+            <code>  añade(&amp;palabras, &amp;<b>((uint8_t*)animales)</b>[<b>0</b>], &amp;<b>((uint8_t*)animales)</b>[<b>0+2</b>]);
+  añade(&amp;palabras, &amp;<b>((uint8_t*)plantas)</b>[<b>0</b>], &amp;<b>((uint8_t*)plantas)</b>[<b>3</b>]);
+  añade(&amp;palabras, &amp;<b>((uint8_t*)animales)</b>[<b>2</b>], &amp;<b>((uint8_t*)animales)</b>[<b>2+2</b>]);
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>Se puede usar en inicializadores, en cuyo caso las llaves pueden omitirse:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+
+#pragma Cedro 1.0
+
+typedef struct {
+  const char* a;
+  const char* b;
+} char_slice_t;
+const char* texto = "uno dos tres";
+
+/** Extrae "dos" de `texto`. */
+int main(void)
+{
+  char_slice_t porción = <b>texto</b>[<b>4</b>..+<b>3</b>]</b>;
+  const char* cursor;
+  for (cursor = porción.a; cursor != porción.b; ++cursor) {
+    putc(*cursor, stderr);
+  }
+  putc('\n', stderr);
+}</code>
+          </td><td><br/><br/>
+            <code>#include &lt;stdio.h&gt;
+
+typedef struct {
+  const char* a;
+  const char* b;
+} char_slice_t;
+const char* texto = "uno dos tres";
+
+/** Extrae "dos" de `texto`. */
+int main(void)
+{
+  char_slice_t porción = { <b>&amp;texto</b>[<b>4</b>], <b>&amp;texto</b>[<b>4+3</b>] };
+  const char* cursor;
+  for (cursor = porción.a; cursor != porción.b; ++cursor) {
+    putc(*cursor, stderr);
+  }
+  putc('\n', stderr);
+}</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>Este ejemplo completo muestra un letrero con texto deslizante:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#ifdef _WIN32
+#include &lt;windows.h&gt;
+// Véase https://stackoverflow.com/a/3930716/
+int sleep_ms(int ms) { Sleep(ms); return 0; }
+#else
+#define _XOPEN_SOURCE 500
+#include &lt;unistd.h&gt; // Desfasado pero simple:
+int sleep_ms(int ms) { return usleep(ms*1000); }
+#endif
+
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+<b>#pragma Cedro 1.0</b>
+
+typedef char utf8_char[5]; // Como cadena C.
+void
+imprime_porción(const utf8_char* inicio,
+                const utf8_char* final)
+{
+  while (inicio &lt; final) fputs(*inicio++, stdout);
+}
+
+int
+main(int argc, char* argv[])
+{
+  int tamaño_letrero = 8;
+  if (argc &lt; 2) {
+    fprintf(stderr, "Uso: letrero &lt;texto&gt;\n",
+            tamaño_letrero);
+    exit(1);
+  }
+
+  const char separador[] = " *** ";
+  size_t lon_octetos   = strlen(argv[1]);
+  size_t lon_separador = strlen(separador);
+  char* m = malloc(lon_octetos + lon_separador);
+  <b>auto free(m);</b>
+  memcpy(m,               argv[1],   lon_octetos);
+  memcpy(m + lon_octetos, separador, lon_separador);
+  lon_octetos += lon_separador;
+
+  // Extrae cada carácter codificado como UTF-8,
+  // que necesita hasta 4 octetos + 1 terminador.
+  utf8_char* mensaje =
+    malloc(sizeof(utf8_char) * lon_octetos);
+  <b>auto free(mensaje);</b>
+  size_t lon = 0;
+  for (size_t final = 0; final &lt; lon_octetos;) {
+    const char b = m[final];
+    size_t u;
+    if      (0xF0 == (b &amp; 0xF8)) u = 4;
+    else if (0xE0 == (b &amp; 0xF0)) u = 3;
+    else if (0xC0 == (b &amp; 0xE0)) u = 2;
+    else                         u = 1;
+    if (final + u &gt; lon_octetos) break;
+    memcpy(&amp;mensaje[lon], &amp;m[final], u);
+    mensaje[final][u] = '\0';
+    final += u;
+    ++lon;
+  }
+
+  if (lon &lt; 2) {
+    fprintf(stderr, "texto de mensaje demasiado corto.\n");
+    exit(2);
+  } else if (lon &lt; tamaño_letrero) {
+    tamaño_letrero = lon - 1;
+  }
+
+  for (;;) {
+    for (int i = 0; i &lt; lon; ++i) {
+      int resto = i + tamaño_letrero &gt; lon?
+          i + tamaño_letrero - lon: 0;
+      int visible = tamaño_letrero - resto;
+      imprime_porción(<b>mensaje[i .. +visible]</b>);
+      imprime_porción(<b>mensaje[0 .. resto]</b>);
+      putc('\r', stdout);
+      fflush(stdout);
+      sleep_ms(300);
+    }
+  }
+
+  return 0;
+}</code>
+          </td><td><br/><br/><br/><br/>
+            <code>#ifdef _WIN32
+#include &lt;windows.h&gt;
+// Véase: https://stackoverflow.com/a/3930716/
+int sleep_ms(int ms) { Sleep(ms); return 0; }
+#else
+#define _XOPEN_SOURCE 500
+#include &lt;unistd.h&gt; // Desfasado pero simple:
+int sleep_ms(int ms) { return usleep(ms*1000); }
+#endif
+
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+typedef char utf8_char[5]; // Como cadena C.
+void
+imprime_porción(const utf8_char* inicio,
+                const utf8_char* final)
+{
+  while (inicio &lt; final) fputs(*inicio++, stdout);
+}
+
+int
+main(int argc, char* argv[])
+{
+  int tamaño_letrero = 8;
+  if (argc &lt; 2) {
+    fprintf(stderr, "Uso: letrero &lt;texto&gt;\n",
+            tamaño_letrero);
+    exit(1);
+  }
+
+  const char separador[] = " *** ";
+  size_t lon_octetos   = strlen(argv[1]);
+  size_t lon_separador = strlen(separador);
+  char* m = malloc(lon_octetos + lon_separador);
+  memcpy(m,               argv[1],   lon_octetos);
+  memcpy(m + lon_octetos, separador, lon_separador);
+  lon_octetos += lon_separador;
+
+  // Extrae cada carácter codificado como UTF-8,
+  // que necesita hasta 4 octetos + 1 terminador.
+  utf8_char* mensaje =
+    malloc(sizeof(utf8_char) * lon_octetos);
+  size_t lon = 0;
+  for (size_t final = 0; final &lt; lon_octetos;) {
+    const char b = m[final];
+    size_t u;
+    if      (0xF0 == (b &amp; 0xF8)) u = 4;
+    else if (0xE0 == (b &amp; 0xF0)) u = 3;
+    else if (0xC0 == (b &amp; 0xE0)) u = 2;
+    else                         u = 1;
+    if (final + u &gt; lon_octetos) break;
+    memcpy(&amp;mensaje[lon], &amp;m[final], u);
+    mensaje[final][u] = '\0';
+    final += u;
+    ++lon;
+  }
+
+  if (lon &lt; 2) {
+    fprintf(stderr, "texto de mensaje demasiado corto.\n");
+    exit(2);
+  } else if (lon &lt; tamaño_letrero) {
+    tamaño_letrero = lon - 1;
+  }
+
+  for (;;) {
+    for (int i = 0; i &lt; lon; ++i) {
+      int resto = i + tamaño_letrero &gt; lon?
+          i + tamaño_letrero - lon: 0;
+      int visible = tamaño_letrero - resto;
+      imprime_porción(<b>&mensaje[i], &mensaje[i+visible]</b>);
+      imprime_porción(<b>&mensaje[0], &mensaje[resto]</b>);
+      putc('\r', stdout);
+      fflush(stdout);
+      sleep_ms(300);
+    }
+  }
+
+  <b>free(mensaje);</b>
+  <b>free(m);</b>
+
+  return 0;
+}
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <h3 id="slice-notation-related-work">Obras relacionadas <a class="anchor" href="#slice-notation-related-work">#…-related-work</a></h3>
+      <p>La notación <code>[a..b]</code> para porciones de ristras se
+        <a href="https://en.wikipedia.org/wiki/Array_slicing#1968:_Algol_68">definió por primera vez en Algol 68</a>
+        donde era una alternativa a la notación primaria <code>[a:b]</code>, y
+        ambas han sido adoptadas por otros lenguajes desde entonces.
+        La forma <code>[a..b]</code> se usa en <a href="https://www.adaic.org/">Ada</a>,
+        <a href="https://www.perl.org/">Perl</a>, <a href="https://dlang.org/">D</a>, y
+        <a href="https://www.rust-lang.org/">Rust</a>, por ejemplo.</p>
+    </section>
+
+    <section id="block-macros">
       <h2>Macros de bloque: <a class="anchor" href="#block-macros">#block-macros</a></h2>
-      <p>Formatea una macro multi-línea en una sóla línea.</p>
+      <p>Formatea una macro multi-línea en una sola línea.</p>
       <p>Las macros en C deben escribirse todo en una línea,
         pero a veces hay que partirlas en varias pseudo-líneas
         y se hace tedioso y propenso a errores
-        el mantener todos los escapes de nueva línea  («<code>\</code>»).</p>
-      <p>Añadiendo llaves («<code>{</code>» o «<code>}</code>»)
+        el mantener todos los escapes de nueva línea <code>\</code>.</p>
+      <p>Añadiendo llaves <code>{</code> o <code>}</code>
         justo tras <code>#define</code>
         podemos hacer que <em>Cedro</em> se encargue de eso por nosotros:</p>
-<code>#define { macro(A, B, C)
-f_##A(B, C); /// Versión especializada de f() para el tipo A.
-#define }</code>
-<code>#define macro(A, B, C)                                                        \
-f_##A(B, C); /** Versión especializada de f() para el tipo A. */              \
-/* End #define */</code>
-      <p>Aún así, las directrices de preprocesador no se permiten
-        dentro de macros, de manera que no se pueden usar
+      <table>
+        <tr>
+          <td>
+            <code>#define { macro(A, B, C)
+/// Versión de f() para el tipo A.
+f_##A(B, C) /// Sin punto y coma «;» al final.
+#define }
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
+          </td><td>
+            <code>#define macro(A, B, C)                                            \
+/** Versión de f() para el tipo A. */                             \
+f_##A(B, C) /** Sin punto y coma «;» al final. */                 \
+/* End #define */
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
+          </td>
+        </tr>
+      </table>
+      <p>En casos como este
+        («<a href="https://gcc.gnu.org/onlinedocs/gcc-11.2.0/cpp/Function-like-Macros.html#Function-like-Macros">function-like macros</a>»),
+        al no haber punto y coma tras <code>f_##A(B, C)</code>
+        herramientas tales como editores de texto
+        (p.ej. <a href="https://www.gnu.org/software/emacs/manual/html_node/ccmode/Macros-with-_003b.html">Emacs</a>)
+        sangran [«indent»] el código incorrectamente.</p>
+      <p>La solución es dejarlo ahí para el editor,
+        y añadirlo también tras
+        <code>#define }</code> como <code>#define }<b>;</b></code>
+        lo que indica a Cedro que lo elimine de la definición.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#define { macro(A, B, C)
+/// Versión de f() para el tipo A.
+f_##A(B, C)<b>;</b> /// Punto y coma «;» eliminado por Cedro.
+#define }<b>;</b>
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
+          </td><td>
+            <code>#define macro(A, B, C)                                            \
+/** Versión de f() para el tipo A. */                             \
+f_##A(B, C) /** Punto y coma «;» eliminado por Cedro. */          \
+/* End #define */
+
+int main(void) {
+    int x = 1, y = 2;
+    macro(int, x, y);
+    // → f_int(x, y);
+}</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>Las directrices de preprocesador no se permiten
+        dentro de macros, de manera que no se puede usar
         <code>#if</code>, <code>#include</code>, etc.</p>
       <p>Nota: la directiva debe empezar exactamente con
-        «<code>#define {</code>» o «<code>#define }</code>»,
+        <code>#define {</code> o <code>#define }</code>,
         ni más ni menos espacio entre
-        «<code>#define</code>» y la llave
-        «<code>{</code>» o «<code>}</code>».</p>
+        <code>#define</code> y la llave
+        <code>{</code> o <code>}</code>.</p>
+
+    </section>
+
+    <section id="loop-macros">
+      <h2>Macros de bucle: <a class="anchor" href="#loop-macros">#loop-macros</a></h2>
+      <p>Repite las líneas entre
+        <code>#foreach { ...</code> y <code>#foreach }</code>
+        sustituyendo las variables dadas.
+        Esas líneas pueden contener definiciones de macro (<code>#define</code>)
+        pero las variables del bucle no se expandirán dentro de ellas.</p>
+      <p>Como en <code>#define</code>,
+        el <code>##</code> sirve para
+         <a href="https://gcc.gnu.org/onlinedocs/cpp/Concatenation.html#Concatenation">juntar piezas</a>
+        de forma que si por ejemplo
+        <code>T</code> es <code>float</code>,
+        <code>Vec_##T</code> produce <code>Vec_float</code>.</p>
+      <p>Dentro del bucle,
+        cualquier operador que siga a un <code>#</code>
+        (p.ej. <code>#,</code>) se omite en la última vuelta.</p>
+      <table>
+        <tr>
+          <td>
+            <code>typedef enum {
+#foreach { <b>V</b> {<b>ESPACIO</b>, <b>NÚMERO</b>, \
+              <b>PALABRA_CLAVE</b>, <b>IDENTIFICADOR</b>, <b>OPERADOR</b>}
+  T_##<b>V</b>#,
+#foreach }
+} TipoDePieza;</code>
+          </td><td>
+            <code>typedef enum {
+  T_<b>ESPACIO</b>,
+  T_<b>NÚMERO</b>,
+  T_<b>PALABRA_CLAVE</b>,
+  T_<b>IDENTIFICADOR</b>,
+  T_<b>OPERADOR</b>
+} TipoDePieza;</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>Si una variable lleva el prefijo <code>#</code>,
+        <a href="https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing">el resultado es una cadena con su contenido</a>:
+        si <code>T</code> es <code>float</code>,
+        <code>char* name = #T;</code> produce
+        <code>char* name = <b>"float"</b>;</code>.</p>
+      <p>Los bucles se pueden anidar,
+        y la lista de valores puede salir
+        de una variable definida en un bucle exterior.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#foreach { <b>VALORES</b> {{<b>ESPACIO</b>, <b>NÚMERO</b>, \
+                     <b>PALABRA_CLAVE</b>, <b>IDENTIFICADOR</b>, <b>OPERADOR</b>}}
+typedef enum {
+#foreach { <b>V</b> <b>VALORES</b>
+  T_##<b>V</b>#,
+#foreach }
+} TipoDePieza;
+
+const char* const TipoDePieza_CADENA[] = {
+#foreach { <b>V</b> <b>VALORES</b>
+  #<b>V</b>#,
+#foreach }
+};
+#foreach }
+</code>
+          </td><td>
+            <code>typedef enum {
+  T_<b>ESPACIO</b>,
+  T_<b>NÚMERO</b>,
+  T_<b>PALABRA_CLAVE</b>,
+  T_<b>IDENTIFICADOR</b>,
+  T_<b>OPERADOR</b>
+} TipoDePieza;
+
+const char* const TipoDePieza_CADENA[] = {
+  "<b>ESPACIO</b>",
+  "<b>NÚMERO</b>",
+  "<b>PALABRA_CLAVE</b>",
+  "<b>IDENTIFICADOR</b>",
+  "<b>OPERADOR</b>"
+};</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>Es posible iterar múltiples variables en paralelo
+        usando tuplas de variables y valores,
+        que deben tener el mismo número de elementos:</p>
+      <table>
+        <tr>
+          <td>
+            <code>#foreach { {<b>TIPO</b>, <b>PREFIJO</b>, <b>VALORES</b>} {                            \
+  { <b>TipoDePieza</b>, <b>T_</b>, {<b>ESPACIO</b>, <b>NÚMERO</b>,                           \
+                      <b>PALABRA_CLAVE</b>, <b>IDENTIFICADOR</b>, <b>OPERADOR</b>} }, \
+  { <b>ConfDePúa</b>,   <b>M_</b>, {<b>ENTRADA</b>, <b>SALIDA</b>} }                         \
+  }
+typedef enum {
+#foreach { <b>V</b> <b>VALORES</b>
+  PREFIJO##<b>V</b>#,
+#foreach }
+} <b>TIPO</b>;
+
+const char* const <b>TIPO</b>##_CADENA[] = {
+#foreach { <b>V</b> <b>VALORES</b>
+  #<b>V</b>#,
+#foreach }
+};
+
+#foreach }</code>
+          </td><td>
+            <code>typedef enum {
+  <b>T_ESPACIO</b>,
+  <b>T_NÚMERO</b>,
+  <b>T_PALABRA_CLAVE</b>,
+  <b>T_IDENTIFICADOR</b>,
+  <b>T_OPERADOR</b>
+} <b>TipoDePieza</b>;
+
+const char* const <b>TipoDePieza</b>_CADENA[] = {
+  "<b>ESPACIO</b>",
+  "<b>NÚMERO</b>",
+  "<b>PALABRA_CLAVE</b>",
+  "<b>IDENTIFICADOR</b>",
+  "<b>OPERADOR</b>"
+};
+
+typedef enum {
+  <b>M_ENTRADA</b>,
+  <b>M_SALIDA</b>
+} <b>ConfDePúa</b>;
+
+const char* const <b>ConfDePúa</b>_CADENA[] = {
+  "<b>ENTRADA</b>",
+  "<b>SALIDA</b>"
+};
+
+</code>
+          </td>
+        </tr>
+      </table>
+
+      <p>Este ejemplo itera sobre una lista de campos
+        para construir una <code>struct</code>
+        y la correspondiente función <code>imprime_...()</code>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdint.h&gt;
+
+#pragma Cedro 1.0
+void imprime_double(double n, FILE* salida)
+{
+  fprintf(salida, "%f", n);
+}
+
+typedef uint32_t Color_ARGB;
+void imprime_Color_ARGB(Color_ARGB c, FILE* salida)
+{
+  if ((c &amp; 0xFF000000) == 0xFF000000) {
+    fprintf(salida, "#%.6X", c &amp; 0x00FFFFFF);
+  } else {
+    fprintf(salida, "#%.8X", c);
+  }
+}
+
+#foreach { <b>CAMPOS</b> {{                            \
+  { <b>double</b>,     <b>x</b>,     <b>/** Posición X. */</b>    }, \
+  { <b>double</b>,     <b>y</b>,     <b>/** Posición Y. */</b>    }, \
+  { <b>Color_ARGB</b>, <b>color</b>, <b>/** Color 32 bits. */</b> }  \
+  }}
+typedef struct Punto {
+#foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>COMENTARIO</b>} <b>CAMPOS</b>
+  <b>TIPO</b> <b>NOMBRE</b>; <b>COMENTARIO</b>
+#foreach }
+} Punto;
+
+void imprime_Punto(Punto punto, FILE* salida)
+{
+#foreach { {<b>TIPO</b>, <b>NOMBRE</b>, <b>COMENTARIO</b>} <b>CAMPOS</b>
+  imprime_##<b>TIPO</b>(punto.<b>NOMBRE</b>, salida); putc('\n', salida);
+#foreach }
+}
+#foreach }
+
+int main(void)
+{
+  Punto punto = { .x = 12.3, .y = 4.56, .color = 0xFFa3f193 };
+  imprime_Punto(punto, stderr);
+}</code>
+          </td><td><br/>
+            <code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdint.h&gt;
+
+void imprime_double(double n, FILE* salida)
+{
+  fprintf(salida, "%f", n);
+}
+
+typedef uint32_t Color_ARGB;
+void imprime_Color_ARGB(Color_ARGB c, FILE* salida)
+{
+  if ((c &amp; 0xFF000000) == 0xFF000000) {
+    fprintf(salida, "#%.6X", c &amp; 0x00FFFFFF);
+  } else {
+    fprintf(salida, "#%.8X", c);
+  }
+}
+
+typedef struct Punto {
+  <b>double</b> <b>x</b>; <b>/** Posición X. */</b>
+  <b>double</b> <b>y</b>; <b>/** Posición Y. */</b>
+  <b>Color_ARGB</b> <b>color</b>; <b>/** Color 32 bits. */</b>
+} Punto;
+
+void imprime_Punto(Punto punto, FILE* salida)
+{
+  imprime_<b>double</b>(punto.<b>x</b>, salida); putc('\n', salida);
+  imprime_<b>double</b>(punto.<b>y</b>, salida); putc('\n', salida);
+  imprime_<b>Color_ARGB</b>(punto.<b>color</b>, salida); putc('\n', salida);
+}
+
+int main(void)
+{
+  Punto punto = { .x = 12.3, .y = 4.56, .color = 0xFFa3f193 };
+  imprime_Punto(punto, stderr);
+}</code>
+          </td>
+        </tr>
+      </table>
+
+      <p id="loop-macros-vec-example">Este ejemplo completo
+        define variantes para los tipos
+        <code>float</code>, <code>str</code>, y <code>cstr</code>
+        de una ristra/vector de capacidad variable
+        con una función llamada <code>añade_Vec_##T()</code> para cada uno.
+        Luego usa el
+        <code><a href="https://en.cppreference.com/w/c/language/generic">_Generic</a></code>
+        del C11 para definir una macro/función
+        <code>añade()</code> pseudo-<a href="https://es.wikipedia.org/wiki/Polimorfismo_%28inform%C3%A1tica%29">polimórfica</a>.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt; // Para memcpy().
+
+typedef struct str { uint8_t* start; uint8_t* end; } str;
+typedef char* cstr; // Nombres de tipo deben ser palabras.
+
+#pragma Cedro 1.0
+
+#foreach { <b>LISTA_DE_TIPOS</b> {{<b>float</b>, <b>str</b>, <b>cstr</b>}}
+#foreach { <b>T</b> <b>LISTA_DE_TIPOS</b>
+/** Tipo Vector (ristra extensible). */
+typedef struct {
+  <b>T</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_##<b>T</b>;
+
+/** Añade una porción a un vector de elementos de este tipo. */
+bool
+añade_Vec_##<b>T</b>(Vec_##<b>T</b> *v, const <b>T</b> *start, const <b>T</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>T</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>T</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>T</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+#foreach }
+#foreach { <b>DEFINE</b> {<b>#define</b>} // Evita juntar las líneas.
+<b>DEFINE</b> añade(VEC, START, END) _Generic((VEC), \
+#foreach { <b>T</b> <b>LISTA_DE_TIPOS</b>
+  Vec_##<b>T</b>*: añade_Vec_##<b>T</b>#, \
+#foreach }
+  )(VEC, START, END)
+#foreach }
+#foreach }
+
+#include &lt;stdio.h&gt;
+int main(void)
+{
+  Vec_cstr palabras = {0};
+  cstr animales[] = { "caballo", "gato", "pollo", "perro" };
+  cstr plantas [] = { "rábano", "trigo", "tomate" };
+  añade(&amp;palabras, &amp;animales[0], &amp;animales[2]);
+  añade(&amp;palabras, &amp;plantas[0], &amp;plantas[3]);
+  añade(&amp;palabras, &amp;animales[2], &amp;animales[4]);
+  for (cstr *p = palabras._, *fin = palabras._ + palabras.len;
+       p != fin; ++p) {
+    fprintf(stderr, "Palabra: \"%s\"\n", *p);
+  }
+  return 0;
+}</code>
+          </td><td>
+            <code>#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt; // Para memcpy().
+
+typedef struct str { uint8_t* start; uint8_t* end; } str;
+typedef char* cstr; // Nombres de tipo deben ser palabras.
+
+/** Tipo Vector (ristra extensible). */
+typedef struct {
+  <b>float</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_<b>float</b>;
+
+/** Añade una porción a un vector de elementos de este tipo. */
+bool
+añade_Vec_<b>float</b>(Vec_<b>float</b> *v, const <b>float</b> *start, const <b>float</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>float</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>float</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>float</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+/** Tipo Vector (ristra extensible). */
+typedef struct {
+  <b>str</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_<b>str</b>;
+
+/** Añade una porción a un vector de elementos de este tipo. */
+bool
+añade_Vec_<b>str</b>(Vec_<b>str</b> *v, const <b>str</b> *start, const <b>str</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>str</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>str</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>str</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+/** Tipo Vector (ristra extensible). */
+typedef struct {
+  <b>cstr</b>* _;
+  size_t len;
+  size_t capacity;
+} Vec_<b>cstr</b>;
+
+/** Añade una porción a un vector de elementos de este tipo. */
+bool
+añade_Vec_<b>cstr</b>(Vec_<b>cstr</b> *v, const <b>cstr</b> *start, const <b>cstr</b> *end)
+{
+  const size_t to_add = (size_t)(end - start);
+  if (v-&gt;len + to_add &gt; v-&gt;capacity) {
+    const size_t new_capacity = v-&gt;len +
+        (to_add &lt; v-&gt;len? v-&gt;len: to_add);
+    <b>cstr</b> * const new_start =
+        realloc(v-&gt;_, new_capacity * sizeof(<b>cstr</b>));
+    if (!new_start) return false;
+    v-&gt;_        = new_start;
+    v-&gt;capacity = new_capacity;
+  }
+  memcpy(v-&gt;_ + v-&gt;len, start, to_add * sizeof(<b>cstr</b>));
+  v-&gt;len += to_add;
+
+  return true;
+}
+
+#define añade(VEC, START, END) _Generic((VEC), \
+  Vec_<b>float</b>*: añade_Vec_<b>float</b>, \
+  Vec_<b>str</b>*: añade_Vec_<b>str</b>, \
+  Vec_<b>cstr</b>*: añade_Vec_<b>cstr</b> \
+  )(VEC, START, END)
+
+#include &lt;stdio.h&gt;
+int main(void)
+{
+  Vec_cstr palabras = {0};
+  cstr animales[] = { "caballo", "gato", "pollo", "perro" };
+  cstr plantas [] = { "rábano", "trigo", "tomate" };
+  añade(&amp;palabras, &amp;animales[0], &amp;animales[2]);
+  añade(&amp;palabras, &amp;plantas[0], &amp;plantas[3]);
+  añade(&amp;palabras, &amp;animales[2], &amp;animales[4]);
+  for (cstr *p = palabras._, *fin = palabras._ + palabras.len;
+       p != fin; ++p) {
+    fprintf(stderr, "Palabra: \"%s\"\n", *p);
+  }
+  return 0;
+}</code>
+          </td>
+        </tr>
+      </table>
     </section>
 
     <section id="binary-include">
       <h2>Inclusión binaria: <a class="anchor" href="#binary-include">#binary-include</a></h2>
       <p>Inserta un fichero en forma de ristra de octetos.</p>
-      <code>#include &lt;stdint.h&gt;
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
 const uint8_t imagen
 #include {images/cedro-32x32.png}
 ;</code>
-      <code>#include &lt;stdint.h&gt;
+          </td><td>
+            <code>#include &lt;stdint.h&gt;
 const uint8_t imagen
 [1480] = { /* cedro-32x32.png */
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮
 };</code>
+          </td>
+        </tr>
+      </table>
       <p>El nombre de fichero es relativo al fichero C incluyente.</p>
-      <p>Nota: la directiva debe empezar exactamente con «<code>#include {</code>»,
+      <p>Nota: la directiva debe empezar exactamente con <code>#include {</code>,
         ni más ni menos espacio entre
-        «<code>#include</code>» y la llave «<code>{</code>».</p>
+        <code>#include</code> y la llave <code>{</code>.</p>
+
+      <p>Insertar directamente el código en el programa es muy conveniente
+        pero va a enlentecer la compilación.
+        La manera de reducir el problema es compilar esta parte por separado
+        como se puede ver en <url>template/Makefile.nanovg.mk</url>
+        o en este ejemplo:</p>
+      <table>
+        <tr><td><url>assets.c</url><br/><code>#include &lt;stdint.h&gt;
+#include &lt;stdlib.h&gt;
+
+#pragma Cedro 1.0
+
+const uint8_t imagen
+#include {images/cedro-32x32.png}
+;
+const size_t sizeof_imagen = sizeof(imagen);</code></td></tr>
+        <tr><td><url>main.c</url></br><code>#include &lt;stdint.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;limits.h&gt;
+
+extern const uint8_t imagen[];
+extern const size_t sizeof_imagen;
+
+int main(void)
+{
+    unsigned int suma = 0;
+    for (size_t i = 0; i < sizeof_imagen; ++i) {
+        suma += imagen[i];
+    }
+    fprintf(stderr,
+            "La suma (módulo UINT_MAX=%u) de los bytes de la imagen es %u.\n",
+            UINT_MAX, suma);
+}</code></td></tr>
+         <tr><td><code>cedrocc -c -o assets.o assets.c -std=c99
+cedrocc -c -o main.o   main.c   -std=c99
+cc -o programa main.o assets.o</code></td></tr>
+      </table>
+
       <h3 id="binary-include-related-work">Obras relacionadas <a class="anchor" href="#binary-include-related-work">#…-related-work</a></h3>
       <p>Esta característica es una vieja idea
         y hay varias implementaciones anteriores, por ejemplo
@@ -770,6 +1914,7 @@ const uint8_t imagen
         me ha sido muy útil en mis programas en Rust.</p>
     </section>
 
+    <a class="link-to-table-of-contents" href="#">↑ Sumario</a>
     <footer>
       El Cedro Atlántico Azul del icono es el bonsai <a href="https://www.bonsai-nbf.org/collections#America">Fénix Plateado</a> en el <a href="https://usna.usda.gov/">Arbolario Nacional Estadounidense</a>.
     </footer>
