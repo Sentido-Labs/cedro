@@ -48,8 +48,8 @@ CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -
 CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable
 
 # Loose compilation flags, use for releases:
-#CFLAGS=-g -std=c99
-#CFLAGS_MINIZ=-g -std=c99
+CFLAGS=-g -std=c99
+CFLAGS_MINIZ=-g -std=c99
 
 # -DNDEBUG mutes the unused-variable warnings/errors.
 OPTIMIZATION=-O -DNDEBUG
