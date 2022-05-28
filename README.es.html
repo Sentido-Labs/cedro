@@ -33,8 +33,8 @@
  cedro fichero.c | cc -x c - -o fichero
   Es lo que hace el programa <a href="#cedrocc">cedrocc</a>:
  cedrocc -o fichero fichero.c
-  Con cedrocc, las siguientes opciones son implícitas:
-    --discard-comments --insert-line-directives
+  Con cedrocc, la siguiente opción es implícita:
+    --insert-line-directives
 
   --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)
   --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.
@@ -76,8 +76,8 @@
   Las opciones se pasan tal cual al compilador, excepto las que
  empiecen con «--cedro:…» que corresponden a opciones de cedro,
  por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».
-  Las siguientes opciones son implícitas:
-    --cedro:discard-comments --cedro:insert-line-directives
+  La siguiente opción es implícita:
+    --cedro:insert-line-directives
   Además, para cada #include, si encuentra el fichero lo lee y
  si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado
  en lugar del #include.

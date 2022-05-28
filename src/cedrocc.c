@@ -44,8 +44,8 @@ usage_es =
     "  Las opciones se pasan tal cual al compilador, excepto las que\n"
     " empiecen con «--cedro:…» que corresponden a opciones de cedro,\n"
     " por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».\n"
-    "  Las siguientes opciones son implícitas:\n"
-    "    --cedro:discard-comments --cedro:insert-line-directives\n"
+    "  La siguiente opción es implícita:\n"
+    "    --cedro:insert-line-directives\n"
     "  Además, para cada #include, si encuentra el fichero lo lee y\n"
     " si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado\n"
     " en lugar del #include.\n"
@@ -65,8 +65,8 @@ usage_en =
     "  The options get passed as is to the compiler, except for those that\n"
     " start with “--cedro:…” that correspond to cedro options,\n"
     " for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.\n"
-    "  The following options are the defaults:\n"
-    "    --cedro:discard-comments --cedro:insert-line-directives\n"
+    "  The following option is the default:\n"
+    "    --cedro:insert-line-directives\n"
     "  In addition, for each #include, if it finds the file it reads it and\n"
     " if it finds `#pragma Cedro 1.0` processes it and inserts the result\n"
     " in place of the #include.\n"
@@ -409,7 +409,7 @@ int main(int argc, char* argv[])
   mut_Options options = {
     .apply_macros           = true,
     .escape_ucn             = false,
-    .discard_comments       = true,
+    .discard_comments       = false,
     .discard_space          = false,
     .insert_line_directives = true
   };

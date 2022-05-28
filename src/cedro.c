@@ -3478,7 +3478,7 @@ usage_es =
     "  Es lo que hace el programa cedrocc:\n"
     " cedrocc -o fichero fichero.c\n"
     "  Con cedrocc, las siguientes opciones son implícitas:\n"
-    "    --discard-comments --insert-line-directives\n"
+    "    --insert-line-directives\n"
     "\n"
     "  --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)\n"
     "  --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.\n"

@@ -33,8 +33,8 @@
  cedro file.c | cc -x c - -o file
   It is what the <a href="#cedrocc">cedrocc</a> program does:
  cedrocc -o file file.c
-  With cedrocc, the following options are the defaults:
-    --discard-comments --insert-line-directives
+  With cedrocc, the following option is the default:
+    --insert-line-directives
 
   --apply-macros     Applies the macros: backstitch, defer, etc. (default)
   --escape-ucn       Escapes non-ASCII in identifiers as UCN.
@@ -76,8 +76,8 @@
   The options get passed as is to the compiler, except for those that
  start with “--cedro:…” that correspond to cedro options,
  for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.
-  The following options are the defaults:
-    --cedro:discard-comments --cedro:insert-line-directives
+  The following option is the default:
+    --cedro:insert-line-directives
   In addition, for each #include, if it finds the file it reads it and
  if it finds `#pragma Cedro 1.0` processes it and inserts the result
  in place of the #include.

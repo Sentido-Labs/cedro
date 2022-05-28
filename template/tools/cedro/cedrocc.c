@@ -44,13 +44,13 @@ usage_es =
     "  Las opciones se pasan tal cual al compilador, excepto las que\n"
     " empiecen con «--cedro:…» que corresponden a opciones de cedro,\n"
     " por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».\n"
-    "  Las siguientes opciones son implícitas:\n"
-    "    --cedro:discard-comments --cedro:insert-line-directives\n"
-    "  Además, para cada #include, si encuentra el fichero lo lée y\n"
+    "  La siguiente opción es implícita:\n"
+    "    --cedro:insert-line-directives\n"
+    "  Además, para cada #include, si encuentra el fichero lo lee y\n"
     " si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado\n"
     " en lugar del #include.\n"
     "  Se puede especificar el compilador, p.ej. gcc:\n"
-    "    CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "    CEDRO_CC='gcc -x c - -x none' cedrocc …\n"
     "  Para depuración, esto escribe el código que iría entubado a cc,\n"
     " en stdout:\n"
     "    CEDRO_CC='' cedrocc …"
@@ -60,18 +60,18 @@ usage_en =
     "Usage: cedrocc [options] <file.c> [<file2.o>…]\n"
     "  Runs Cedro on the first file name that ends with “.c”,\n"
     " and compiles the result with “%s” plus the other arguments.\n"
-    "    cedrocc -o fichero fichero.c\n"
-    "    cedro fichero.c | cc -x c - -o fichero\n"
+    "    cedrocc -o file file.c\n"
+    "    cedro file.c | cc -x c - -o file\n"
     "  The options get passed as is to the compiler, except for those that\n"
     " start with “--cedro:…” that correspond to cedro options,\n"
     " for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.\n"
-    "  The following options are the defaults:\n"
-    "    --cedro:discard-comments --cedro:insert-line-directives\n"
+    "  The following option is the default:\n"
+    "    --cedro:insert-line-directives\n"
     "  In addition, for each #include, if it finds the file it reads it and\n"
     " if it finds `#pragma Cedro 1.0` processes it and inserts the result\n"
     " in place of the #include.\n"
     "  You can specify the compiler, e.g. gcc:\n"
-    "    CEDRO_CC='gcc -x c -' cedrocc …\n"
+    "    CEDRO_CC='gcc -x c - -x none' cedrocc …\n"
     "  For debugging, this writes the code that would be piped into cc,\n"
     " into stdout instead:\n"
     "    CEDRO_CC='' cedrocc …"
@@ -409,7 +409,7 @@ int main(int argc, char* argv[])
   mut_Options options = {
     .apply_macros           = true,
     .escape_ucn             = false,
-    .discard_comments       = true,
+    .discard_comments       = false,
     .discard_space          = false,
     .insert_line_directives = true
   };
