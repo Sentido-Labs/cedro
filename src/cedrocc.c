@@ -33,6 +33,7 @@
 #include "cedro.c"
 
 #include <unistd.h>
+#include <sys/wait.h> // For WEXITSTATUS etc.
 
 static const char* const
 usage_es =
@@ -518,6 +519,11 @@ int main(int argc, char* argv[])
         pclose(cc_stdin);
       } else {
         return_code = pclose(cc_stdin);
+        // https://www.man7.org/linux/man-pages/man3/wait.3p.html
+        if (WIFEXITED(return_code)) return_code = WEXITSTATUS(return_code);
+        else if (WIFSIGNALED(return_code)) return_code = 111;
+        else if (WIFSTOPPED (return_code)) return_code = 112;
+        else                               return_code = 113;
       }
     } else {
       perror(as_c_string(&cmd));
