@@ -208,7 +208,8 @@ move_##T##_array(mut_##T##_array_p _)                                   \
 }                                                                       \
                                                                         \
 /** Make sure that the array is ready to hold `minimum` elements,       \
-    resizing the array if needed. */                                    \
+    resizing the array if needed.                                       \
+    Returns `false` if (r)eallocation failed. */                        \
 static bool                                                             \
 ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 {                                                                       \
@@ -223,7 +224,7 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
     if (minimum > new_size) new_size = minimum;                         \
   }                                                                     \
   mut_##T##_p new_block = realloc((void*) _->start,                     \
-                                  new_size * sizeof(*_->start));        \
+                                  new_size * sizeof(_->start[0]));      \
   if (!new_block) return false;                                         \
   _->start    = new_block;                                              \
   _->capacity = new_size;                                               \
@@ -231,7 +232,8 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 }                                                                       \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
-    resizing the array if needed. */                                    \
+    resizing the array if needed.                                       \
+    Returns `false` if (r)eallocation failed. */                        \
 static bool                                                             \
 push_##T##_array(mut_##T##_array_p _, T item)                           \
 {                                                                       \
@@ -251,7 +253,8 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     If `deleted` is not `NULL`, the deleted elements are not destroyed  \
     but copied to that array.                                           \
     The `insert` slice must belong to a different array, or be          \
-    empty in which case it can be zero: `(T##_array_slice){0,0}` */     \
+    empty in which case it can be zero: `(T##_array_slice){0,0}`        \
+    Returns `false` if (r)eallocation failed. */                        \
 static bool                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
@@ -336,13 +339,14 @@ truncate_##T##_array(mut_##T##_array_p _, size_t len)                   \
 /** Remove the element at the end/top of the array,                     \
     copying its bits into `*item_p` unless `item_p` is `0`,             \
     in which case destruct_##T##_block()                                \
-    is called on those elements. */                                     \
+    is called on those elements.                                        \
+    Returns `false` if the stack was empty. */                          \
 static bool                                                             \
 pop_##T##_array(mut_##T##_array_p _, mut_##T##_p item_p)                \
 {                                                                       \
   if (not _->len) return false;                                         \
   mut_##T##_p last_p = (mut_##T##_p) _->start + _->len - 1;             \
-  if (item_p) memmove(item_p, last_p, sizeof(*_->start));               \
+  if (item_p) memmove(item_p, last_p, sizeof(*item_p));                 \
   else        destruct_##T##_block((mut_##T##_p) last_p, last_p + 1);   \
   --_->len;                                                             \
   return true;                                                          \
