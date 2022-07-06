@@ -1087,6 +1087,10 @@ preprocessor(Byte_p start, Byte_p end)
   if (start is end or *start is_not '#') return NULL;
   Byte_mut_p cursor = start + 1;
   if (cursor is_not end and *cursor is '#') return cursor + 1;
+
+  // Allow spaces between `#` and the keyword.
+  while (cursor is_not end and (*cursor is ' ' or *cursor is '\t')) ++cursor;
+
   // #ident/#sccs is not a standard directive:
   // https://gcc.gnu.org/onlinedocs/cpp/Other-Directives.html#Other-Directives
   //
