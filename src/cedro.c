@@ -3167,7 +3167,7 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           continue;
         }
         if (m is m_end or m->token_type is_not T_IDENTIFIER) {
-          write_error_at(LANG("falta el identificador after `#`.",
+          write_error_at(LANG("falta el identificador tras `#`.",
                               "missing the identifier after `#`."),
                          m, src, out);
           m = m_end;
