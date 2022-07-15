@@ -22,7 +22,7 @@
  * Created: 2021-06-18 08:33
  */
 
-#pragma Cedro 1.0
+#pragma Cedro 1.0 #embed
 
 /* _POSIX_C_SOURCE is needed for getline(). */
 #define _POSIX_C_SOURCE 200809L
@@ -77,9 +77,9 @@ const char* const usage_en =
     "                    Otherwise, they are derived from the directory name."
     ;
 
-Byte template_zip
-#include {../template.zip}
-;
+Byte template_zip[] = {
+#embed "../template.zip"
+};
 
 #define init(...)                mz_zip_reader_init_mem(__VA_ARGS__)
 #define get_num_files(...)       mz_zip_reader_get_num_files(__VA_ARGS__)

@@ -21,7 +21,7 @@
         <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code><em>ristra</em>[<em>inicio</em>..<em>fin</em>]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
         <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">obras relacionadas</a>)-->.</li>
         <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">obras relacionadas</a>)-->.</li>
-        <li><a href="#binary-include">Inclusión <em>binaria</em> <code>#include {...}</code></a> (<a href="#binary-include-related-work">obras relacionadas</a>).</li>
+        <li><a href="#binary-include">Inclusión <em>binaria</em> <code>#include {...}</code>/<code>#embed "..."</code></a> (<a href="#binary-include-related-work">obras relacionadas</a>).</li>
       </ol>
       <p>Para activarlo, el fichero fuente debe contener esta línea:
         <code>#pragma Cedro 1.0</code><br/>
@@ -1846,24 +1846,94 @@ int main(void)
         <tr>
           <td>
             <code>#include &lt;stdint.h&gt;
+<b>#pragma Cedro 1.0 #embed</b>
+const uint8_t imagen[] = {
+<b>#embed "images/cedro-32x32.png"</b>
+};</code>
+          </td><td>
+            <code>#include &lt;stdint.h&gt;
+const uint8_t imagen[] = {
+<b>// cedro-32x32.png
+0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
+0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
+⋮</b>
+};</code>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
+<b>#pragma Cedro 1.0</b>
 const uint8_t imagen
-#include {images/cedro-32x32.png}
+<b>#include {images/cedro-32x32.png}</b>
 ;</code>
           </td><td>
             <code>#include &lt;stdint.h&gt;
 const uint8_t imagen
-[1480] = { /* cedro-32x32.png */
+<b>[1480] = { /* cedro-32x32.png */
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
-⋮
+⋮</b>
 };</code>
           </td>
         </tr>
       </table>
       <p>El nombre de fichero es relativo al fichero C incluyente.</p>
-      <p>Nota: la directiva debe empezar exactamente con <code>#include {</code>,
+      <p>Nota: la directiva debe empezar exactamente con
+        <code>#include {</code> o <code>#embed "</code>,
         ni más ni menos espacio entre
-        <code>#include</code> y la llave <code>{</code>.</p>
+        <code>#include</code>/<code>#embed</code>
+        y la llave <code>{</code> o las comillas <code>"</code>.</p>
+      <p>La forma <code>#include {...}</code> era la original en Cedro
+        y se mantiene por compatibilidad pasada,
+        mientras que <code>#embed "..."</code> sigue la norma futura
+        (<a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3017.htm">N3017 #embed - a scannable, tooling-friendly binary resource inclusion mechanism</a>)
+        excepto que sólo admite
+        caminos delimitados por comas (<code>""</code>),
+        no delimitados por cabrios (<code>&lt;&gt;</code>).
+      </p>
+      <p><code>#embed</code> es más flexible porque permite añadir octetos
+        antes o después del fichero insertado,
+        y también combinar varios ficheros.</p>
+      <table>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
+<b>#pragma Cedro 1.0 #embed</b>
+const uint8_t vertex_shader[] = {
+<b>#embed "src/shader.frag.glsl"</b>
+, 0x00 // Cadena terminada con zero.
+};</code>
+          </td><td>
+            <code>#include &lt;stdint.h&gt;
+const uint8_t vertex_shader[] = {
+<b>// shader.frag.glsl
+…</b>
+, 0x00 // Cadena terminada con zero.
+};</code>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
+<b>#pragma Cedro 1.0 #embed</b>
+const uint8_t dos_líneas[] = {
+<b>#embed "línea-de-texto-1.txt"</b>
+, '\n',
+<b>#embed "línea-de-texto-2.txt"</b>
+, 0x00
+};</code>
+          </td><td>
+            <code>#include &lt;stdint.h&gt;
+const uint8_t dos_líneas[] = {
+<b>0x46,0x69,0x72,0x73,0x74,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>
+, '\n',
+<b>0x53,0x65,0x63,0x6F,0x6E,0x64,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>
+, 0x00
+};</code>
+          </td>
+        </tr>
+      </table>
 
       <p>Insertar directamente el código en el programa es muy conveniente
         pero va a enlentecer la compilación.
@@ -1874,11 +1944,11 @@ const uint8_t imagen
         <tr><td><url>assets.c</url><code>#include &lt;stdint.h&gt;
 #include &lt;stdlib.h&gt;
 
-#pragma Cedro 1.0
+<b>#pragma Cedro 1.0 #embed</b>
 
-const uint8_t imagen
-#include {images/cedro-32x32.png}
-;
+const uint8_t imagen[] = {
+<b>#embed "images/cedro-32x32.png"</b>
+};
 const size_t sizeof_imagen = sizeof(imagen);</code></td></tr>
         <tr><td><url>main.c</url><code>#include &lt;stdint.h&gt;
 #include &lt;stdlib.h&gt;

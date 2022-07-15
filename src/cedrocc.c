@@ -311,7 +311,7 @@ include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
 static int
 include(const char* file_name, FILE* cc_stdin,
         mut_IncludeContext_p context,
-        Options options)
+        mut_Options options)
 {
   if (context->level > 10) {
     eprintln(LANG("Error: demasiada recursión de «include» en: %s",
@@ -333,7 +333,8 @@ include(const char* file_name, FILE* cc_stdin,
     return err;
   } else {
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
-    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
+    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers,
+                                                   &options);
     Byte_p parse_end = parse(&src, region, &markers);
     if (parse_end is_not region.end_p) {
       if (fprintf(cc_stdin, "#line %lu \"%s\"\n#error %s\n",

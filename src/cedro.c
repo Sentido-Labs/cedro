@@ -255,6 +255,8 @@ typedef struct Options {
   bool discard_comments;
   /// Insert `#line` directives in the output, mapping to the original file.
   bool insert_line_directives;
+  /// Enable `#embed`.
+  bool enable_embed_directive;
 } MUT_CONST_TYPE_VARIANTS(Options);
 
 /** Binary string, `const unsigned char const*`. */
@@ -1114,7 +1116,7 @@ preprocessor(Byte_p start, Byte_p end)
   } else if (                 cursor + 5 <= end and
              (mem_eq("endif", cursor,  5) or mem_eq("error", cursor, 5) or
               mem_eq("ifdef", cursor,  5) or mem_eq("undef", cursor, 5) or
-              mem_eq("ident", cursor,  5))) {
+              mem_eq("ident", cursor,  5) or mem_eq("embed", cursor, 5))) {
     cursor =                  cursor + 5;
   } else if (                cursor + 4 <= end and
              (mem_eq("line", cursor,  4) or mem_eq("sccs", cursor, 4) or
@@ -1912,13 +1914,15 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  * mut_Byte_array src = init_Byte_array(80);
  * push_str(&src, "#pragma Cedro 1.0\nprintf(\"hello\\n\", i);");
  * Byte_array_mut_slice region = bounds_of_Byte_array(&src);
- * region.start_p = parse_skip_until_cedro_pragma(&src, region, markers);
  * parse(&src, region, &markers);
+ * mut_Options options = {0};
+ * region.start_p = parse_skip_until_cedro_pragma(&src, region, markers,
+ *                                                &options);
  * print_markers(&markers, &src, "", 0, markers.len);
  * ```
  */
 static Byte_p
-parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
+parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers, mut_Options_p options)
 {
   assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
   Byte_mut_p cursor = region.start_p;
@@ -1945,6 +1949,22 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
               return end;
             }
           }
+          // Skip rest of version number, until next space or EOL.
+          cursor += CEDRO_PRAGMA_LEN;
+          while (cursor is_not token_end) {
+            if (*cursor is ' ') { ++cursor; break; }
+            ++cursor;
+          }
+          Byte_mut_p start = cursor;
+          do {
+            start = cursor;
+            while (cursor is_not token_end and *cursor is_not ',') ++cursor;
+            size_t len = (size_t)(cursor - start);
+            if (len is 6 and mem_eq("#embed", start, len)) {
+              options->enable_embed_directive = true;
+            }
+            if (cursor is_not token_end) ++cursor;
+          } while (cursor is_not token_end);
           cursor = token_end;
           // Skip LF and empty lines after line.
           while (cursor is_not end and
@@ -3031,8 +3051,16 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         goto exit;
       }
 
-      len = 10; // = strlen("#include {");
-      if (m->len >= len and strn_eq("#include {", (char*)rest, len)) {
+      if        (m->len >= 10 and not options.enable_embed_directive and
+                 strn_eq("#include {", (char*)rest, 10)) {
+        len = 10;
+      } else if (m->len >=  8 and     options.enable_embed_directive and
+                 strn_eq("#embed \"",  (char*)rest,  8)) {
+        len =  8;
+      } else {
+        len =  0;
+      }
+      if (len) {
         if (pending_space) {
           if (not write_pending_space(&line_directive_pending, src_file_name,
                                       pending_space, m_end, src,
@@ -3044,14 +3072,34 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         }
         rest += len;
         Byte_mut_p end = rest;
-        while (end < text.end_p) { if (*end is '}') break; ++end; }
-        if (end is text.end_p) {
-          write_error_at(LANG("falta la llave de cierre tras `#include {...`.",
-                              "missing closing brace after `#include {...`"),
-                         original_line_number(m->start, src),
-                         m_start, m, src, out);
-          m = m_end;
-          goto exit;
+        if (len is 10) {
+          while (end < text.end_p) {
+            if (*end is '}') break;
+            ++end;
+          }
+          if (end is text.end_p) {
+            write_error_at(
+                LANG("falta la llave de cierre tras `#include {...`.",
+                     "missing closing brace after `#include {...`"),
+                original_line_number(m->start, src),
+                m_start, m, src, out);
+            m = m_end;
+            goto exit;
+          }
+        } else {
+          while (end < text.end_p) {
+            if (*end is '"') break;
+            ++end;
+          }
+          if (end is text.end_p) {
+            write_error_at(
+                LANG("falta el fichero para `#embed ...`.",
+                     "missing file for `#embed ...`"),
+                original_line_number(m->start, src),
+                m_start, m, src, out);
+            m = m_end;
+            goto exit;
+          }
         }
         mut_Byte_array file_name = {0};
         if (not push_str(&file_name, src_file_name)) {
@@ -3084,12 +3132,20 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         const char* basename = strrchr(included_file, '/');
         if (not basename) basename = strrchr(included_file, '\\');
         if (basename) ++basename; else basename = included_file;
-        fprintf(out, "[%lu] = { /* %s */\n0x%02X",
-                bin.len, basename, bin.start[0]);
-        for (size_t i = 1; i is_not bin.len; ++i) {
-          fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+        if (len is 10) {
+          fprintf(out, "[%lu] = { /* %s */\n0x%02X",
+                  bin.len, basename, bin.start[0]);
+          for (size_t i = 1; i is_not bin.len; ++i) {
+            fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+          }
+          fputs("\n}", out);
+        } else {
+          fprintf(out, "// %s\n0x%02X", basename, bin.start[0]);
+          for (size_t i = 1; i is_not bin.len; ++i) {
+            fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+          }
+          fputs("\n", out);
         }
-        fputs("\n}", out);
         destruct_Byte_array(&bin);
         destruct_Byte_array(&file_name);
         // Now check that there is only space and comments after it:
@@ -3103,10 +3159,17 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
             rest = end;
           }
           if (rest is_not text.end_p) {
-            write_error_at(LANG("contenido inválido tras `#include {...}`.",
-                                "invalid content after `#include {...}`"),
-                           original_line_number(m->start, src),
-                           m_start, m, src, out);
+            if (len is 10) {
+              write_error_at(LANG("contenido inválido tras `#include {...}`.",
+                                  "invalid content after `#include {...}`"),
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
+            } else {
+              write_error_at(LANG("contenido inválido tras `#embed \"...\"`.",
+                                  "invalid content after `#embed \"...\"`."),
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
+            }
             m = m_end;
             goto exit;
           }
@@ -3429,7 +3492,8 @@ static Macro macros[] = {
 #include <time.h>
 /** Returns the time in seconds, as a double precision floating point value. */
 static double
-benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
+benchmark(mut_Byte_array_p src_p, const char* src_file_name,
+          mut_Options options)
 {
   const size_t repetitions = 100;
   clock_t start = clock();
@@ -3440,8 +3504,9 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
     delete_Marker_array(&markers, 0, markers.len);
 
     Byte_array_mut_slice region = bounds_of_Byte_array(src_p);
-    region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers);
     Byte_p parse_end = parse(src_p, region, &markers);
+    region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers,
+                                                   &options);
     if (parse_end is_not region.end_p) {
       destruct_Marker_array(&markers);
       eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3452,7 +3517,7 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
       return 0.0; // Error.
     }
 
-    if (options->apply_macros) {
+    if (options.apply_macros) {
       Macro_p macro = macros;
       while (macro->name and macro->function) {
         macro->function(&markers, src_p);
@@ -3577,6 +3642,9 @@ usage_es =
     "  --no-discard-space    No descarta los espacios.    (implícito)\n"
     "  --insert-line-directives    Inserta directivas #line.\n"
     "  --no-insert-line-directives No inserta directivas #line. (implícito)\n"
+    "  --embed-directive     Activa la directiva #embed.\n"
+    "                        Lo mismo que: #pragma Cedro 1.0 #embed\n"
+    "  --no-embed-directive  Desactiva la directiva #embed. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
@@ -3612,6 +3680,9 @@ usage_en =
     "  --insert-line-directives    Insert #line directives.\n"
     "  --no-insert-line-directives Does not insert #line directives."
     " (default)\n"
+    "  --embed-directive     Enables the #embed directive.\n"
+    "                        Same as: #pragma Cedro 1.0 #embed\n"
+    "  --no-embed-directive  Disables the #embed directive. (implícito)\n"
     "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
@@ -3647,11 +3718,12 @@ int main(int argc, char** argv)
   }
 
   mut_Options options = { // Remember to keep the usage strings updated.
-    .apply_macros           = true,
-    .escape_ucn             = false,
-    .discard_comments       = false,
-    .discard_space          = false,
-    .insert_line_directives = false
+    .apply_macros            = true,
+    .escape_ucn              = false,
+    .discard_comments        = false,
+    .discard_space           = false,
+    .insert_line_directives  = false,
+    .enable_embed_directive = false
   };
 
   bool opt_print_markers    = false;
@@ -3677,6 +3749,9 @@ int main(int argc, char** argv)
       } else if (str_eq("--insert-line-directives", arg) or
                  str_eq("--no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
+      } else if (str_eq("--embed-directive", arg) or
+                 str_eq("--no-embed-directive", arg)) {
+        options.enable_embed_directive = flag_value;
       } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
@@ -3733,8 +3808,9 @@ int main(int argc, char** argv)
     }
 
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
-    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
     Byte_p parse_end = parse(&src, region, &markers);
+    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers,
+                                                   &options);
     if (parse_end is_not region.end_p) {
       err = 1;
       eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3748,7 +3824,7 @@ int main(int argc, char** argv)
     size_t original_src_len = src.len;
 
     if (opt_run_benchmark) {
-      double t = benchmark(&src, file_name, &options);
+      double t = benchmark(&src, file_name, options);
       if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
       else         eprintln("%.1fs for %s", t         , file_name);
     } else if (opt_validate) {
