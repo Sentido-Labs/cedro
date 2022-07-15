@@ -3203,6 +3203,7 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
                      (size_t)(space.end_p-space.start_p), out);
               pending_space = NULL;
             }
+            line_directive_pending = true;
             ++m;
             continue;
           } else {
