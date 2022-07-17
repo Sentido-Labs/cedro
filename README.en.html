@@ -1418,7 +1418,7 @@ int main(void) {
     <section id="loop-macros">
       <h2>Loop macros: <a class="anchor" href="#loop-macros">#loop-macros</a></h2>
       <p>Repeat the lines between
-        <code>#foreach { ...</code> y <code>#foreach }</code>
+        <code>#foreach { ...</code> and <code>#foreach }</code>
         replacing the given variables.
         These lines may contain macro definitions (<code>#define</code>)
         but the loop variables will not be expanded inside them.</p>
@@ -1649,7 +1649,7 @@ int main(void)
 
       <p id="loop-macros-vec-example">This complete example
         defines variants for the types
-        <code>float</code>, <code>str</code>, y <code>cstr</code>
+        <code>float</code>, <code>str</code>, and <code>cstr</code>
         of an array/vector of variable length
         with a function called <code>append_Vec_##T()</code> for each one.
         It then uses C11’s
@@ -1894,7 +1894,7 @@ const uint8_t image
       </p>
       <p><code>#embed</code> is more flexible because it allows adding bytes
         before or after the inserted file,
-        y also to combine several files.</p>
+        and also to combine several files.</p>
       <table>
         <tr>
           <td>
