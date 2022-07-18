@@ -594,7 +594,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
         break;
       }
       marker_buffer.len = 0;
-      cursor_position = index_Marker_array(markers, cursor);
+      cursor_position = index_Marker_array(markers, line_start);
       // Cut deferred action from markers into marker_buffer.
       // Invalidates: markers, marker_buffer
       splice_Marker_array(markers,
