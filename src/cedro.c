@@ -1528,6 +1528,19 @@ error_at(const char * message,
          Marker_p cursor, mut_Marker_array_p _, mut_Byte_array_p src)
 {
   assert(cursor >= _->start and cursor <= _->start + _->len);
+  // Check that there aren’t any previous errors already there
+  // that would be shadowed if we insert an error directive here.
+  for (Marker_mut_p m = end_of_Marker_array(_); m is_not cursor; ) {
+    --m;
+    if (m->token_type is T_PREPROCESSOR and
+        m->len > 6 /*strlen("#error")*/) {
+      if (mem_eq("#error", get_Byte_array(src, m->start), 6)) {
+        // There was already an error there, let it be the one reported.
+        return;
+      }
+    }
+  }
+
   _->len = index_Marker_array(_, cursor);
   mut_Byte_array buffer = init_Byte_array(200);
 
@@ -1554,7 +1567,12 @@ error_at(const char * message,
   ok = ok &&
       push_fmt(&buffer, "\n#line %lu",
                original_line_number(cursor->start, src))          &&
-      push_str(&buffer, "\n#error ")                              &&
+      push_str(&buffer, "\n")                                     &&
+      push_Marker_array(_, Marker_from(src, as_c_string(&buffer),
+                                       T_PREPROCESSOR));
+  buffer.len = 0;
+  ok = ok &&
+      push_fmt(&buffer, "#error ")                                &&
       push_str(&buffer, message)                                  &&
       push_str(&buffer, "\n")                                     &&
       push_Marker_array(_, Marker_from(src, as_c_string(&buffer),
