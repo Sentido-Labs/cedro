@@ -412,17 +412,19 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
     return false;
   }
   size_t available = _->capacity - _->len;
+  // We need space for the zero terminator even if we don’t care about it.
   size_t needed = (size_t)
-      vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
+      vsnprintf((char*) end_of_Byte_array(_), available, fmt, args);
   if (needed > available) {
-    if (not ensure_capacity_Byte_array(_, _->len + needed + 1)) {
+    if (not ensure_capacity_Byte_array(_, _->len + needed)) {
       va_end(args);
       return false;
     }
     available = _->capacity - _->len;
-    vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
+    vsnprintf((char*) end_of_Byte_array(_), available, fmt, args);
   }
-  _->len += (needed > available? available: needed);
+  // len excludes the zero terminator.
+  _->len += (needed > available? available: needed - 1);
 
   va_end(args);
 
