@@ -33,19 +33,27 @@
  cedro fichero.c | cc -x c - -o fichero
   Es lo que hace el programa <a href="#cedrocc">cedrocc</a>:
  cedrocc -o fichero fichero.c
-  Con cedrocc, la siguiente opción es implícita:
+  Con cedrocc, la siguientes opciones son implícitas:
     --insert-line-directives
+  Sólo se modifica el código tras la línea `#pragma Cedro 1.0`,
+ que puede incluir ciertas opciones: `#pragma Cedro 1.0 defer,#embed`
 
   --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)
-  --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.
   --no-apply-macros  No aplica las macros.
+  --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.
   --no-escape-ucn    No encapsula caracteres en identificadores. (implícito)
   --discard-comments    Descarta los comentarios.
   --discard-space       Descarta los espacios en blanco.
   --no-discard-comments No descarta los comentarios. (implícito)
   --no-discard-space    No descarta los espacios.    (implícito)
-  --insert-line-directives    Inserta directivas #line.
-  --no-insert-line-directives No inserta directivas #line. (implícito)
+  --insert-line-directives    Inserta directivas `#line`.
+  --no-insert-line-directives No inserta directivas `#line`. (implícito)
+  --embed-directive     Activa la directiva `#embed`.
+                        Lo mismo que `#pragma Cedro 1.0 #embed`.
+  --no-embed-directive  Desactiva la directiva `#embed`. (implícito)
+  --defer-instead-of-auto    Usa la palabra clave `defer` en vez de `auto`.
+                             Lo mismo que `#pragma Cedro 1.0 defer`.
+  --no-defer-instead-of-auto No usa la palabra clave `auto`. (implícito)
 
   --print-markers    Imprime los marcadores.
   --no-print-markers No imprime los marcadores. (implícito)
@@ -53,9 +61,9 @@
   --validate=ref.c   Compara el resultado con el fichero «ref.c» dado.
       No aplica las macros: para comparar el resultado de aplicar Cedro
       a un fichero, pase la salida a través de esta opción, por ejemplo:
-      cedro fichero.c | cedro - --validate=ref.c
+      `cedro fichero.c | cedro - --validate=ref.c`
   --version          Muestra la versión: 1.0
-                     El «pragma» correspondiente es: #pragma Cedro 1.0</code>
+                     El «pragma» correspondiente es: `#pragma Cedro 1.0`</code>
       <p>La opción <code>--escape-ucn</code> encapsula los caracteres Unicode®
         fuera del intervalo ASCII, cuando forman parte de un identificador,
         como nombres de caracteres universales C99
@@ -70,7 +78,7 @@
       <p>El segundo ejecutable, <code>cedrocc</code>, permite usar Cedro como si fuera parte del compilador C.</p>
       <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [&lt;fichero2.o&gt;…]
   Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,
-  y compila el resultado con «cc -x c - -x none» mas los otros argumentos.
+ y compila el resultado con «cc -x c - -x none» mas los otros argumentos.
     cedrocc -o fichero fichero.c
     cedro fichero.c | cc -x c - -o fichero
   Las opciones se pasan tal cual al compilador, excepto las que
@@ -78,13 +86,13 @@
  por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».
   La siguiente opción es implícita:
     --cedro:insert-line-directives
-  Además, para cada #include, si encuentra el fichero lo lee y
+  Además, para cada `#include`, si encuentra el fichero lo lee y
  si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado
- en lugar del #include.
-  Se puede especificar el compilador, p.ej. gcc:
+ en lugar del `#include`.
+  Se puede especificar el compilador, p.ej. `gcc`:
     CEDRO_CC='gcc -x c - -x none' cedrocc …
-  Para depuración, esto escribe el código que iría entubado a cc,
-  en stdout:
+  Para depuración, esto escribe el código que iría entubado a `cc`,
+ en `stdout`:
     CEDRO_CC='' cedrocc …</code>
       <p>Si recibes un mensaje de error como «embedding a directive within macro arguments is not portable» (GCC) o «embedding a directive within macro arguments has undefined behavior» (clang), significa que usas Cedro con <code>--insert-line-directives</code> dentro de los parámetros de una macro. Puedes bien expandir el código dado a la macro manualmente, o evitar el <code>--insert-line-directives</code> reemplazando <code>cedrocc -o fichero fichero.c</code> con <code>cedro fichero.c | cc -x c - -o fichero</code>.</p>
       <p><code>cedrocc</code> hace otra cosa además de <code>cedro fichero.c | cc -x c - -o fichero</code>:
@@ -1851,7 +1859,7 @@ const uint8_t imagen[] = {
 <b>#embed "images/cedro-32x32.png"</b>
 };</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
+            <br/><code>#include &lt;stdint.h&gt;
 const uint8_t imagen[] = {
 <b>// cedro-32x32.png
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
@@ -1868,7 +1876,7 @@ const uint8_t imagen
 <b>#include {images/cedro-32x32.png}</b>
 ;</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
+            <br/><code>#include &lt;stdint.h&gt;
 const uint8_t imagen
 <b>[1480] = { /* cedro-32x32.png */
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
@@ -1898,15 +1906,13 @@ const uint8_t imagen
       <table>
         <tr>
           <td>
-            <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
-const uint8_t vertex_shader[] = {
-<b>#embed "src/shader.frag.glsl"</b>
+            <code><b>#pragma Cedro 1.0 #embed</b>
+const char const vertex_shader[] = {
+<b>#embed "shader.frag.glsl"</b>
 , 0x00 // Cadena terminada con zero.
 };</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
-const uint8_t vertex_shader[] = {
+            <br/><code>const char const vertex_shader[] = {
 <b>// shader.frag.glsl
 …</b>
 , 0x00 // Cadena terminada con zero.
@@ -1915,17 +1921,15 @@ const uint8_t vertex_shader[] = {
         </tr>
         <tr>
           <td>
-            <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
-const uint8_t dos_líneas[] = {
+            <code><b>#pragma Cedro 1.0 #embed</b>
+const char const dos_líneas[] = {
 <b>#embed "línea-de-texto-1.txt"</b>
 , '\n',
 <b>#embed "línea-de-texto-2.txt"</b>
 , 0x00
 };</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
-const uint8_t dos_líneas[] = {
+            <br/><code><br/>const char const dos_líneas[] = {
 <b>0x46,0x69,0x72,0x73,0x74,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>
 , '\n',
 <b>0x53,0x65,0x63,0x6F,0x6E,0x64,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>

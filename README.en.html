@@ -33,29 +33,37 @@
  cedro file.c | cc -x c - -o file
   It is what the <a href="#cedrocc">cedrocc</a> program does:
  cedrocc -o file file.c
-  With cedrocc, the following option is the default:
-    --insert-line-directives
+  With cedrocc, the following options are the defaults:
+    --discard-comments --insert-line-directives
+  Code gets modified only after the line `#pragma Cedro 1.0`,
+ which can include certain options: `#pragma Cedro 1.0 defer,#embed`
 
   --apply-macros     Applies the macros: backstitch, defer, etc. (default)
-  --escape-ucn       Escapes non-ASCII in identifiers as UCN.
   --no-apply-macros  Does not apply the macros.
+  --escape-ucn       Escape non-ASCII in identifiers as UCN.
   --no-escape-ucn    Does not escape non-ASCII in identifiers. (default)
   --discard-comments    Discards the comments.
   --discard-space       Discards all whitespace.
   --no-discard-comments Does not discard comments.   (default)
   --no-discard-space    Does not discard whitespace. (default)
-  --insert-line-directives    Inserts #line directives.
-  --no-insert-line-directives Does not insert #line directives. (default)
+  --insert-line-directives    Insert `#line` directives.
+  --no-insert-line-directives Does not insert `#line` directives. (default)
+  --embed-directive     Enables the `#embed` directive.
+                        Same as `#pragma Cedro 1.0 #embed`.
+  --no-embed-directive  Disables the `#embed` directive. (default)
+  --defer-instead-of-auto    Use the keyword `defer` instead of `auto`.
+                             Same as `#pragma Cedro 1.0 defer`.
+  --no-defer-instead-of-auto Use the keyword auto. (default)
 
   --print-markers    Prints the markers.
   --no-print-markers Does not print the markers. (default)
-  --benchmark        Runs a performance benchmark.
-  --validate=ref.c   Compares the result with the given «ref.c» file.
-      It does not apply the macros: to compare the results of applying Cedro
-      to a file, pipe the output to this option, for instance:
-      cedro file.c | cedro - --validate=ref.c
-  --version          Shows version: 1.0
-                     The corresponding “pragma” is: #pragma Cedro 1.0</code>
+  --benchmark        Run a performance benchmark.
+  --validate=ref.c   Compares the input to the given “ref.c” file.
+      Does not apply any macros: to compare the result of running Cedro
+      on a file, pipe its output through this option, for instance:
+      `cedro file.c | cedro - --validate=ref.c`
+  --version          Show version: 1.0
+                     The corresponding “pragma” is: `#pragma Cedro 1.0`</code>
       <p>The option <code>--escape-ucn</code> encodes Unicode® characters
         outside of the ASCII range, when they appear as part of an identifier,
         as C99 universal character names
@@ -78,13 +86,13 @@
  for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.
   The following option is the default:
     --cedro:insert-line-directives
-  In addition, for each #include, if it finds the file it reads it and
+  In addition, for each `#include`, if it finds the file it reads it and
  if it finds `#pragma Cedro 1.0` processes it and inserts the result
- in place of the #include.
-  You can specify the compiler, e.g. gcc:
-    CEDRO_CC='gcc -x c -' cedrocc …
-  For debugging, this writes the code that would be piped into cc,
-  into stdout instead:
+ in place of the `#include`.
+  You can specify the compiler, e.g. `gcc`:
+    CEDRO_CC='gcc -x c - -x none' cedrocc …
+  For debugging, this writes the code that would be piped into `cc`,
+ into `stdout` instead:
     CEDRO_CC='' cedrocc …</code>
       <p>If you get an error message like “embedding a directive within macro arguments is not portable” (GCC) or “embedding a directive within macro arguments has undefined behavior” (clang), it means that you’re using Cedro with <code>--insert-line-directives</code> inside the parameters for a macro. You can either expand the code given to the macro manually, or avoid <code>--insert-line-directives</code> by replacing <code>cedrocc -o file file.c</code> with <code>cedro file.c | cc -x c - -o file</code>.</p>
       <p><code>cedrocc</code> does another thing in addition to <code>cedro file.c | cc -x c - -o file</code>:
@@ -1851,7 +1859,7 @@ const uint8_t image[] = {
 <b>#embed "images/cedro-32x32.png"</a>
 };</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
+            <br/><code>#include &lt;stdint.h&gt;
 const uint8_t image[] = {
 <b>// cedro-32x32.png
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
@@ -1868,7 +1876,7 @@ const uint8_t image
 <b>#include {images/cedro-32x32.png}</b>
 ;</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
+            <br/><code>#include &lt;stdint.h&gt;
 const uint8_t image
 <b>[1480] = { /* cedro-32x32.png */
 0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
@@ -1898,15 +1906,13 @@ const uint8_t image
       <table>
         <tr>
           <td>
-            <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
-const uint8_t vertex_shader[] = {
-<b>#embed "src/shader.frag.glsl"</b>
+            <code><b>#pragma Cedro 1.0 #embed</b>
+const char const vertex_shader[] = {
+<b>#embed "shader.frag.glsl"</b>
 , 0x00 // Zero-terminated string.
 };</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
-const uint8_t vertex_shader[] = {
+            <br/><code>const char const vertex_shader[] = {
 <b>// shader.frag.glsl
 …</b>
 , 0x00 // Zero-terminated string.
@@ -1915,17 +1921,15 @@ const uint8_t vertex_shader[] = {
         </tr>
         <tr>
           <td>
-            <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
-const uint8_t two_lines[] = {
-<b>#embed "test-line-1.txt"</b>
+            <code><b>#pragma Cedro 1.0 #embed</b>
+const char const two_lines[] = {
+<b>#embed "text-line-1.txt"</b>
 , '\n',
 <b>#embed "text-line-2.txt"</b>
 , 0x00
 };</code>
           </td><td>
-            <code>#include &lt;stdint.h&gt;
-const uint8_t two_lines[] = {
+            <br/><code>const char const two_lines[] = {
 <b>0x46,0x69,0x72,0x73,0x74,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>
 , '\n',
 <b>0x53,0x65,0x63,0x6F,0x6E,0x64,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>
@@ -1965,7 +1969,7 @@ int main(void)
         sum += image[i];
     }
     fprintf(stderr,
-            "The sum (module UINT_MAX=%u) of the image bytes is %u.\n",
+            "The sum (modulo UINT_MAX=%u) of the image bytes is %u.\n",
             UINT_MAX, sum);
 }</code></td></tr>
          <tr><td><code>cedrocc -c -o assets.o assets.c -std=c99
