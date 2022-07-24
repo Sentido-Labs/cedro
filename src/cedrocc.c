@@ -335,7 +335,7 @@ include(const char* file_name, FILE* cc_stdin,
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers,
                                                    &options);
-    Byte_p parse_end = parse(&src, region, &markers);
+    Byte_p parse_end = parse(&src, region, &markers, false);
     if (parse_end is_not region.end_p) {
       if (fprintf(cc_stdin, "#line %lu \"%s\"\n#error %s\n",
                   original_line_number((size_t)(parse_end - src.start), &src),

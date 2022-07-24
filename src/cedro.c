@@ -37,9 +37,6 @@
  * Created: 2020-11-25 22:41
  */
 
-// Uncomment this to use `defer` instead of `auto`:
-//#define USE_DEFER_AS_KEYWORD
-
 /* In Solaris 8, we need __EXTENSIONS__ for vsnprintf(). */
 #define __EXTENSIONS__
 
@@ -257,6 +254,8 @@ typedef struct Options {
   bool insert_line_directives;
   /// Enable `#embed`.
   bool enable_embed_directive;
+  /// Use `defer` instead of `auto`.
+  bool use_defer_instead_of_auto;
 } MUT_CONST_TYPE_VARIANTS(Options);
 
 /** Binary string, `const unsigned char const*`. */
@@ -1808,7 +1807,7 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
  *  See `enum TokenType` for a list of keywords.
  */
 static inline TokenType
-keyword_or_identifier(Byte_p start, Byte_p end)
+keyword_or_identifier(Byte_p start, Byte_p end, bool use_defer_instead_of_auto)
 {
   switch (end - start) {
     case 2:
@@ -1843,11 +1842,9 @@ keyword_or_identifier(Byte_p start, Byte_p end)
         return T_TYPE;
       }
       if (mem_eq(start, "auto", 4)) {
-#ifdef USE_DEFER_AS_KEYWORD
-        return T_TYPE_QUALIFIER_AUTO;
-#else
-        return T_CONTROL_FLOW_DEFER;
-#endif
+        return use_defer_instead_of_auto?
+            T_TYPE_QUALIFIER_AUTO:
+            T_CONTROL_FLOW_DEFER;
       }
       break;
     case 5:
@@ -1864,11 +1861,9 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       if (mem_eq(start, "const", 5)) {
         return T_TYPE_QUALIFIER;
       }
-#ifdef USE_DEFER_AS_KEYWORD
-      if (mem_eq(start, "defer", 5)) {
+      if (use_defer_instead_of_auto and mem_eq(start, "defer", 5)) {
         return T_CONTROL_FLOW_DEFER;
       }
-#endif
       break;
     case 6:
       if (mem_eq(start, "return", 6)) {
@@ -1934,10 +1929,10 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  * mut_Byte_array src = init_Byte_array(80);
  * push_str(&src, "#pragma Cedro 1.0\nprintf(\"hello\\n\", i);");
  * Byte_array_mut_slice region = bounds_of_Byte_array(&src);
- * parse(&src, region, &markers);
  * mut_Options options = {0};
  * region.start_p = parse_skip_until_cedro_pragma(&src, region, markers,
  *                                                &options);
+ * parse(&src, region, &markers, options.use_defer_instead_of_auto);
  * print_markers(&markers, &src, "", 0, markers.len);
  * ```
  */
@@ -1980,8 +1975,10 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
             start = cursor;
             while (cursor is_not token_end and *cursor is_not ',') ++cursor;
             size_t len = (size_t)(cursor - start);
-            if (len is 6 and mem_eq("#embed", start, len)) {
+            if        (len is 6 and mem_eq("#embed", start, len)) {
               options->enable_embed_directive = true;
+            } else if (len is 5 and mem_eq("defer", start, len)) {
+              options->use_defer_instead_of_auto = true;
             }
             if (cursor is_not token_end) ++cursor;
           } while (cursor is_not token_end);
@@ -2038,7 +2035,7 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
  * mut_Marker_array markers = init_Marker_array(8192);
  * mut_Byte_array src = init_Byte_array(80);
  * push_str(&src, "printf(\"hello\\n\", i);");
- * parse(&src, bounds_of_Byte_array(&src), &markers);
+ * parse(&src, bounds_of_Byte_array(&src), &markers, false);
  * print_markers(&markers, &src, "", 0, markers.len);
  * ```
  *
@@ -2047,7 +2044,8 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
  * will be in `error_buffer`.
  */
 static Byte_p
-parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
+parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
+      bool use_defer_instead_of_auto)
 {
   assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
   Byte_mut_p cursor = region.start_p;
@@ -2111,7 +2109,8 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
       TOKEN1(T_SPACE);
       if (token_end is cursor) { eprintln("error T_SPACE"); break; }
     } else if ((token_end = identifier(cursor, end))) {
-      TOKEN1(keyword_or_identifier(cursor, token_end));
+      TOKEN1(keyword_or_identifier(cursor, token_end,
+                                   use_defer_instead_of_auto));
       if (token_end is cursor) { eprintln("error T_IDENTIFIER"); }
     } else if ((token_end = number(cursor, end))) {
       TOKEN1(T_NUMBER);
@@ -2447,7 +2446,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
 
   mut_Marker_array arguments = init_Marker_array(32);
   Byte_p parse_end =
-      parse(src, (Byte_array_slice){rest, text.end_p}, &arguments);
+      parse(src, (Byte_array_slice){rest, text.end_p}, &arguments,
+            options.use_defer_instead_of_auto);
   if (parse_end is_not text.end_p) {
     if (fprintf(out, "#line %lu \"%s\"\n#error %s\n",
                 original_line_number((size_t)(parse_end - src->start), src),
@@ -3524,9 +3524,10 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name,
     delete_Marker_array(&markers, 0, markers.len);
 
     Byte_array_mut_slice region = bounds_of_Byte_array(src_p);
-    Byte_p parse_end = parse(src_p, region, &markers);
     region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers,
                                                    &options);
+    Byte_p parse_end = parse(src_p, region, &markers,
+                             options.use_defer_instead_of_auto);
     if (parse_end is_not region.end_p) {
       destruct_Marker_array(&markers);
       eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3567,7 +3568,7 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
   Byte_array_mut_slice region;
   Byte_mut_p parse_end;
   region    = bounds_of_Byte_array(src);
-  parse_end = parse(src, region, &markers);
+  parse_end = parse(src, region, &markers, false);
   if (parse_end is_not region.end_p) {
     result = false;
     eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3578,7 +3579,7 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
     goto exit;
   }
   region    = bounds_of_Byte_array(src_ref);
-  parse_end = parse(src_ref, region, &markers_ref);
+  parse_end = parse(src_ref, region, &markers_ref, false);
   if (parse_end is_not region.end_p) {
     result = false;
     eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3651,6 +3652,8 @@ usage_es =
     " cedrocc -o fichero fichero.c\n"
     "  Con cedrocc, las siguientes opciones son implícitas:\n"
     "    --insert-line-directives\n"
+    "  Sólo se modifica el código tras la línea `#pragma Cedro 1.0`,\n"
+    " que puede incluir ciertas opciones: `#pragma Cedro 1.0 defer,#embed`\n"
     "\n"
     "  --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)\n"
     "  --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.\n"
@@ -3665,6 +3668,10 @@ usage_es =
     "  --embed-directive     Activa la directiva #embed.\n"
     "                        Lo mismo que: #pragma Cedro 1.0 #embed\n"
     "  --no-embed-directive  Desactiva la directiva #embed. (implícito)\n"
+    "\n"
+    "  --defer-instead-of-auto    Usa the keyword defer instead of auto.\n"
+    "                             Lo mismo que: #pragma Cedro 1.0 defer\n"
+    "  --no-defer-instead-of-auto Usa the keyword auto. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
@@ -3688,6 +3695,8 @@ usage_en =
     " cedrocc -o file file.c\n"
     "  With cedrocc, the following options are the defaults:\n"
     "    --discard-comments --insert-line-directives\n"
+    "  Code gets modified only after the line `#pragma Cedro 1.0`,\n"
+    " which can include certain options: `#pragma Cedro 1.0 defer,#embed`\n"
     "\n"
     "  --apply-macros     Apply the macros: backstitch, defer, etc. (default)\n"
     "  --escape-ucn       Escape non-ASCII in identifiers as UCN.\n"
@@ -3703,6 +3712,9 @@ usage_en =
     "  --embed-directive     Enables the #embed directive.\n"
     "                        Same as: #pragma Cedro 1.0 #embed\n"
     "  --no-embed-directive  Disables the #embed directive. (implícito)\n"
+    "  --defer-instead-of-auto    Use the keyword defer instead of auto.\n"
+    "                             Same as: #pragma Cedro 1.0 defer\n"
+    "  --no-defer-instead-of-auto Use the keyword auto. (implícito)\n"
     "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
@@ -3738,12 +3750,13 @@ int main(int argc, char** argv)
   }
 
   mut_Options options = { // Remember to keep the usage strings updated.
-    .apply_macros            = true,
-    .escape_ucn              = false,
-    .discard_comments        = false,
-    .discard_space           = false,
-    .insert_line_directives  = false,
-    .enable_embed_directive = false
+    .apply_macros              = true,
+    .escape_ucn                = false,
+    .discard_comments          = false,
+    .discard_space             = false,
+    .insert_line_directives    = false,
+    .enable_embed_directive    = false,
+    .use_defer_instead_of_auto = false
   };
 
   bool opt_print_markers    = false;
@@ -3828,9 +3841,10 @@ int main(int argc, char** argv)
     }
 
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
-    Byte_p parse_end = parse(&src, region, &markers);
     region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers,
                                                    &options);
+    Byte_p parse_end = parse(&src, region, &markers,
+                             options.use_defer_instead_of_auto);
     if (parse_end is_not region.end_p) {
       err = 1;
       eprintln("#line %lu \"%s\"\n#error %s\n",
