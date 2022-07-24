@@ -33,6 +33,7 @@
 #include "cedro.c"
 
 #include <unistd.h>
+#include <sys/wait.h> // For WEXITSTATUS etc.
 
 static const char* const
 usage_es =
@@ -310,7 +311,7 @@ include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
 static int
 include(const char* file_name, FILE* cc_stdin,
         mut_IncludeContext_p context,
-        Options options)
+        mut_Options options)
 {
   if (context->level > 10) {
     eprintln(LANG("Error: demasiada recursión de «include» en: %s",
@@ -332,8 +333,9 @@ include(const char* file_name, FILE* cc_stdin,
     return err;
   } else {
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
-    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
-    Byte_p parse_end = parse(&src, region, &markers);
+    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers,
+                                                   &options);
+    Byte_p parse_end = parse(&src, region, &markers, false);
     if (parse_end is_not region.end_p) {
       if (fprintf(cc_stdin, "#line %lu \"%s\"\n#error %s\n",
                   original_line_number((size_t)(parse_end - src.start), &src),
@@ -350,9 +352,13 @@ include(const char* file_name, FILE* cc_stdin,
         // Included file is not a Cedro file.
         return -1;
       } else {
-        fprintf(cc_stdin, "\n#line 1 \"%s\"\n", file_name);
+        fputc('\n', cc_stdin);
       }
     }
+    // Does not depend on options.insert_line_directives
+    // because it does not cause syntax problems
+    // as it is right at the beginning of an input file.
+    fprintf(cc_stdin, "#line 1 \"%s\"\n", file_name);
 
     size_t original_src_len = src.len;
 
@@ -518,6 +524,11 @@ int main(int argc, char* argv[])
         pclose(cc_stdin);
       } else {
         return_code = pclose(cc_stdin);
+        // https://www.man7.org/linux/man-pages/man3/wait.3p.html
+        if (WIFEXITED(return_code)) return_code = WEXITSTATUS(return_code);
+        else if (WIFSIGNALED(return_code)) return_code = 111;
+        else if (WIFSTOPPED (return_code)) return_code = 112;
+        else                               return_code = 113;
       }
     } else {
       perror(as_c_string(&cmd));

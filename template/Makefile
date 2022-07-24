@@ -15,9 +15,6 @@ CFLAGS=-g -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -
 # Loose compilation flags, use for releases:
 CFLAGS=-g -DNDEBUG -I lib -I src -std=c99
 
-LDFLAGS=-L build/lib
-LIBRARIES=lib/build/btree.c-0.2.1/btree.o
-
 # This must go before the Makefile includes.
 CEDRO_DIR=tools/cedro
 CEDRO=$(CEDRO_DIR)/cedro
@@ -28,6 +25,9 @@ MAIN=src/main.c
 # MAIN=src/main.libuv.c
 # include Makefile.nanovg.mk
 # MAIN=src/main.nanovg.c
+
+LDFLAGS:=$(LDFLAGS) -L build/lib
+LIBRARIES:=$(LIBRARIES) lib/build/btree.c-0.2.1/btree.o
 
 TEST_ARGUMENTS="--exit-after-brief-delay"
 
@@ -144,7 +144,7 @@ check: debug
 	@if which clang >/dev/null; then echo 'Checking with Clang...'; CEDRO_CC='' $(CEDROCC) $(CFLAGS) $(MAIN) | $(CEDRO) --escape-ucn | clang --analyze $(CFLAGS) -o /dev/null -x c -; else echo 'clang not installed.'; fi
 	@echo
 	@echo 'The analyzer in GCC 11 is much better than in 10, this is '`gcc -dumpversion`'.'
-	@if which gcc >/dev/null; then echo 'Checking with gcc...'; CEDRO_CC='' $(CEDROCC) $(CFLAGS) $(MAIN) | gcc -fanalyzer -c -o /dev/null $(CFLAGS) -x c -; fi
+	@if which gcc >/dev/null; then echo 'Checking with gcc...'; CEDRO_CC='' $(CEDROCC) $(CFLAGS) $(MAIN) | $(CC) -fanalyzer -c -o /dev/null $(CFLAGS) -x c -; fi
 	@echo
 	@if which cppcheck >/dev/null; then cppcheck build/$(CMDNAME).i --std=c99 --report-progress --enable=performance,portability; else echo 'cppcheck not installed.'; fi
 

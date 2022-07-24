@@ -37,9 +37,6 @@
  * Created: 2020-11-25 22:41
  */
 
-// Uncomment this to use `defer` instead of `auto`:
-//#define USE_DEFER_AS_KEYWORD
-
 /* In Solaris 8, we need __EXTENSIONS__ for vsnprintf(). */
 #define __EXTENSIONS__
 
@@ -255,6 +252,10 @@ typedef struct Options {
   bool discard_comments;
   /// Insert `#line` directives in the output, mapping to the original file.
   bool insert_line_directives;
+  /// Enable `#embed`.
+  bool enable_embed_directive;
+  /// Use `defer` instead of `auto`.
+  bool use_defer_instead_of_auto;
 } MUT_CONST_TYPE_VARIANTS(Options);
 
 /** Binary string, `const unsigned char const*`. */
@@ -410,17 +411,19 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
     return false;
   }
   size_t available = _->capacity - _->len;
+  // We need space for the zero terminator even if we don’t care about it.
   size_t needed = (size_t)
-      vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
+      vsnprintf((char*) end_of_Byte_array(_), available, fmt, args);
   if (needed > available) {
-    if (not ensure_capacity_Byte_array(_, _->len + needed + 1)) {
+    if (not ensure_capacity_Byte_array(_, _->len + needed)) {
       va_end(args);
       return false;
     }
     available = _->capacity - _->len;
-    vsnprintf((char*) end_of_Byte_array(_), available - 1, fmt, args);
+    vsnprintf((char*) end_of_Byte_array(_), available, fmt, args);
   }
-  _->len += (needed > available? available: needed);
+  // len excludes the zero terminator.
+  _->len += (needed > available? available: needed - 1);
 
   va_end(args);
 
@@ -1087,6 +1090,10 @@ preprocessor(Byte_p start, Byte_p end)
   if (start is end or *start is_not '#') return NULL;
   Byte_mut_p cursor = start + 1;
   if (cursor is_not end and *cursor is '#') return cursor + 1;
+
+  // Allow spaces between `#` and the keyword.
+  while (cursor is_not end and (*cursor is ' ' or *cursor is '\t')) ++cursor;
+
   // #ident/#sccs is not a standard directive:
   // https://gcc.gnu.org/onlinedocs/cpp/Other-Directives.html#Other-Directives
   //
@@ -1110,7 +1117,7 @@ preprocessor(Byte_p start, Byte_p end)
   } else if (                 cursor + 5 <= end and
              (mem_eq("endif", cursor,  5) or mem_eq("error", cursor, 5) or
               mem_eq("ifdef", cursor,  5) or mem_eq("undef", cursor, 5) or
-              mem_eq("ident", cursor,  5))) {
+              mem_eq("ident", cursor,  5) or mem_eq("embed", cursor, 5))) {
     cursor =                  cursor + 5;
   } else if (                cursor + 4 <= end and
              (mem_eq("line", cursor,  4) or mem_eq("sccs", cursor, 4) or
@@ -1518,15 +1525,55 @@ original_line_number(size_t position, Byte_array_p src)
  * and `message` can be discarded right after calling this function.
  */
 static void
-error_at(const char * message, Marker_p cursor, mut_Marker_array_p _, mut_Byte_array_p src)
+error_at(const char * message,
+         Marker_p cursor, mut_Marker_array_p _, mut_Byte_array_p src)
 {
   assert(cursor >= _->start and cursor <= _->start + _->len);
+  // Check that there aren’t any previous errors already there
+  // that would be shadowed if we insert an error directive here.
+  for (Marker_mut_p m = end_of_Marker_array(_); m is_not cursor; ) {
+    --m;
+    if (m->token_type is T_PREPROCESSOR and
+        m->len > 6 /*strlen("#error")*/) {
+      if (mem_eq("#error", get_Byte_array(src, m->start), 6)) {
+        // There was already an error there, let it be the one reported.
+        return;
+      }
+    }
+  }
+
   _->len = index_Marker_array(_, cursor);
   mut_Byte_array buffer = init_Byte_array(200);
-  bool ok =
-      push_fmt(&buffer, "\n#line %lu", original_line_number(cursor->start,
-                                                            src)) &&
-      push_str(&buffer, "\n#error ")                              &&
+
+  /* Close all open #ifdefs which is needed before #error
+   * because otherwise, the compiler will complain about the unterminated #ifdef
+   * and the intended error message will not be printed. */
+  int pending = 0; // Signed in case of incorrect syntax with too many #endif.
+  for (Marker_mut_p m = _->start; m is_not cursor; ++m) {
+    if (m->token_type is T_PREPROCESSOR) {
+      Byte_array_mut_slice text = slice_for_marker(src, m);
+      while (text.start_p is_not text.end_p and
+             (*text.start_p is ' ' or *text.start_p is '\t')) ++text.start_p;
+      size_t len = (size_t)(text.end_p - text.start_p);
+      if        (strn_eq("if",    (char*)text.start_p, len)) {
+        ++pending;
+      } else if (strn_eq("endif", (char*)text.start_p, len)) {
+        --pending;
+      }
+    }
+  }
+  bool ok = true;
+  while (pending > 0) { --pending; ok = ok && push_str(&buffer, "\n#endif"); }
+
+  ok = ok &&
+      push_fmt(&buffer, "\n#line %lu",
+               original_line_number(cursor->start, src))          &&
+      push_str(&buffer, "\n")                                     &&
+      push_Marker_array(_, Marker_from(src, as_c_string(&buffer),
+                                       T_PREPROCESSOR));
+  buffer.len = 0;
+  ok = ok &&
+      push_fmt(&buffer, "#error ")                                &&
       push_str(&buffer, message)                                  &&
       push_str(&buffer, "\n")                                     &&
       push_Marker_array(_, Marker_from(src, as_c_string(&buffer),
@@ -1540,11 +1587,32 @@ error_at(const char * message, Marker_p cursor, mut_Marker_array_p _, mut_Byte_a
  * This one is meant for the `unparse*()` functions.
  */
 static void
-write_error_at(const char * message,
-               Marker_p cursor, Byte_array_p src,
+write_error_at(const char * message, size_t line_number,
+               Marker_p start, Marker_p cursor, Byte_array_p src,
                FILE* out)
 {
-  fprintf(out, "\n#line %lu", original_line_number(cursor->start, src));
+  /* Close all open #ifdefs which is needed before #error
+   * because otherwise, the compiler will complain about the unterminated #ifdef
+   * and the intended error message will not be printed. */
+  int pending = 0; // Signed in case of incorrect syntax with too many #endif.
+  for (Marker_mut_p m = start; m is_not cursor; ++m) {
+    if (m->token_type is T_PREPROCESSOR) {
+      Byte_array_mut_slice text = slice_for_marker(src, m);
+      if (text.start_p is text.end_p) continue;
+      ++text.start_p; // Skip `#`.
+      while (text.start_p is_not text.end_p and
+             (*text.start_p is ' ' or *text.start_p is '\t')) ++text.start_p;
+      size_t len = (size_t)(text.end_p - text.start_p);
+      if        (strn_eq("if",    (char*)text.start_p, len)) {
+        ++pending;
+      } else if (strn_eq("endif", (char*)text.start_p, len)) {
+        --pending;
+      }
+    }
+  }
+  while (pending > 0) { --pending; fputs("\n#endif", out); }
+
+  fprintf(out, "\n#line %lu", line_number);
   fprintf(out, "\n#error %s\n", message);
 }
 
@@ -1739,7 +1807,7 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
  *  See `enum TokenType` for a list of keywords.
  */
 static inline TokenType
-keyword_or_identifier(Byte_p start, Byte_p end)
+keyword_or_identifier(Byte_p start, Byte_p end, bool use_defer_instead_of_auto)
 {
   switch (end - start) {
     case 2:
@@ -1774,11 +1842,9 @@ keyword_or_identifier(Byte_p start, Byte_p end)
         return T_TYPE;
       }
       if (mem_eq(start, "auto", 4)) {
-#ifdef USE_DEFER_AS_KEYWORD
-        return T_TYPE_QUALIFIER_AUTO;
-#else
-        return T_CONTROL_FLOW_DEFER;
-#endif
+        return use_defer_instead_of_auto?
+            T_TYPE_QUALIFIER_AUTO:
+            T_CONTROL_FLOW_DEFER;
       }
       break;
     case 5:
@@ -1795,11 +1861,9 @@ keyword_or_identifier(Byte_p start, Byte_p end)
       if (mem_eq(start, "const", 5)) {
         return T_TYPE_QUALIFIER;
       }
-#ifdef USE_DEFER_AS_KEYWORD
-      if (mem_eq(start, "defer", 5)) {
+      if (use_defer_instead_of_auto and mem_eq(start, "defer", 5)) {
         return T_CONTROL_FLOW_DEFER;
       }
-#endif
       break;
     case 6:
       if (mem_eq(start, "return", 6)) {
@@ -1865,13 +1929,15 @@ keyword_or_identifier(Byte_p start, Byte_p end)
  * mut_Byte_array src = init_Byte_array(80);
  * push_str(&src, "#pragma Cedro 1.0\nprintf(\"hello\\n\", i);");
  * Byte_array_mut_slice region = bounds_of_Byte_array(&src);
- * region.start_p = parse_skip_until_cedro_pragma(&src, region, markers);
- * parse(&src, region, &markers);
+ * mut_Options options = {0};
+ * region.start_p = parse_skip_until_cedro_pragma(&src, region, markers,
+ *                                                &options);
+ * parse(&src, region, &markers, options.use_defer_instead_of_auto);
  * print_markers(&markers, &src, "", 0, markers.len);
  * ```
  */
 static Byte_p
-parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
+parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers, mut_Options_p options)
 {
   assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
   Byte_mut_p cursor = region.start_p;
@@ -1898,6 +1964,24 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
               return end;
             }
           }
+          // Skip rest of version number, until next space or EOL.
+          cursor += CEDRO_PRAGMA_LEN;
+          while (cursor is_not token_end) {
+            if (*cursor is ' ') { ++cursor; break; }
+            ++cursor;
+          }
+          Byte_mut_p start = cursor;
+          do {
+            start = cursor;
+            while (cursor is_not token_end and *cursor is_not ',') ++cursor;
+            size_t len = (size_t)(cursor - start);
+            if        (len is 6 and mem_eq("#embed", start, len)) {
+              options->enable_embed_directive = true;
+            } else if (len is 5 and mem_eq("defer", start, len)) {
+              options->use_defer_instead_of_auto = true;
+            }
+            if (cursor is_not token_end) ++cursor;
+          } while (cursor is_not token_end);
           cursor = token_end;
           // Skip LF and empty lines after line.
           while (cursor is_not end and
@@ -1951,7 +2035,7 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
  * mut_Marker_array markers = init_Marker_array(8192);
  * mut_Byte_array src = init_Byte_array(80);
  * push_str(&src, "printf(\"hello\\n\", i);");
- * parse(&src, bounds_of_Byte_array(&src), &markers);
+ * parse(&src, bounds_of_Byte_array(&src), &markers, false);
  * print_markers(&markers, &src, "", 0, markers.len);
  * ```
  *
@@ -1960,7 +2044,8 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
  * will be in `error_buffer`.
  */
 static Byte_p
-parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
+parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
+      bool use_defer_instead_of_auto)
 {
   assert(PADDING_Byte_ARRAY >= 8); // Must be greater than the longest keyword.
   Byte_mut_p cursor = region.start_p;
@@ -2024,7 +2109,8 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers)
       TOKEN1(T_SPACE);
       if (token_end is cursor) { eprintln("error T_SPACE"); break; }
     } else if ((token_end = identifier(cursor, end))) {
-      TOKEN1(keyword_or_identifier(cursor, token_end));
+      TOKEN1(keyword_or_identifier(cursor, token_end,
+                                   use_defer_instead_of_auto));
       if (token_end is cursor) { eprintln("error T_IDENTIFIER"); }
     } else if ((token_end = number(cursor, end))) {
       TOKEN1(T_NUMBER);
@@ -2360,7 +2446,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
 
   mut_Marker_array arguments = init_Marker_array(32);
   Byte_p parse_end =
-      parse(src, (Byte_array_slice){rest, text.end_p}, &arguments);
+      parse(src, (Byte_array_slice){rest, text.end_p}, &arguments,
+            options.use_defer_instead_of_auto);
   if (parse_end is_not text.end_p) {
     if (fprintf(out, "#line %lu \"%s\"\n#error %s\n",
                 original_line_number((size_t)(parse_end - src->start), src),
@@ -2379,7 +2466,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
   if (arg.start_p is arg.end_p) {
     write_error_at(LANG("error sintáctico.",
                         "syntax error."),
-                   arg.start_p, src, out);
+                   original_line_number(arg.start_p->start, src),
+                   NULL, NULL, src, out);
     m = m_end;
     goto exit;
   }
@@ -2401,7 +2489,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
         if (arg.start_p is arg.end_p) {
           write_error_at(LANG("error sintáctico.",
                               "syntax error."),
-                         arg.start_p, src, out);
+                         original_line_number(arg.start_p->start, src),
+                         NULL, NULL, src, out);
           m = m_end;
           goto exit;
         }
@@ -2410,7 +2499,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
             write_error_at(
                 LANG("no se permiten llaves con una sola variable.",
                      "braces are not allowed with a single variable."),
-                arg.start_p, src, out);
+                original_line_number(arg.start_p->start, src),
+                NULL, NULL, src, out);
             m = m_end;
             goto exit;
           }
@@ -2424,7 +2514,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
                               src)) {
               write_error_at(LANG("argumento duplicado.",
                                   "duplicated argument."),
-                             arg.start_p, src, out);
+                             original_line_number(arg.start_p->start, src),
+                             NULL, NULL, src, out);
               m = m_end;
               goto exit;
             }
@@ -2441,7 +2532,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
         if (arg.start_p->token_type is_not T_COMMA) {
           write_error_at(LANG("error sintáctico, se esperaba una coma.",
                               "syntax error, expected a comma."),
-                         arg.start_p, src, out);
+                         original_line_number(arg.start_p->start, src),
+                         NULL, NULL, src, out);
           m = m_end;
           goto exit;
         }
@@ -2451,7 +2543,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
     default:
       write_error_at(LANG("error sintáctico.",
                           "syntax error."),
-                     arg.start_p, src, out);
+                     original_line_number(arg.start_p->start, src),
+                     NULL, NULL, src, out);
       m = m_end;
       goto exit;
   }
@@ -2460,7 +2553,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
   if (arg.start_p is arg.end_p) {
     write_error_at(LANG("falta la lista de valores.",
                         "missing value list."),
-                   arguments.start, src, out);
+                   original_line_number(arguments.start->start, src),
+                   NULL, NULL, src, out);
     m = m_end;
     goto exit;
   }
@@ -2470,7 +2564,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
   } else if (arg.start_p->token_type is_not T_BLOCK_START) {
     write_error_at(LANG("error sintáctico en lista de valores.",
                         "syntax error in value list."),
-                   arguments.start, src, out);
+                   original_line_number(arguments.start->start, src),
+                   NULL, NULL, src, out);
     m = m_end;
     goto exit;
   }
@@ -2484,7 +2579,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
   if (arg.start_p is arg.end_p) {
     write_error_at(LANG("falta la lista de valores.",
                         "missing value list."),
-                   m, src, out);
+                   original_line_number(m->start, src),
+                   NULL, NULL, src, out);
     m = m_end;
     goto exit;
   }
@@ -2508,7 +2604,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
                 is_not arg.end_p) {
               write_error_at(LANG("contenido inválido tras lista de valores",
                                   "invalid content after value list"),
-                             value.start_p, src, out);
+                             original_line_number(value.start_p->start, src),
+                             NULL, NULL, src, out);
               m = m_end;
               goto exit;
             }
@@ -2520,7 +2617,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
           if (not nesting) {
             write_error_at(LANG("paréntesis desparejados en argumento.",
                                 "unpaired parentheses in argument."),
-                           value.start_p, src, out);
+                           original_line_number(value.start_p->start, src),
+                           NULL, NULL, src, out);
             m = m_end;
             goto exit;
           }
@@ -2537,7 +2635,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
     if (nesting) {
       write_error_at(LANG("grupo sin cerrar, error sintáctico",
                           "unclosed group, syntax error."),
-                     value.start_p, src, out);
+                     original_line_number(value.start_p->start, src),
+                     NULL, NULL, src, out);
       m = m_end;
       goto exit;
     }
@@ -2545,7 +2644,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
     if (value.end_p is arg.end_p) {
       write_error_at(LANG("lista de valores inconclusa",
                           "unfinished value list"),
-                     value.start_p, src, out);
+                     original_line_number(value.start_p->start, src),
+                     NULL, NULL, src, out);
       m = m_end;
       goto exit;
     }
@@ -2560,7 +2660,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
     if (value.start_p is value.end_p) {
       write_error_at(LANG("valor vacío",
                           "empty value"),
-                     value.end_p, src, out);
+                     original_line_number(value.end_p->start, src),
+                     NULL, NULL, src, out);
       m = m_end;
       goto exit;
     }
@@ -2585,7 +2686,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
               // This can not happen if the code above is correct.
               write_error_at(LANG("ERROR INTERNO EN CEDRO: 0x01",
                                   "INTERNAL ERROR IN CEDRO: 0x01"),
-                             arg.start_p, src, out);
+                             original_line_number(arg.start_p->start, src),
+                             NULL, NULL, src, out);
               m = m_end;
               goto exit;
             }
@@ -2595,7 +2697,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
             if (not nesting) {
               write_error_at(LANG("paréntisis desparejados en argumento.",
                                   "unpaired parentheses in argument."),
-                             value.start_p, src, out);
+                             original_line_number(value.start_p->start, src),
+                             NULL, NULL, src, out);
               m = m_end;
               goto exit;
             }
@@ -2606,7 +2709,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
             if (valueIndex is replacements->len) {
               write_error_at(LANG("mas valores que variables",
                                   "more values than variables"),
-                             value.start_p, src, out);
+                             original_line_number(value.start_p->start, src),
+                             NULL, NULL, src, out);
               m = m_end;
               goto exit;
             }
@@ -2616,7 +2720,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
             if (value.start_p is value.end_p) {
               write_error_at(LANG("valor vacío",
                                   "empty value"),
-                             value.end_p, src, out);
+                             original_line_number(value.end_p->start, src),
+                             NULL, NULL, src, out);
               m = m_end;
               goto exit;
             }
@@ -2637,14 +2742,16 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
         // This can not happen if the code above is correct.
         write_error_at(LANG("ERROR INTERNO EN CEDRO: 0x02",
                             "INTERNAL ERROR IN CEDRO: 0x02"),
-                       value.start_p, src, out);
+                       original_line_number(value.start_p->start, src),
+                       NULL, NULL, src, out);
         m = m_end;
         goto exit;
       }
       if (valueIndex is replacements->len) {
         write_error_at(LANG("mas valores que variables",
                             "more values than variables"),
-                       value.start_p, src, out);
+                       original_line_number(value.start_p->start, src),
+                       NULL, NULL, src, out);
         m = m_end;
         goto exit;
       }
@@ -2652,7 +2759,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
       if (value.start_p is value.end_p) {
         write_error_at(LANG("valor vacío",
                             "empty value"),
-                       value.end_p, src, out);
+                       original_line_number(value.end_p->start, src),
+                       NULL, NULL, src, out);
         m = m_end;
         goto exit;
       }
@@ -2662,7 +2770,8 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
       if (valueIndex is_not replacements->len) {
         write_error_at(LANG("menos valores que variables",
                             "fewer values than variables"),
-                       value.start_p, src, out);
+                       original_line_number(value.start_p->start, src),
+                       NULL, NULL, src, out);
         m = m_end;
         goto exit;
       }
@@ -2764,16 +2873,17 @@ write_pending_space(bool* line_directive_pending, const char* src_file_name,
   return write_token(pending_space, src, options, out);
 }
 static Marker_p
-unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
+unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
                  Byte_array_p src, size_t original_src_len,
                  const char* src_file_name, IncludeCallback_p include,
                  mut_Replacement_array_p replacements, bool is_last,
                  mut_Options options, FILE* out)
 {
-  if (m is m_end) return m_end;
+  if (m_start is m_end) return m_end;
   bool eol_pending = false;
   bool line_directive_pending = false;
   Marker_mut_p pending_space = NULL;
+  Marker_mut_p m = m_start;
   while (m is_not m_end) {
     if (options.insert_line_directives) {
       line_directive_pending |= m->start is_not previous_marker_end;
@@ -2868,7 +2978,8 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                 if (rest is_not text.end_p) {
                   write_error_at(LANG("contenido inválido tras `#define }`.",
                                       "invalid content after `#define }`"),
-                                 m, src, out);
+                                 original_line_number(m->start, src),
+                                 m_start, m, src, out);
                   m = m_end;
                   goto exit;
                 }
@@ -2880,7 +2991,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             fwrite(rest, sizeof(rest[0]), m->len, out);
             line_length += len_utf8(text.start_p, text.end_p, &err);
             if (utf8_error(err, (size_t)(text.start_p - src->start))) {
-              write_error_at(error_buffer, m, src, out);
+              write_error_at(error_buffer,
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
               error_buffer[0] = 0;
               m = m_end;
               goto exit;
@@ -2906,7 +3019,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
               fwrite(rest, sizeof(rest[0]), (size_t)(eol - rest), out);
               line_length += len_utf8(rest, eol, &err);
               if (utf8_error(err, (size_t)(rest - src->start))) {
-                write_error_at(error_buffer, m, src, out);
+                write_error_at(error_buffer,
+                               original_line_number(m->start, src),
+                               m_start, m, src, out);
                 error_buffer[0] = 0;
                 m = m_end;
                 goto exit;
@@ -2931,7 +3046,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             fwrite(rest, sizeof(rest[0]), len, out);
             line_length += len_utf8(rest, rest + len, &err);
             if (utf8_error(err, (size_t)(rest - src->start))) {
-              write_error_at(error_buffer, m, src, out);
+              write_error_at(error_buffer,
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
               error_buffer[0] = 0;
               m = m_end;
               goto exit;
@@ -2948,13 +3065,22 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         write_error_at(
             LANG("cierre de directiva de bloque sin apertura previa.",
                  "block directive closing without previous opening."),
-            m, src, out);
+            original_line_number(m->start, src),
+            m_start, m, src, out);
         m = m_end;
         goto exit;
       }
 
-      len = 10; // = strlen("#include {");
-      if (m->len >= len and strn_eq("#include {", (char*)rest, len)) {
+      if        (m->len >= 10 and not options.enable_embed_directive and
+                 strn_eq("#include {", (char*)rest, 10)) {
+        len = 10;
+      } else if (m->len >=  8 and     options.enable_embed_directive and
+                 strn_eq("#embed \"",  (char*)rest,  8)) {
+        len =  8;
+      } else {
+        len =  0;
+      }
+      if (len) {
         if (pending_space) {
           if (not write_pending_space(&line_directive_pending, src_file_name,
                                       pending_space, m_end, src,
@@ -2966,13 +3092,34 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         }
         rest += len;
         Byte_mut_p end = rest;
-        while (end < text.end_p) { if (*end is '}') break; ++end; }
-        if (end is text.end_p) {
-          write_error_at(LANG("falta la llave de cierre tras `#include {...`.",
-                              "missing closing brace after `#include {...`"),
-                         m, src, out);
-          m = m_end;
-          goto exit;
+        if (len is 10) {
+          while (end < text.end_p) {
+            if (*end is '}') break;
+            ++end;
+          }
+          if (end is text.end_p) {
+            write_error_at(
+                LANG("falta la llave de cierre tras `#include {...`.",
+                     "missing closing brace after `#include {...`"),
+                original_line_number(m->start, src),
+                m_start, m, src, out);
+            m = m_end;
+            goto exit;
+          }
+        } else {
+          while (end < text.end_p) {
+            if (*end is '"') break;
+            ++end;
+          }
+          if (end is text.end_p) {
+            write_error_at(
+                LANG("falta el fichero para `#embed ...`.",
+                     "missing file for `#embed ...`"),
+                original_line_number(m->start, src),
+                m_start, m, src, out);
+            m = m_end;
+            goto exit;
+          }
         }
         mut_Byte_array file_name = {0};
         if (not push_str(&file_name, src_file_name)) {
@@ -3005,12 +3152,20 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         const char* basename = strrchr(included_file, '/');
         if (not basename) basename = strrchr(included_file, '\\');
         if (basename) ++basename; else basename = included_file;
-        fprintf(out, "[%lu] = { /* %s */\n0x%02X",
-                bin.len, basename, bin.start[0]);
-        for (size_t i = 1; i is_not bin.len; ++i) {
-          fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+        if (len is 10) {
+          fprintf(out, "[%lu] = { /* %s */\n0x%02X",
+                  bin.len, basename, bin.start[0]);
+          for (size_t i = 1; i is_not bin.len; ++i) {
+            fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+          }
+          fputs("\n}", out);
+        } else {
+          fprintf(out, "// %s\n0x%02X", basename, bin.start[0]);
+          for (size_t i = 1; i is_not bin.len; ++i) {
+            fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+          }
+          fputs("\n", out);
         }
-        fputs("\n}", out);
         destruct_Byte_array(&bin);
         destruct_Byte_array(&file_name);
         // Now check that there is only space and comments after it:
@@ -3024,9 +3179,17 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             rest = end;
           }
           if (rest is_not text.end_p) {
-            write_error_at(LANG("contenido inválido tras `#include {...}`.",
-                                "invalid content after `#include {...}`"),
-                           m, src, out);
+            if (len is 10) {
+              write_error_at(LANG("contenido inválido tras `#include {...}`.",
+                                  "invalid content after `#include {...}`"),
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
+            } else {
+              write_error_at(LANG("contenido inválido tras `#embed \"...\"`.",
+                                  "invalid content after `#embed \"...\"`."),
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
+            }
             m = m_end;
             goto exit;
           }
@@ -3094,7 +3257,8 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
             if (rest is_not text.end_p) {
               write_error_at(LANG("contenido inválido tras `#foreach }`.",
                                   "invalid content after `#foreach }`"),
-                             m, src, out);
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
               m = m_end;
               goto exit;
             }
@@ -3122,13 +3286,15 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                      (size_t)(space.end_p-space.start_p), out);
               pending_space = NULL;
             }
+            line_directive_pending = true;
             ++m;
             continue;
           } else {
             // TODO: improve error messages, report specific error.
             write_error_at(LANG("error en el `#include`.",
                                 "`#include` error."),
-                           m, src, out);
+                           original_line_number(m->start, src),
+                           m_start, m, src, out);
             m = m_end;
             goto exit;
           }
@@ -3140,7 +3306,11 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
         pending_space = NULL;
         m = skip_space_forward(m + 1, m_end);
         continue;
-      } else if (m->len is 1 and replacements) {
+      } /*else if (m->len is 1 and m != m_end and (m+1)->token_type is T_OP_13) {
+        // Count valid pointer path length.
+        ++m;
+        continue;
+      } */else if (m->len is 1 and replacements) {
         if (++m is m_end) break;
         // Token as string literal like in the standard #define.
         // https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing
@@ -3167,9 +3337,10 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
           continue;
         }
         if (m is m_end or m->token_type is_not T_IDENTIFIER) {
-          write_error_at(LANG("falta el identificador after `#`.",
+          write_error_at(LANG("falta el identificador tras `#`.",
                               "missing the identifier after `#`."),
-                         m, src, out);
+                         original_line_number(m->start, src),
+                         m_start, m, src, out);
           m = m_end;
           goto exit;
         }
@@ -3182,7 +3353,9 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                      "missing value for variable "));
           text = slice_for_marker(src, m);
           error_append((const char*)text.start_p, (const char*)text.end_p);
-          write_error_at(error_buffer, m, src, out);
+          write_error_at(error_buffer,
+                         original_line_number(m->start, src),
+                         m_start, m, src, out);
           error_buffer[0] = 0;
           m = m_end;
           goto exit;
@@ -3220,7 +3393,8 @@ unparse_fragment(Marker_mut_p m, Marker_p m_end, size_t previous_marker_end,
                             " dentro de `#foreach`.",
                             "preprocessor directives are not allowed"
                             " inside `#foreach`."),
-                       m, src, out);
+                       original_line_number(m->start, src),
+                       m_start, m, src, out);
         m = m_end;
         goto exit;
       }
@@ -3342,7 +3516,8 @@ static Macro macros[] = {
 #include <time.h>
 /** Returns the time in seconds, as a double precision floating point value. */
 static double
-benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
+benchmark(mut_Byte_array_p src_p, const char* src_file_name,
+          mut_Options options)
 {
   const size_t repetitions = 100;
   clock_t start = clock();
@@ -3353,8 +3528,10 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
     delete_Marker_array(&markers, 0, markers.len);
 
     Byte_array_mut_slice region = bounds_of_Byte_array(src_p);
-    region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers);
-    Byte_p parse_end = parse(src_p, region, &markers);
+    region.start_p = parse_skip_until_cedro_pragma(src_p, region, &markers,
+                                                   &options);
+    Byte_p parse_end = parse(src_p, region, &markers,
+                             options.use_defer_instead_of_auto);
     if (parse_end is_not region.end_p) {
       destruct_Marker_array(&markers);
       eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3365,7 +3542,7 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name, Options_p options)
       return 0.0; // Error.
     }
 
-    if (options->apply_macros) {
+    if (options.apply_macros) {
       Macro_p macro = macros;
       while (macro->name and macro->function) {
         macro->function(&markers, src_p);
@@ -3395,7 +3572,7 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
   Byte_array_mut_slice region;
   Byte_mut_p parse_end;
   region    = bounds_of_Byte_array(src);
-  parse_end = parse(src, region, &markers);
+  parse_end = parse(src, region, &markers, false);
   if (parse_end is_not region.end_p) {
     result = false;
     eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3406,7 +3583,7 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
     goto exit;
   }
   region    = bounds_of_Byte_array(src_ref);
-  parse_end = parse(src_ref, region, &markers_ref);
+  parse_end = parse(src_ref, region, &markers_ref, false);
   if (parse_end is_not region.end_p) {
     result = false;
     eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3479,6 +3656,8 @@ usage_es =
     " cedrocc -o fichero fichero.c\n"
     "  Con cedrocc, las siguientes opciones son implícitas:\n"
     "    --insert-line-directives\n"
+    "  Sólo se modifica el código tras la línea `#pragma Cedro 1.0`,\n"
+    " que puede incluir ciertas opciones: `#pragma Cedro 1.0 defer,#embed`\n"
     "\n"
     "  --apply-macros     Aplica las macros: pespunte, diferido, etc. (implícito)\n"
     "  --escape-ucn       Encapsula los caracteres no-ASCII en identificadores.\n"
@@ -3490,6 +3669,13 @@ usage_es =
     "  --no-discard-space    No descarta los espacios.    (implícito)\n"
     "  --insert-line-directives    Inserta directivas #line.\n"
     "  --no-insert-line-directives No inserta directivas #line. (implícito)\n"
+    "  --embed-directive     Activa la directiva #embed.\n"
+    "                        Lo mismo que: #pragma Cedro 1.0 #embed\n"
+    "  --no-embed-directive  Desactiva la directiva #embed. (implícito)\n"
+    "\n"
+    "  --defer-instead-of-auto    Usa the keyword defer instead of auto.\n"
+    "                             Lo mismo que: #pragma Cedro 1.0 defer\n"
+    "  --no-defer-instead-of-auto Usa the keyword auto. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
@@ -3513,6 +3699,8 @@ usage_en =
     " cedrocc -o file file.c\n"
     "  With cedrocc, the following options are the defaults:\n"
     "    --discard-comments --insert-line-directives\n"
+    "  Code gets modified only after the line `#pragma Cedro 1.0`,\n"
+    " which can include certain options: `#pragma Cedro 1.0 defer,#embed`\n"
     "\n"
     "  --apply-macros     Apply the macros: backstitch, defer, etc. (default)\n"
     "  --escape-ucn       Escape non-ASCII in identifiers as UCN.\n"
@@ -3525,6 +3713,12 @@ usage_en =
     "  --insert-line-directives    Insert #line directives.\n"
     "  --no-insert-line-directives Does not insert #line directives."
     " (default)\n"
+    "  --embed-directive     Enables the #embed directive.\n"
+    "                        Same as: #pragma Cedro 1.0 #embed\n"
+    "  --no-embed-directive  Disables the #embed directive. (implícito)\n"
+    "  --defer-instead-of-auto    Use the keyword defer instead of auto.\n"
+    "                             Same as: #pragma Cedro 1.0 defer\n"
+    "  --no-defer-instead-of-auto Use the keyword auto. (implícito)\n"
     "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
@@ -3560,11 +3754,13 @@ int main(int argc, char** argv)
   }
 
   mut_Options options = { // Remember to keep the usage strings updated.
-    .apply_macros           = true,
-    .escape_ucn             = false,
-    .discard_comments       = false,
-    .discard_space          = false,
-    .insert_line_directives = false
+    .apply_macros              = true,
+    .escape_ucn                = false,
+    .discard_comments          = false,
+    .discard_space             = false,
+    .insert_line_directives    = false,
+    .enable_embed_directive    = false,
+    .use_defer_instead_of_auto = false
   };
 
   bool opt_print_markers    = false;
@@ -3590,6 +3786,9 @@ int main(int argc, char** argv)
       } else if (str_eq("--insert-line-directives", arg) or
                  str_eq("--no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
+      } else if (str_eq("--embed-directive", arg) or
+                 str_eq("--no-embed-directive", arg)) {
+        options.enable_embed_directive = flag_value;
       } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
@@ -3646,8 +3845,10 @@ int main(int argc, char** argv)
     }
 
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
-    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers);
-    Byte_p parse_end = parse(&src, region, &markers);
+    region.start_p = parse_skip_until_cedro_pragma(&src, region, &markers,
+                                                   &options);
+    Byte_p parse_end = parse(&src, region, &markers,
+                             options.use_defer_instead_of_auto);
     if (parse_end is_not region.end_p) {
       err = 1;
       eprintln("#line %lu \"%s\"\n#error %s\n",
@@ -3661,7 +3862,7 @@ int main(int argc, char** argv)
     size_t original_src_len = src.len;
 
     if (opt_run_benchmark) {
-      double t = benchmark(&src, file_name, &options);
+      double t = benchmark(&src, file_name, options);
       if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
       else         eprintln("%.1fs for %s", t         , file_name);
     } else if (opt_validate) {

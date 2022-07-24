@@ -23,7 +23,7 @@ GLFW_DIR=lib/glfw-$(GLFW_VERSION)
 #NANOVG_FECTH=git clone https://github.com/memononen/nanovg.git
 #NANOVG_DIR=lib/nanovg
 
-build/assets.o: src/assets.c $(CEDROCC)
+build/assets.o: src/assets.c logo.png $(CEDROCC)
 	mkdir -p $$(dirname $@)
 	$(CEDROCC) -c -o $@ $< $(CFLAGS) -O
 
