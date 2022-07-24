@@ -209,7 +209,7 @@ move_##T##_array(mut_##T##_array_p _)                                   \
                                                                         \
 /** Make sure that the array is ready to hold `minimum` elements,       \
     resizing the array if needed.                                       \
-    Returns `false` if (r)eallocation failed. */                        \
+    Returns `false` if (re)allocation failed. */                        \
 static bool                                                             \
 ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
 {                                                                       \
@@ -233,7 +233,7 @@ ensure_capacity_##T##_array(mut_##T##_array_p _, size_t minimum)        \
                                                                         \
 /** Push a bit copy of the element on the end/top of the array,         \
     resizing the array if needed.                                       \
-    Returns `false` if (r)eallocation failed. */                        \
+    Returns `false` if (re)allocation failed. */                        \
 static bool                                                             \
 push_##T##_array(mut_##T##_array_p _, T item)                           \
 {                                                                       \
@@ -254,7 +254,7 @@ push_##T##_array(mut_##T##_array_p _, T item)                           \
     but copied to that array.                                           \
     The `insert` slice must belong to a different array, or be          \
     empty in which case it can be zero: `(T##_array_slice){0,0}`        \
-    Returns `false` if (r)eallocation failed. */                        \
+    Returns `false` if (re)allocation failed. */                        \
 static bool                                                             \
 splice_##T##_array(mut_##T##_array_p _,                                 \
                    size_t position, size_t delete,                      \
@@ -270,7 +270,11 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
     if (!splice_##T##_array(deleted, deleted->len, 0, NULL, slice)) {   \
       return false;                                                     \
     }                                                                   \
-  } else {                                                              \
+  } else if (delete) {                                                  \
+    /* If the array is zero {0}, _->start is NULL but                   \
+       it should be valid to splice into an empty array at position 0   \
+       with 0 deletions, so we only attempt this                        \
+       if requested to delete any elements. */                          \
     destruct_##T##_block((mut_##T##_p) _->start + position,             \
                          _->start + position + delete);                 \
   }                                                                     \
