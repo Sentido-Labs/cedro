@@ -3670,7 +3670,7 @@ usage_es =
     "  --no-embed-directive  Desactiva la directiva `#embed`. (implícito)\n"
     "  --defer-instead-of-auto    Usa la palabra clave `defer` en vez de `auto`.\n"
     "                             Lo mismo que `#pragma Cedro 1.0 defer`.\n"
-    "  --no-defer-instead-of-auto No usa la palabra clave `auto`. (implícito)\n"
+    "  --no-defer-instead-of-auto Usa la palabra clave `auto`. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
