@@ -3784,6 +3784,9 @@ int main(int argc, char** argv)
       } else if (str_eq("--embed-directive", arg) or
                  str_eq("--no-embed-directive", arg)) {
         options.enable_embed_directive = flag_value;
+      } else if (str_eq("--defer-instead-of-auto", arg) or
+                 str_eq("--no-defer-instead-of-auto", arg)) {
+        options.use_defer_instead_of_auto = flag_value;
       } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
