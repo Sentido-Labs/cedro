@@ -453,6 +453,12 @@ int main(int argc, char* argv[])
       } else if (str_eq("--cedro:insert-line-directives", arg) or
                  str_eq("--cedro:no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
+      } else if (str_eq("--cedro:embed-directive", arg) or
+                 str_eq("--cedro:no-embed-directive", arg)) {
+        options.enable_embed_directive = flag_value;
+      } else if (str_eq("--cedro:defer-instead-of-auto", arg) or
+                 str_eq("--cedro:no-defer-instead-of-auto", arg)) {
+        options.use_defer_instead_of_auto = flag_value;
       } else if (str_eq("--cedro:version", arg)) {
         eprintln(CEDRO_VERSION);
         return EXIT_SUCCESS;
