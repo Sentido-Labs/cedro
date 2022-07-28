@@ -3815,11 +3815,11 @@ int main(int argc, char** argv)
   FILE* out = stdout;
 
   for (int i = 1; not err and i < argc; ++i) {
-    char* file_name = argv[i];
-    if (file_name[0] is '-') {
-      if (file_name[1] is_not '\0') continue;
-      file_name[0] = '\0'; // Make file_name the empty string.
-    } else if (file_name[0] is '\0') {
+    char* src_file_name = argv[i];
+    if (src_file_name[0] is '-') {
+      if (src_file_name[1] is_not '\0') continue;
+      src_file_name[0] = '\0'; // Make src_file_name the empty string.
+    } else if (src_file_name[0] is '\0') {
       // Do not allow `cedro ""` as alternative for `cedro -` because it is
       // likely to be a mistake, e.g. an undefined variable in a shell script.
       fprintf(out, "#error The file name is the empty string.\n");
@@ -3830,12 +3830,12 @@ int main(int argc, char** argv)
     markers.len = 0;
     src.len = 0;
 
-    int err = file_name[0]?
-        read_file(&src, file_name):
+    int err = src_file_name[0]?
+        read_file(&src, src_file_name):
         read_stream(&src, stdin);
     if (err) {
-      print_file_error(err, file_name, &src);
-      if (file_name[0] is '\0') {
+      print_file_error(err, src_file_name, &src);
+      if (src_file_name[0] is '\0') {
         fprintf(out, "#error The file name is the empty string.\n");
       }
       err = 11;
@@ -3851,7 +3851,7 @@ int main(int argc, char** argv)
       err = 1;
       eprintln("#line %lu \"%s\"\n#error %s\n",
                original_line_number((size_t)(parse_end - src.start), &src),
-               file_name,
+               src_file_name,
                error_buffer);
       error_buffer[0] = 0;
       break;
@@ -3860,17 +3860,17 @@ int main(int argc, char** argv)
     size_t original_src_len = src.len;
 
     if (opt_run_benchmark) {
-      double t = benchmark(&src, file_name, options);
-      if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
-      else         eprintln("%.1fs for %s", t         , file_name);
+      double t = benchmark(&src, src_file_name, options);
+      if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, src_file_name);
+      else         eprintln("%.1fs for %s", t         , src_file_name);
     } else if (opt_validate) {
       mut_Byte_array src_ref = {0};
       err = read_file(&src_ref, opt_validate);
       if (err) {
         print_file_error(err, opt_validate, &src_ref);
         err = 12;
-      } else if (not validate_eq(&src,      &src_ref,
-                                 file_name, opt_validate)) {
+      } else if (not validate_eq(&src, &src_ref,
+                                 src_file_name, opt_validate)) {
         err = 27;
       }
       destruct_Byte_array(&src_ref);
@@ -3888,7 +3888,7 @@ int main(int argc, char** argv)
       } else {
         unparse(bounds_of_Marker_array(&markers),
                 &src, original_src_len,
-                file_name,
+                src_file_name,
                 options, out);
       }
     }
