@@ -4,19 +4,19 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Extensión del lenguaje de programación C: pre-procesador Cedro</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } /* WebKit-specific: */ :root { color-scheme: light dark; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code>b { background:#000; } url, code { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } td > url { display:block; text-align:right; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th { font-weight:normal; } p,ul { max-width:50em; text-align:justify; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } code>b { background:#fff; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } /* WebKit-specific: */ :root { color-scheme: light dark; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code>b { background:#000; } url, code { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } td > url, td > code.command-line-option { display:block; text-align:right; } td > code.command-line-option { font-style:italic; background:transparent; border:none; padding:0; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th:empty, td:empty { border:none; } th { font-weight:normal; } p,ul,blockquote { max-width:50em; text-align:justify; } blockquote { border-left:thin solid; padding-left:0.5em; font-style:italic; margin-left:3em; max-width:45em; } blockquote>address { text-align:right; } blockquote>address::before { content:"— "; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } code>b { background:#fff; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } } [title]::after { content:" †"; font-size:75%; vertical-align:top; } table.benchmark td { text-align:right; font-family:monospace; font-family:'Input', 'Fira Code', 'monospace'; }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
     <section>
-      <h1 style="text-align:center"><span style="float:left"><a href="https://sentido-labs.com/es/biblioteca/" class="img"><img alt="Cedro atlántico azul" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAGFBMVEUAAAAWLxcoYCg5izpCsUNN1U1b9Fp7+3umzZ3RAAAAI2lUWHRBdXRob3IAAAAAAEFsYmVydG8gR29uesOhbGV6IFBhbG9tb8X116oAAAGpSURBVEjH5ZTBdpswEEWBnO4dO+dkawTZxwjsbQwjs66R4ANAow+Ipfn9qq7betUgs+xbcpir0byniaL/UElerOIF9Vl7ORBdinT1IOCVyEnVnJDMxyP1cYudR5D5HJqetuGAjW//oITSveqJ7DGc8G3aGzKOJTUTvcQpGJBmMOgz32Rc9NYgjkWgJS9y6CcFNedZCQorZagMMuRJK9e09vycsRzKhhUlSqyDCKsorXo0NEDBSgWclzCF2ZGsr//nOxZF6zROTuMxMAo+Bxr7UQiUSnLgVbMPCNXGJ9kaPRApIkLddnv8WMXn+beIcwCyvg3jENFYdD+jiUg8ZBLJUUjv4vTmnFGocRLaeBDtnmeboRSisjw/thYt+kghoK3M5+weXK+0kg2HZhvDwXo3kMhcqnHeHGIx+TP1SSifpvco/n7LaXdKZzbQErqxY+uMcYB8+8hqaN0twQlIqB9aLn/OLQXA+6JN+6SlhNUiBICQ3SJEpfwoFt3jTYFHdEE1/F5VzXabOmXw99PXBLw+qN/y2/qa6V/y7wu/JtCdbixyd4wZPfxb+geh0KANiaQN5QAAAABJRU5ErkJggg==" width="64" height="64"/></a> Cedro</span>
+      <h1 style="text-align:center"><span style="float:left"><a href="https://sentido-labs.com/es/biblioteca/?filter=cedro" class="img"><img alt="Cedro atlántico azul" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAGFBMVEUAAAAWLxcoYCg5izpCsUNN1U1b9Fp7+3umzZ3RAAAAI2lUWHRBdXRob3IAAAAAAEFsYmVydG8gR29uesOhbGV6IFBhbG9tb8X116oAAAGpSURBVEjH5ZTBdpswEEWBnO4dO+dkawTZxwjsbQwjs66R4ANAow+Ipfn9qq7betUgs+xbcpir0byniaL/UElerOIF9Vl7ORBdinT1IOCVyEnVnJDMxyP1cYudR5D5HJqetuGAjW//oITSveqJ7DGc8G3aGzKOJTUTvcQpGJBmMOgz32Rc9NYgjkWgJS9y6CcFNedZCQorZagMMuRJK9e09vycsRzKhhUlSqyDCKsorXo0NEDBSgWclzCF2ZGsr//nOxZF6zROTuMxMAo+Bxr7UQiUSnLgVbMPCNXGJ9kaPRApIkLddnv8WMXn+beIcwCyvg3jENFYdD+jiUg8ZBLJUUjv4vTmnFGocRLaeBDtnmeboRSisjw/thYt+kghoK3M5+weXK+0kg2HZhvDwXo3kMhcqnHeHGIx+TP1SSifpvco/n7LaXdKZzbQErqxY+uMcYB8+8hqaN0twQlIqB9aLn/OLQXA+6JN+6SlhNUiBICQ3SJEpfwoFt3jTYFHdEE1/F5VzXabOmXw99PXBLw+qN/y2/qa6V/y7wu/JtCdbixyd4wZPfxb+geh0KANiaQN5QAAAABJRU5ErkJggg==" width="64" height="64"/></a> Cedro</span>
         <span class="language-selector">Español, <a href="README.en.html">English</a></span>
         <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><img alt="Sentido-Labs.com" src="doc/sentido-labs-mono.svg" style="width:5em"/></a>
       </h1>
       <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con siete prestaciones:</p>
       <ol>
         <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>] (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
-        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> [«<em>defer</em>»] (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
+        <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> o <code>defer ...</code> (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
         <li><a href="#label-break">Salida de <em>bucles anidados</em> <code>break <em>etiqueta</em>;</code></a> (<a href="#label-break-related-work">obras relacionadas</a>).</li>
         <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code><em>ristra</em>[<em>inicio</em>..<em>fin</em>]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
         <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">obras relacionadas</a>)-->.</li>
@@ -26,6 +26,14 @@
       <p>Para activarlo, el fichero fuente debe contener esta línea:
         <code>#pragma Cedro 1.0</code><br/>
         Si no, el fichero se copia directamente a la salida.</p>
+      <p>Esa línea puede contener ciertas opciones, por ejemplo
+        <code>#pragma Cedro 1.0 defer,#embed</code>
+        para activar el uso de
+        <a href="#deferred-resource-release"><code>defer</code> en vez de <code>auto</code></a>
+        y de
+        <a href="#binary-include"><code>#embed "…"</code> en vez de <code>#include {…}</code></a>.</p>
+      <p>El <b>código fuente</b> (licencia Apache 2.0) se encuentra en <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">la biblioteca</a>.<br/><code>cedro</code> sólo usa las funciones estándar C, <code>cedrocc</code> y <code>cedro-new</code> requieren <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
+
       <code>Uso: cedro [opciones] &lt;fichero.c&gt;…
      cedro new nombre # Ejecuta: <a href="#cedro-new">cedro-new</a> &lt;nombre&gt;
   Para leer desde stdin, se pone - en vez de &lt;fichero.c&gt;.
@@ -51,6 +59,9 @@
   --embed-directive     Activa la directiva `#embed`.
                         Lo mismo que `#pragma Cedro 1.0 #embed`.
   --no-embed-directive  Desactiva la directiva `#embed`. (implícito)
+  --embed-as-string=&lt;límite&gt; Usa cadenas literales en vez de octetos
+                             para ficheros menores que &lt;límite&gt;.
+                             Valor implícito: 0
   --defer-instead-of-auto    Usa la palabra clave `defer` en vez de `auto`.
                              Lo mismo que `#pragma Cedro 1.0 defer`.
   --no-defer-instead-of-auto No usa la palabra clave `auto`. (implícito)
@@ -401,13 +412,44 @@ int main() {
         porque sólo podría aplicar las acciones diferidas en la función actual, no en otras functiones que llamaran a ésta. Véase «<i id="a-defer-mechanism-for-c"><a href="https://gustedt.wordpress.com/2020/12/14/a-defer-mechanism-for-c/">A defer mechanism for C</a></i>» (<a href="https://hal.inria.fr/hal-03090771/document">artículo académico publicado como PDF</a> en la conferencia <a href="http://www.sigapp.org/sac/sac2021/program.html">SAC’21</a>) para una implementación a nivel de compilador que efectivamente trata con el <code>longjmp()</code> y con el desenrollado de la pila [«<em>stack unwinding</em>»].</p>
       <p>En Cedro, la función de devolución se marca con la
       <a href="https://en.cppreference.com/w/c/language/storage_duration">palabra clave C <b><code>auto</code></b></a>
-      que no se necesita en código estándar C porque es implícita.
-      Si quiere usar Cedro con código estándar C que ya usa <code>auto</code>,
-      puede primero reemplazarla con <code>signed</code> ya que
-      <a href="https://stackoverflow.com/a/60890064/291462">tiene el mismo efecto</a>.
-      También es posible usar <code>defer</code>
-      definiendo la constante <code>USE_DEFER_AS_KEYWORD</code> en
-      <url>src/cedro.c</url> (línea 40) antes de compilarlo.</p>
+      que no se necesita en código estándar C
+      <em>anterior al C23</em>
+      porque es implícita y se puede reemplazar con <code>signed</code> ya que
+      <a href="https://stackoverflow.com/a/60890064/291462">tiene el mismo efecto</a>.</p>
+      <p>También es posible usar <b><code>defer</code></b> en vez de <code>auto</code>
+        con la opción <code>--defer-instead-of-auto</code>,
+        o añadiendo la clave «defer» al «pragma»:
+        <code>#pragma Cedro 1.0 <b>defer</b></code>.</p>
+      <table>
+        <tr>
+          <td>
+<code><b>#pragma Cedro 1.0</b>
+…
+    char* texto = malloc(cuenta + 1);
+    if (!texto) return ENOMEM;
+    <b>auto free(texto);</b>
+…
+    if (nombre_de_fichero) {
+        FILE* fichero = fopen(nombre_de_fichero, "w");
+        if (!fichero) return errno;
+        <b>auto fclose(fichero);</b>
+        fwrite(texto, sizeof(char), cuenta, fichero);
+…</code></td>
+          <td>
+<code><b>#pragma Cedro 1.0 defer</b>
+…
+    char* texto = malloc(cuenta + 1);
+    if (!texto) return ENOMEM;
+    <b>defer free(texto);</b>
+…
+    if (nombre_de_fichero) {
+        FILE* fichero = fopen(nombre_de_fichero, "w");
+        if (!fichero) return errno;
+        <b>defer fclose(fichero);</b>
+        fwrite(texto, sizeof(char), cuenta, fichero);
+…</code></td>
+        </tr>
+      </table>
       <p>En este ejemplo, hay un depósito de <code>texto</code> y un <code>fichero</code> que deben ser devueltos al sistema:</p>
       <table>
         <tr>
@@ -1849,7 +1891,9 @@ int main(void)
 
     <section id="binary-include">
       <h2>Inclusión binaria: <a class="anchor" href="#binary-include">#binary-include</a></h2>
-      <p>Inserta un fichero en forma de ristra de octetos.</p>
+      <p>Inserta un fichero en forma de ristra de octetos,
+        o de literales de cadena como se describe más adelante.</p>
+      <p>El nombre de fichero es relativo al fichero C incluyente.</p>
       <table>
         <tr>
           <td>
@@ -1861,13 +1905,26 @@ const uint8_t imagen[] = {
           </td><td>
             <br/><code>#include &lt;stdint.h&gt;
 const uint8_t imagen[] = {
-<b>// cedro-32x32.png
-0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
+/* cedro-32x32.png */
+<b>0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮</b>
 };</code>
           </td>
         </tr>
+        <tr><td colspan="2">
+      <p>La forma <code>#include {...}</code> era la original en Cedro
+        y se mantiene por compatibilidad pasada,
+        mientras que <code>#embed "..."</code> sigue la norma futura C23
+        («<a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3017.htm">N3017 #embed - a scannable, tooling-friendly binary resource inclusion mechanism</a>»)
+        excepto que sólo admite
+        caminos delimitados por comillas (<code>""</code>),
+        no delimitados por cabrios (<code>&lt;&gt;</code>).
+      </p>
+      <p>Nota: al usar <code>#include {</code>
+        no debe haber ni más ni menos espacio entre
+        <code>#include</code> y la llave <code>{</code>.</p>
+        </td></tr>
         <tr>
           <td>
             <code>#include &lt;stdint.h&gt;
@@ -1878,28 +1935,14 @@ const uint8_t imagen
           </td><td>
             <br/><code>#include &lt;stdint.h&gt;
 const uint8_t imagen
-<b>[1480] = { /* cedro-32x32.png */
-0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
+<b>[1559] = {</b> /* cedro-32x32.png */
+<b>0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,…
 0x00,0x00,0x00,0x20,0x00,0x00,0x00,…
 ⋮</b>
 };</code>
           </td>
         </tr>
       </table>
-      <p>El nombre de fichero es relativo al fichero C incluyente.</p>
-      <p>Nota: la directiva debe empezar exactamente con
-        <code>#include {</code> o <code>#embed "</code>,
-        ni más ni menos espacio entre
-        <code>#include</code>/<code>#embed</code>
-        y la llave <code>{</code> o las comillas <code>"</code>.</p>
-      <p>La forma <code>#include {...}</code> era la original en Cedro
-        y se mantiene por compatibilidad pasada,
-        mientras que <code>#embed "..."</code> sigue la norma futura
-        (<a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3017.htm">N3017 #embed - a scannable, tooling-friendly binary resource inclusion mechanism</a>)
-        excepto que sólo admite
-        caminos delimitados por comas (<code>""</code>),
-        no delimitados por cabrios (<code>&lt;&gt;</code>).
-      </p>
       <p><code>#embed</code> es más flexible porque permite añadir octetos
         antes o después del fichero insertado,
         y también combinar varios ficheros.</p>
@@ -1907,14 +1950,16 @@ const uint8_t imagen
         <tr>
           <td>
             <code><b>#pragma Cedro 1.0 #embed</b>
-const char const vertex_shader[] = {
+const char const sombreador_de_fragmento[] = {
 <b>#embed "shader.frag.glsl"</b>
 , 0x00 // Cadena terminada con zero.
 };</code>
           </td><td>
-            <br/><code>const char const vertex_shader[] = {
-<b>// shader.frag.glsl
-…</b>
+            <br/><code>const char const sombreador_de_fragmento[] = {
+/* shader.frag.glsl */
+<b>0x23,0x76,0x65,0x72,0x73,0x69,0x6F,0x6E,…
+0x65,0x63,0x69,0x73,0x69,0x6F,0x6E,0x20,…
+⋮</b>
 , 0x00 // Cadena terminada con zero.
 };</code>
           </td>
@@ -1929,7 +1974,7 @@ const char const dos_líneas[] = {
 , 0x00
 };</code>
           </td><td>
-            <br/><code><br/>const char const dos_líneas[] = {
+            <br/><code>const char const dos_líneas[] = {
 <b>0x46,0x69,0x72,0x73,0x74,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>
 , '\n',
 <b>0x53,0x65,0x63,0x6F,0x6E,0x64,0x20,0x6C,0x69,0x6E,0x65,0x2E</b>
@@ -1939,11 +1984,143 @@ const char const dos_líneas[] = {
         </tr>
       </table>
 
+      <p>En vez de insertar literales de octeto uno por uno,
+        se pueden poner todos de una vez en un literal de cadena
+        con la opción <code>--embed-as-string=&lt;límite&gt;</code>,
+        aunque esta variante tiene ciertas limitaciones
+        dependiendo del compilador C que se vaya a usar con el resultado.</p>
+      <p>Por ejemplo, el compilador C de Microsoft tiene un límite de
+        2048 octetos por cada literal de cadena, con un máximo de
+        65535 tras concatenar las cadenas que aparezcan juntas.
+        (Véase «<a href="https://docs.microsoft.com/en-us/cpp/c-language/maximum-string-length?view=msvc-170">Maximum String Length</a>»)</p>
+      <p>La norma ANSI/ISO C requiere que todos los compiladores acepten
+        al menos 509 octetos en total tras la concatenación
+        en C89, y 4096 en C99/C11/C17,
+        pero otros compiladores como GCC y clang
+        permiten cadenas muchísimo mayores.
+      </p>
+      <p>Por eso es necesario especificar un límite para el tamaño:
+        si el fichero sobrepasa ese límite,
+        el resultado será una ristra de octetos en vez de una cadena.</p>
+      <p>En una prueba informal con <code>/usr/bin/time -v</code>,
+        tomando los valores de la ejecución más rápida
+        con un fichero de 8 MB,
+        en una CPU IBM Power9 con los ficheros en disco RAM,
+        la generación de código llevó un 26% menos tiempo
+        que al usar octetos hexadecimales,
+        y la compilación con GCC fue <b>28 veces más rápida</b>
+        usando 10 veces menos memoria.
+        Con clang la compilación fue <b>72 veces</b> más rápida
+        que con octetos,
+        usando 7 veces menos memoria.</p>
+      <table class="benchmark">
+        <tr><th></th><th colspan="2">Generar código</th><th colspan="2">Compilar con GCC 11</th><th colspan="2">Compilar con clang 12</tr>
+        <tr><th><code>cedro</code></th><td>0.23 s</td><td>1.56 MB</td><td>27.66 s</td><td>1328.13 MB</td><td>30.44 s</td><td>984.59 MB</td></tr>
+        <tr><th><code>cedro --embed-as-string=…</code></th><td>0.17 s</td><td>1.87 MB</td><td>0.99 s</td><td>125.32 MB</td><td>0.42 s</td><td>144.95 MB</td></tr>
+        <tr><th><code>bin2c</code></th></th><td>0.03 s</td><td>1.37 MB</td><td>0.90 s</td><td>108.70 MB</td><td>0.52 s</td><td>145.73 MB</td></tr>
+      </table>
+      <p>En comparación con
+        <a href="#binary-include-related-work"><code>bin2c</code></a>,
+        la generación de código llevó cinco veces más tiempo,
+        y la compilación es muy similar
+        (±100ms, el resultado de bin2c compila más rápido en GCC,
+        el de Cedro en clang)
+        porque el formato es
+        <a href="#binary-include-related-work">casi el mismo</a>.</p>
+      <table>
+        <tr>
+          <td>
+            <code><b>#pragma Cedro 1.0 #embed</b>
+const char const two lines[] = {
+<b>#embed "text-line-1.txt"</b>
+, '\n',
+<b>#embed "text-line-2.txt"</b>
+, 0x00
+};</code>
+          </td><td>
+            <code class="command-line-option" title="Insertar como cadena si el fichero es menor de 30 octetos.">--embed-as-string=30</code>
+            <code>const char const dos_líneas[25] =
+/* línea-de-texto-1.txt */
+<b>"First line.""\n"</b>
+/* línea-de-texto-2.txt */
+<b>"Second line."</b>;</code>
+          </td>
+        </tr>
+        <tr><td colspan="2">
+            <p>Nótese cómo Cedro se da cuenta de que el último octeto es cero
+              y lo elimina, porque al haber una cadena justo antes,
+              el compilador añadirá el terminador cero automáticamente.<p>
+        </td></tr>
+          <td>
+            <code><b>#pragma Cedro 1.0 #embed</b>
+const char const sombreador_de_fragmento[] = {
+<b>#embed "shader.frag.glsl"</b>
+, 0x00 // Cadena terminada con zero.
+};</code>
+          </td><td>
+            <code class="command-line-option" title="Insertar como cadena si el fichero es menor de 170 octetos.">--embed-as-string=170</code>
+            <code>const char const sombreador_de_fragmento[<b>164</b>] = 
+/* shader.frag.glsl */
+<b>"#version 140\n"
+"\n"
+"precision highp float; // needed only for version 1.30\n"
+"\n"
+"in  vec3 ex_Color;\n"
+"out vec4 out_Color;\n"
+"\n"
+"void main(void)\n"
+"{\n"
+"\tout_Color = vec4(ex_Color,1.0);\n"
+"}\n"</b>;</code>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
+<b>#pragma Cedro 1.0 #embed</b>
+const uint8_t imagen[] = {
+<b>#embed "images/cedro-32x32.png"</b>
+};</code>
+          </td><td>
+            <code class="command-line-option" title="Insertar como cadena si el fichero es menor de 1600 octetos.">--embed-as-string=1600</code>
+            <code>#include &lt;stdint.h&gt;
+const uint8_t imagen[<b>1559</b>] = <b>/* cedro-32x32.png */
+"\211PNG\r\n"
+"\032\n"
+"\000\000\000\rIHDR\000\000\000 \000\000\000 \b\002…"
+⋮
+…"</b>;</code>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code>#include &lt;stdint.h&gt;
+<b>#pragma Cedro 1.0</b>
+const uint8_t imagen
+<b>#include {images/cedro-32x32.png}</b>
+;</code>
+          </td><td>
+            <code class="command-line-option" title="Insertar como cadena si el fichero es menor de 1600 octetos.">--embed-as-string=1600</code>
+            <code>#include &lt;stdint.h&gt;
+const uint8_t imagen
+[<b>1559</b>] = { /* cedro-32x32.png */
+<b>"\211PNG\r\n"
+"\032\n"
+"\000\000\000\rIHDR\000\000\000 \000\000\000 \b\002…"
+⋮
+…"</b>;</code>
+          </td>
+        </tr>
+      </table>
+
       <p>Insertar directamente el código en el programa es muy conveniente
         pero va a enlentecer la compilación.
-        La manera de reducir el problema es compilar esta parte por separado
+        La manera de reducir el problema,
+        aparte de usar <code>--embed-as-string=&lt;límite&gt;</code>,
+        es compilar esta parte por separado
         como se puede ver en <url>template/Makefile.nanovg.mk</url>
-        o en este ejemplo:</p>
+        o en este ejemplo:
+        (otra manera sería usar <a href="https://gcc.gnu.org/onlinedocs/gcc-12.1.0/gcc/Precompiled-Headers.html#Precompiled-Headers">cabeceras precompiladas</a>)</p>
       <table>
         <tr><td><url>assets.c</url><code>#include &lt;stdint.h&gt;
 #include &lt;stdlib.h&gt;
@@ -1986,6 +2163,42 @@ cc -o programa main.o assets.o</code></td></tr>
       <p>Más recientemente,
         la macro <a href="https://doc.rust-lang.org/std/macro.include_bytes.html"><code>include_bytes!()</code></a>
         me ha sido muy útil en mis programas en Rust.</p>
+      <p>La idea de producir literales de cadena
+        en vez de ristras de octetos me la dió este comentario:</p>
+      <blockquote>
+        <p>the way that you’ve lowered them is absolutely the worst case for compiler performance. The compiler needs to create a literal constant object for every byte and an array object wrapping them. If you lower them as C string literals with escapes, you will generate code that compiles much faster. For example, the cedro-32x32.png example lowered as “\x89\x50\x4E\x47\0D\x0A\x1A…” will be faster and use less memory in the C compiler.</p>
+        <address><a href="https://lobste.rs/s/18axic/c_programming_language_extension_cedro#c_vwpvzk">David Chisnall en Lobsters, 2021-08-12</a></address>
+      </blockquote>
+      <blockquote>
+        <p>I did not realize that, you are right of course! I know there are limits to the size of string literals, but maybe that does not apply if you split them. I’ll have to check that out.</p>
+        <p>EDIT: I’ve just found out that bin2c (which I knew existed but haven’t used) does work in the way you describe, with strings instead of byte arrays: https://github.com/adobe/bin2c#comparison-to-other-tools It does mention the string literal size limit. I suspect you know, but for others reading this: the C standard defines some sizes that all compilers must support as a minimum, and one of them is the string literal maximum size. Compilers are free to allow bigger tokens when parsing.</p>
+        <p>I’m concerned that it would be a problem, because as I hinted above my use case includes compiling on old platforms with outdated C compilers (sometimes for fun, others because my customers need that) so it is important that cedro does not fail any more than strictly necessary when running on unusual machines.</p>
+        <p>Thinking about it, I could use strings when under the length limit, but those would be the cases where the performance difference would be small. I’ll keep things like this for now, but thanks to you I’ll take these aspects into account. EDIT END.</p>
+        <address><a href="https://lobste.rs/s/18axic/c_programming_language_extension_cedro#c_mydhp1">Alberto González Palomo en Lobsters, 2021-08-12</a></address>
+      </blockquote>
+        <p>Un ejemplo de ese método es el
+          <a href="https://github.com/adobe/bin2c">bin2c</a> de Adobe
+          publicado en 2020 (no es el mismo que el
+          <a href="https://github.com/gwilymk/bin2c">bin2c of 2012</a>
+          que produce literales de octeto como <code>xxd</code>),
+          y aunque no he mirado su código fuente,
+          Cedro sigue 
+          <a href="https://github.com/adobe/bin2c#encoding">lo especificado en su documentación</a>
+          excepto los finales de línea, donde Cedro parte el literal de cadena
+          de la misma forma que suele hacerse a mano
+          y además limita el tamaño de cada cadena individual a 500 octetos
+          con la esperanza de que funcione en compiladores antiguos.</p>
+        <p>Más referencias (en inglés) con información sobre otros métodos:</p>
+        <ul>
+          <li>«<a href="http://gareus.org/wiki/embedding_resources_in_executables">Embedding Blobs in Binaries</a>», ca. 2014, Robin Gareus. Discussion: <a href="https://news.ycombinator.com/item?id=8656856">Hacker News 2014-11-25</a></li>
+          <li>«<a href="https://www.devever.net/~hl/incbin">Embedding of binary data into programs</a>», 2016-01-15, Hugo Landau.</a></li>
+          <li>«<a href="https://csl.name/post/embedding-binary-data/">Embedding binary data in executables</a>», 2016-06-07, Christian Stigen Larsen.</li>
+          <li>«<a href="https://drewdevault.com/2018/05/29/Embedding-files-in-C.html">Embedding files in C programs with kolo</a>», 2018-05-29, Drew DeVault. Discussion: <a href="https://news.ycombinator.com/item?id=17191119">Hacker News 2018-05-30</a></li>
+          <li>«<a href="https://flak.tedunangst.com/post/embedding-binary-objects-in-c">Embedding binary objects in c</a>», 2020-04-16, Ted Unangst. Discussion: <a href="https://lobste.rs/s/9zvyeu/embedding_binary_objects_c">Lobsters 2020-04-16</a>, <a href="https://news.ycombinator.com/item?id=22888318">Hacker News 2020-04-16</a></li>
+          <li>«<a href="https://cupdev.net/blog/013_bin2c.html">How to Analyze Assembly Code to Guide Optimization Strategies</a>» <em>(Describing Adobe’s bin2c’s implementation)</em>, 2020-05-29, Karolin Varner. Discussion: <a href="https://www.reddit.com/r/C_Programming/comments/gsxvh3/how_to_analyze_assembly_code_to_guide/">Reddit 2020-05-29</a></li>
+          <li>«<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>, 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>, <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
+          <li>«<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>», 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
+        </ul>
     </section>
 
     <a class="link-to-table-of-contents" href="#">↑ Sumario</a>

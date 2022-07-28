@@ -329,7 +329,7 @@ include(const char* file_name, FILE* cc_stdin,
   auto destruct_Byte_array(&src);
   int err = read_file(&src, file_name);
   if (err) {
-    print_file_error(err, file_name, &src);
+    print_file_error(err, file_name, src.len);
     return err;
   } else {
     Byte_array_mut_slice region = bounds_of_Byte_array(&src);
@@ -345,6 +345,17 @@ include(const char* file_name, FILE* cc_stdin,
                       "error when writing #line directive"));
       }
       error_buffer[0] = 0;
+    }
+
+    if (options.enable_embed_directive and options.embed_as_string) {
+      err = prepare_binary_embedding(&markers, &src, file_name);
+      if (err) {
+        eprintln("#line %lu \"%s\"\n#error %s\n",
+                 original_line_number((size_t)(parse_end - src.start), &src),
+                 file_name,
+                 error_buffer);
+        return 73;
+      }
     }
 
     if (context->level is_not 0) {
@@ -453,6 +464,22 @@ int main(int argc, char* argv[])
       } else if (str_eq("--cedro:insert-line-directives", arg) or
                  str_eq("--cedro:no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
+      } else if (str_eq("--cedro:embed-directive", arg) or
+                 str_eq("--cedro:no-embed-directive", arg)) {
+        options.enable_embed_directive = flag_value;
+      } else if (strn_eq("--cedro:embed-as-string=", arg,
+                         strlen("--cedro:embed-as-string="))) {
+        char* end = arg + strlen("--cedro:embed-as-string=");
+        long value = strtol(end, &end, 10);
+        if (errno or end is_not arg + strlen(arg)) {
+          eprintln("#error Value must be an integer: %s\n", arg);
+          return 12;
+        } else {
+          options.embed_as_string = (size_t)value;
+        }
+      } else if (str_eq("--cedro:defer-instead-of-auto", arg) or
+                 str_eq("--cedro:no-defer-instead-of-auto", arg)) {
+        options.use_defer_instead_of_auto = flag_value;
       } else if (str_eq("--cedro:version", arg)) {
         eprintln(CEDRO_VERSION);
         return EXIT_SUCCESS;

@@ -305,12 +305,13 @@ splice_##T##_array(mut_##T##_array_p _,                                 \
                                                                         \
 /** Append the given `insert` slice to the array.                       \
     Same as `splice_##T##_array(_, _->len, 0, NULL, insert)`.           \
-    The `insert` slice, must belong to a different array. */            \
-static void                                                             \
+    The `insert` slice, must belong to a different array.               \
+    Returns `false` if (re)allocation failed. */                        \
+static bool                                                             \
 append_##T##_array(mut_##T##_array_p _, T##_array_slice insert)         \
 {                                                                       \
   assert(insert.end_p >= insert.start_p);                               \
-  splice_##T##_array(_, _->len, 0, NULL, insert);                       \
+  return splice_##T##_array(_, _->len, 0, NULL, insert);                \
 }                                                                       \
                                                                         \
 /** Delete `delete` elements from the array at `position`.              \

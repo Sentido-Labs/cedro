@@ -254,6 +254,8 @@ typedef struct Options {
   bool insert_line_directives;
   /// Enable `#embed`.
   bool enable_embed_directive;
+  /// Size limit for using strings when including binaries.
+  size_t embed_as_string;
   /// Use `defer` instead of `auto`.
   bool use_defer_instead_of_auto;
 } MUT_CONST_TYPE_VARIANTS(Options);
@@ -452,6 +454,20 @@ as_c_string(mut_Byte_array_p _)
 typedef FILE* mut_File_p;
 typedef char*   mut_FilePath;
 typedef const char* FilePath;
+
+/** Get the size of a file, used for binary inclusion.
+    If there is an error, the code will be in errno. */
+static size_t
+get_file_size(FilePath path)
+{
+  mut_File_p input = fopen(path, "r");
+  if (not input) return 0;
+  fseek(input, 0, SEEK_END);
+  long size = ftell(input);
+  fclose(input);
+  return size >=0? (size_t)size: 0;
+}
+
 /** Read a file into the given buffer. Returns error code, 0 if it succeeds. */
 static int
 read_file(mut_Byte_array_p _, FilePath path)
@@ -503,13 +519,13 @@ read_stream(mut_Byte_array_p _, FILE* input)
 
 /** Print an error produced when reading a file. */
 static void
-print_file_error(int err, const char* file_name, Byte_array_p src)
+print_file_error(int err, const char* file_name, size_t read)
 {
   switch (err) {
     case EIO:
       eprintln(LANG("Fin de fichero inesperado en %ld leyendo «%s».",
                     "Unexpected EOF at %ld reading “%s”."),
-               src->len, file_name);
+               read, file_name);
       break;
     default:
       eprintln(LANG("Error leyendo «%s»: 0x%02X %s.",
@@ -946,6 +962,124 @@ identifier(Byte_p start, Byte_p end)
   } else {
     return NULL;
   }
+}
+
+/** Match a keyword or identifier.
+ *  @param[in] start of source code segment to search in.
+ *  @param[in] end of source code segment.
+ *
+ *  See `enum TokenType` for a list of keywords.
+ */
+static inline TokenType
+keyword_or_identifier(Byte_p start, Byte_p end, bool use_defer_instead_of_auto)
+{
+  switch (end - start) {
+    case 2:
+      if (mem_eq(start, "do", 2)) {
+        return T_CONTROL_FLOW_LOOP;
+      }
+      if (mem_eq(start, "if", 2)) {
+        return T_CONTROL_FLOW_IF;
+      }
+      break;
+    case 3:
+      if (mem_eq(start, "for", 3)) {
+        return T_CONTROL_FLOW_LOOP;
+      }
+      if (mem_eq(start, "int", 3)) {
+        return T_TYPE;
+      }
+      break;
+    case 4:
+      if (mem_eq(start, "case", 4)) {
+        return T_CONTROL_FLOW_CASE;
+      }
+      if (mem_eq(start, "else", 4)) {
+        return T_CONTROL_FLOW_IF;
+      }
+      if (mem_eq(start, "goto", 4)) {
+        return T_CONTROL_FLOW_GOTO;
+      }
+      if (mem_eq(start, "char", 4) or mem_eq(start, "enum", 4) or
+          mem_eq(start, "long", 4) or mem_eq(start, "void", 4) or
+          mem_eq(start, "bool", 4)) {
+        return T_TYPE;
+      }
+      if (mem_eq(start, "auto", 4)) {
+        return use_defer_instead_of_auto?
+            T_TYPE_QUALIFIER_AUTO:
+            T_CONTROL_FLOW_DEFER;
+      }
+      break;
+    case 5:
+      if (mem_eq(start, "break", 5)) {
+        return T_CONTROL_FLOW_BREAK;
+      }
+      if (mem_eq(start, "while", 5)) {
+        return T_CONTROL_FLOW_LOOP;
+      }
+      if (mem_eq(start, "float", 5) or mem_eq(start, "short", 5) or
+          mem_eq(start, "union", 5)) {
+        return T_TYPE;
+      }
+      if (mem_eq(start, "const", 5)) {
+        return T_TYPE_QUALIFIER;
+      }
+      if (use_defer_instead_of_auto and mem_eq(start, "defer", 5)) {
+        return T_CONTROL_FLOW_DEFER;
+      }
+      break;
+    case 6:
+      if (mem_eq(start, "return", 6)) {
+        return T_CONTROL_FLOW_RETURN;
+      }
+      if (mem_eq(start, "switch", 6)) {
+        return T_CONTROL_FLOW_SWITCH;
+      }
+      if (mem_eq(start, "double", 6) or mem_eq(start, "struct", 6)) {
+        return T_TYPE_STRUCT;
+      }
+      if (mem_eq(start, "extern", 6) or mem_eq(start, "inline", 6) or
+          mem_eq(start, "signed", 6) or mem_eq(start, "static", 6)){
+        return T_TYPE_QUALIFIER;
+      }
+      if (mem_eq(start, "sizeof", 6)) {
+        return T_OP_2;
+      }
+      break;
+    case 7:
+      if (mem_eq(start, "default", 7)) {
+        return T_CONTROL_FLOW_CASE;
+      }
+      if (mem_eq(start, "typedef", 7)) {
+        return T_TYPEDEF;
+      }
+      if (mem_eq(start, "complex", 7)) {
+        return T_TYPE;
+      }
+      break;
+    case 8:
+      if (mem_eq(start, "continue", 8)) {
+        return T_CONTROL_FLOW_CONTINUE;
+      }
+      if (mem_eq(start, "register", 8) or mem_eq(start, "restrict", 8) or
+          mem_eq(start, "unsigned", 8) or mem_eq(start, "volatile", 8)){
+        return T_TYPE_QUALIFIER;
+      }
+      if (mem_eq(start, "_Alignof", 8)) {
+        return T_OP_2;
+      }
+      if (mem_eq(start, "_Generic", 8)) {
+        return T_GENERIC_MACRO;
+      }
+      break;
+    case 9:
+      if (mem_eq(start, "imaginary", 9)) {
+        return T_TYPE;
+      }
+      break;
+  }
+  return T_IDENTIFIER;
 }
 
 /** Match a number.
@@ -1800,122 +1934,329 @@ debug_cursor(Marker_p cursor, size_t radius, const char* label, Marker_array_p m
   print_markers(markers, src, "  ", i + 1, end  );
 }
 
-/** Match a keyword or identifier.
- *  @param[in] start of source code segment to search in.
- *  @param[in] end of source code segment.
- *
- *  See `enum TokenType` for a list of keywords.
+/** Inside an initializer block with `#embed`,
+ * add each character or number literal to `markers` converted to string,
+ * copy each space, preprocessor, or string marker, and omit the commas.
  */
-static inline TokenType
-keyword_or_identifier(Byte_p start, Byte_p end, bool use_defer_instead_of_auto)
+static void
+append_byte_literals_as_strings(mut_Marker_array_p markers,
+                                mut_Byte_array_p src,
+                                Marker_p start, Marker_p end,
+                                mut_Error_p err)
 {
-  switch (end - start) {
-    case 2:
-      if (mem_eq(start, "do", 2)) {
-        return T_CONTROL_FLOW_LOOP;
+  mut_Byte_array string = init_Byte_array(256 + 8);
+  string.len = 1; string.start[0] = '"' /* Opening quotes. */;
+  mut_TokenType previous_token_type = T_NONE;
+  for (Marker_mut_p m = start; m is_not end; ++m) {
+    if (string.len >= 256) {
+      if (not push_Byte_array(&string, '"' /* Closing quotes. */) or
+          not push_Marker_array(markers,
+                                Marker_from(src, as_c_string(&string),
+                                            T_STRING))) {
+        err->position = m;
+        err->message = "Out of memory.";
+        goto exit;
       }
-      if (mem_eq(start, "if", 2)) {
-        return T_CONTROL_FLOW_IF;
+      string.len = 1; string.start[0] = '"' /* Opening quotes. */;
       }
-      break;
-    case 3:
-      if (mem_eq(start, "for", 3)) {
-        return T_CONTROL_FLOW_LOOP;
+    switch (m->token_type) {
+      case T_CHARACTER:
+        if (previous_token_type is_not T_COMMA and
+            previous_token_type is_not T_NONE) {
+          err->position = m;
+          err->message = "Missing comma.";
+          goto exit;
       }
-      if (mem_eq(start, "int", 3)) {
-        return T_TYPE;
-      }
-      break;
-    case 4:
-      if (mem_eq(start, "case", 4)) {
-        return T_CONTROL_FLOW_CASE;
-      }
-      if (mem_eq(start, "else", 4)) {
-        return T_CONTROL_FLOW_IF;
-      }
-      if (mem_eq(start, "goto", 4)) {
-        return T_CONTROL_FLOW_GOTO;
-      }
-      if (mem_eq(start, "char", 4) or mem_eq(start, "enum", 4) or
-          mem_eq(start, "long", 4) or mem_eq(start, "void", 4) or
-          mem_eq(start, "bool", 4)) {
-        return T_TYPE;
-      }
-      if (mem_eq(start, "auto", 4)) {
-        return use_defer_instead_of_auto?
-            T_TYPE_QUALIFIER_AUTO:
-            T_CONTROL_FLOW_DEFER;
+        previous_token_type = m->token_type;
+        // Anything valid inside a character literal
+        // is also valid inside a string literal, just remove the apostrophes.
+        if (not append_Byte_array(&string, (Byte_array_slice){
+              &src->start[m->start + 1],
+              &src->start[m->start + m->len - 1]
+            })) {
+          err->position = m;
+          err->message = "Out of memory.";
+          goto exit;
       }
       break;
-    case 5:
-      if (mem_eq(start, "break", 5)) {
-        return T_CONTROL_FLOW_BREAK;
+      case T_NUMBER:
+        if (previous_token_type is_not T_COMMA and
+            previous_token_type is_not T_NONE) {
+          err->position = m;
+          err->message = "Missing comma.";
+          goto exit;
       }
-      if (mem_eq(start, "while", 5)) {
-        return T_CONTROL_FLOW_LOOP;
+        previous_token_type = m->token_type;
+        if (m->len is_not 0) {
+          mut_Byte c = 0, digit;
+          if (src->start[m->start] is '0' and m->len is_not 1) {
+            if (m->len is 4 and src->start[m->start+1] is 'x') {
+              for (Byte_mut_p p = &src->start[m->start+2], end = p + m->len-2;
+                   p is_not end; ++p) {
+                digit = *p;
+                Byte value =
+                    in('0',digit,'9')? digit-'0':
+                    in('A',digit,'F')? digit-'A'+10:
+                    in('a',digit,'f')? digit-'a'+10:
+                    0xFF;
+                if (value is 0xFF) {
+                  err->position = m;
+                  err->message = "Error in hexadecimal byte literal.";
+                  goto exit;
       }
-      if (mem_eq(start, "float", 5) or mem_eq(start, "short", 5) or
-          mem_eq(start, "union", 5)) {
-        return T_TYPE;
+                c = (c << 4) | value;
       }
-      if (mem_eq(start, "const", 5)) {
-        return T_TYPE_QUALIFIER;
+            } else {
+              for (Byte_mut_p p = &src->start[m->start], end = p + m->len;
+                   p is_not end; ++p) {
+                digit = *p;
+                Byte value = in('0',digit,'7')? digit-'0': 0xFF;
+                if (value is 0xFF) {
+                  err->position = m;
+                  err->message = "Error in octal byte literal.";
+                  goto exit;
       }
-      if (use_defer_instead_of_auto and mem_eq(start, "defer", 5)) {
-        return T_CONTROL_FLOW_DEFER;
+                c = (c << 3) | value;
+      }
+      }
+          } else {
+            for (Byte_mut_p p = &src->start[m->start], end = p + m->len;
+                 p is_not end; ++p) {
+              digit = *p;
+              Byte value = in('0',digit,'9')? digit-'0': 0xFF;
+              if (value is 0xFF) {
+                err->position = m;
+                err->message = "Error in decimal byte literal.";
+                goto exit;
+      }
+              c = (c * 10) + value;
+      }
+      }
+          bool ok = true;
+          switch (c) { // Adapted from unparse_fragment().
+            case ' ': case '!': ok &= push_Byte_array(&string, c); break;
+            case '\a': ok &= push_str(&string, "\\a"); break;
+            case '\b': ok &= push_str(&string, "\\b"); break;
+            case '\t': ok &= push_str(&string, "\\t"); break;
+            case '\v': ok &= push_str(&string, "\\v"); break;
+            case '\f': ok &= push_str(&string, "\\f"); break;
+            case '\r': ok &= push_str(&string, "\\r"); break;
+            case '"': case '\\':
+              ok &= (push_Byte_array(&string, '\\') and
+                     push_Byte_array(&string, c));
+      break;
+            case '\n':
+              ok &= push_str(&string, "\n\"\\n\"");
+              if (ok) continue; // Avoid splitting the line here.
+              break;
+            case '\0':
+              ok &= push_str(&string, "\\000");
+              break;
+            default:
+              // Use octal escapes because hexadecimal escapes
+              // are not fixed in length. If the next byte is a valid digit
+              // character it gets parsed as part of the escaped literal.
+              // https://en.cppreference.com/w/cpp/language/escape#Notes
+              ok &=
+                  push_Byte_array(&string, '\\')              and
+                  push_Byte_array(&string, '0'+((c&0xC0)>>6)) and
+                  push_Byte_array(&string, '0'+((c&0x38)>>3)) and
+                  push_Byte_array(&string, '0'+((c&0x07)   ));
+      }
+          if (not ok) {
+            err->position = m;
+            err->message = "Out of memory.";
+            goto exit;
+      }
+      }
+        break;
+      case T_SPACE:
+        if (m is_not start and (m-1)->token_type is T_COMMENT) {
+          if (string.len > 1) {
+            if (not push_Byte_array(&string, '"' /* Closing quotes. */) or
+                not push_Marker_array(markers,
+                                      Marker_from(src, as_c_string(&string),
+                                                  T_STRING))) {
+              err->position = m;
+              err->message = "Out of memory.";
+              goto exit;
+      }
+            string.len = 1; string.start[0] = '"' /* Opening quotes. */;
+          }
+          push_Marker_array(markers, *m);
       }
       break;
-    case 6:
-      if (mem_eq(start, "return", 6)) {
-        return T_CONTROL_FLOW_RETURN;
+      case T_COMMA:
+        if (previous_token_type is T_COMMA) {
+          err->position = m;
+          err->message = "Empty item.";
+          goto exit;
       }
-      if (mem_eq(start, "switch", 6)) {
-        return T_CONTROL_FLOW_SWITCH;
+        previous_token_type = m->token_type;
+        break;
+      default: // Copy any other markers, such as T_PREPROCESSOR and T_STRING.
+        if (string.len > 1) {
+          if (not push_Byte_array(&string, '"' /* Closing quotes. */) or
+              not push_Marker_array(markers,
+                                    Marker_from(src, as_c_string(&string),
+                                                T_STRING))) {
+            err->position = m;
+            err->message = "Out of memory.";
+            goto exit;
       }
-      if (mem_eq(start, "double", 6) or mem_eq(start, "struct", 6)) {
-        return T_TYPE_STRUCT;
+          string.len = 1; string.start[0] = '"' /* Opening quotes. */;
       }
-      if (mem_eq(start, "extern", 6) or mem_eq(start, "inline", 6) or
-          mem_eq(start, "signed", 6) or mem_eq(start, "static", 6)){
-        return T_TYPE_QUALIFIER;
-      }
-      if (mem_eq(start, "sizeof", 6)) {
-        return T_OP_2;
-      }
+        push_Marker_array(markers, *m);
+        previous_token_type = m->token_type;
       break;
-    case 7:
-      if (mem_eq(start, "default", 7)) {
-        return T_CONTROL_FLOW_CASE;
       }
-      if (mem_eq(start, "typedef", 7)) {
-        return T_TYPEDEF;
       }
-      if (mem_eq(start, "complex", 7)) {
-        return T_TYPE;
+  if (string.len > 1 /* If there is more than the opening quotes. */) {
+    if (not push_Byte_array(&string, '"' /* Closing quotes. */) or
+        not push_Marker_array(markers,
+                              Marker_from(src, as_c_string(&string),
+                                          T_STRING))) {
+      err->position = start;
+      err->message = "Out of memory.";
+      goto exit;
       }
+      }
+
+exit:
+  destruct_Byte_array(&string);
+}
+
+static int
+prepare_binary_embedding(mut_Marker_array_p markers, mut_Byte_array_p src,
+                         const char* src_file_name)
+{
+  // This is needed only when using #embed and
+  // embedding the bytes as a string instead of byte literals.
+  mut_Byte_array file_name = {0};
+  if (not push_str(&file_name, src_file_name)) {
+    error("OUT OF MEMORY ERROR.");
+    return ENOMEM;
+  }
+  Byte_array_mut_slice dirname = bounds_of_Byte_array(&file_name);
+  while (dirname.end_p is_not dirname.start_p) {
+    switch (*(dirname.end_p-1)) {
+      case '/': case '\\': goto found_path_separator;
+      default: --dirname.end_p;
+    }
+  } found_path_separator:
+  file_name.len = len_Byte_array_slice(dirname);
+
+  Marker_mut_p end = end_of_Marker_array(markers);
+  for (Marker_mut_p cursor = markers->start; cursor is_not end; ++cursor) {
+    if (cursor->token_type is T_PREPROCESSOR and
+        cursor->len > 7 /*strlen("#embed ")*/ and
+        mem_eq("#embed ", get_Byte_array(src, cursor->start), 7)) {
+      mut_Error err = { .position = NULL, .message = NULL };
+      Marker_array_mut_slice block = {
+        find_block_start(cursor, start_of_Marker_array(markers), &err),
+        find_block_end  (cursor,   end_of_Marker_array(markers), &err)
+      };
+      if (err.message) { error(err.message); break; }
+
+      size_t size = 0;
+
+      for (Marker_mut_p m = block.start_p; m is_not block.end_p; ++m) {
+        if (m->token_type is T_PREPROCESSOR and
+            m->len > 7 /*strlen("#embed ")*/ and
+            mem_eq("#embed ", get_Byte_array(src, m->start), 7)) {
+          // Derive included file name.
+          Byte_array_mut_slice file_name_slice = slice_for_marker(src, m);
+          file_name_slice.start_p += 7;
+          while (file_name_slice.start_p is_not file_name_slice.end_p and
+                 *file_name_slice.start_p is ' ') {
+            ++file_name_slice.start_p;
+          }
+          while (file_name_slice.end_p is_not file_name_slice.start_p and
+                 *(file_name_slice.end_p-1) is ' ') {
+            --file_name_slice.end_p;
+          }
+          if (file_name_slice.start_p is_not file_name_slice.end_p and
+              *file_name_slice.start_p is '"') ++file_name_slice.start_p;
+          if (file_name_slice.end_p is_not file_name_slice.start_p and
+              *(file_name_slice.end_p-1) is '"') --file_name_slice.end_p;
+          file_name.len = len_Byte_array_slice(dirname);
+          append_Byte_array(&file_name, file_name_slice);
+          errno = 0;
+          size += get_file_size(as_c_string(&file_name));
+          if (errno) break;
+        }
+      }
+
+      if (errno) {
+        error("Error getting size of included file: %s",
+              as_c_string(&file_name));
+        perror("");
       break;
-    case 8:
-      if (mem_eq(start, "continue", 8)) {
-        return T_CONTROL_FLOW_CONTINUE;
-      }
-      if (mem_eq(start, "register", 8) or mem_eq(start, "restrict", 8) or
-          mem_eq(start, "unsigned", 8) or mem_eq(start, "volatile", 8)){
-        return T_TYPE_QUALIFIER;
-      }
-      if (mem_eq(start, "_Alignof", 8)) {
-        return T_OP_2;
-      }
-      if (mem_eq(start, "_Generic", 8)) {
-        return T_GENERIC_MACRO;
-      }
-      break;
-    case 9:
-      if (mem_eq(start, "imaginary", 9)) {
-        return T_TYPE;
+      } else {
+        mut_Marker_array replacement = init_Marker_array(10);
+        // Go back to brackets and insert file size.
+        for (Marker_mut_p m = block.start_p; m is_not block.end_p; ++m) {
+          if (m->token_type is T_CHARACTER or
+              m->token_type is T_NUMBER) ++size;
+        }
+        Marker_mut_p m = skip_space_back(markers->start, block.start_p - 1);
+        if (m is_not markers->start and (m-1)->token_type is T_OP_14) {
+          --m; // m → '='.
+          m = skip_space_back(markers->start, m);
+          if (m is_not markers->start and
+              (m-1)->token_type is T_INDEX_END) {
+            --m; // m → ']'.
+            char size_string[16]; // Maximum 16 decimal digits.
+            snprintf(size_string, 16, "%lu", size);
+            push_Marker_array(&replacement,
+                              Marker_from(src, size_string, T_NUMBER));
+            append_Marker_array(&replacement, (Marker_array_slice){
+                m, block.start_p-1
+              });
+            while (block.start_p is_not block.end_p and
+                   block.start_p->token_type is T_SPACE) ++block.start_p;
+            append_byte_literals_as_strings(&replacement, src,
+                                            block.start_p, block.end_p,
+                                            &err);
+            for (mut_Marker_mut_p m = replacement.start + replacement.len;
+                 m is_not replacement.start; ) {
+              --m;
+              if (m->token_type is T_STRING) {
+                if (m->len is 6/*strlen("\"\\000\"")*/ and
+                    mem_eq("\"\\000\"", &src->start[m->start], 6/**/)) {
+                  // Optimize out the trailing zero byte.
+                  delete_Marker_array(&replacement,
+                                      (size_t)(m - replacement.start), 1);
       }
       break;
   }
-  return T_IDENTIFIER;
+            }
+            size_t insertion_point = (size_t)(m - markers->start);
+            if (err.message) {
+              error("Error: %lu: %s",
+                    original_line_number(insertion_point, src),
+                    err.message);
+              break;
+            }
+            // Invalidates: markers
+            splice_Marker_array(markers, insertion_point,
+                                (size_t)(block.end_p + 1 - m), NULL,
+                                bounds_of_Marker_array(&replacement));
+            cursor =
+                get_Marker_array(markers,
+                                 insertion_point + replacement.len - 1);
+            end = end_of_Marker_array(markers);
+          } else error("Binary include: missing ]");
+        } else error("Binary include: missing =");
+
+        destruct_Marker_array(&replacement);
+      }
+    }
+  }
+
+  destruct_Byte_array(&file_name);
+
+  return 0;
 }
 
 /** Wrap everything in the input up to `#pragma Cedro x.y` into a single token
@@ -3074,9 +3415,13 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
       if        (m->len >= 10 and not options.enable_embed_directive and
                  strn_eq("#include {", (char*)rest, 10)) {
         len = 10;
-      } else if (m->len >=  8 and     options.enable_embed_directive and
-                 strn_eq("#embed \"",  (char*)rest,  8)) {
-        len =  8;
+        rest += len;
+      } else if (m->len >=  7 and     options.enable_embed_directive and
+                 strn_eq("#embed ",    (char*)rest,  7)) {
+        len =  7;
+        rest += len;
+        while (rest is_not text.end_p and *rest is ' ') ++rest;
+        if (rest is_not text.end_p and *rest is '"') ++rest;
       } else {
         len =  0;
       }
@@ -3090,7 +3435,6 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
           }
           pending_space = NULL;
         }
-        rest += len;
         Byte_mut_p end = rest;
         if (len is 10) {
           while (end < text.end_p) {
@@ -3136,15 +3480,15 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         file_name.len = len_Byte_array_slice(dirname);
         append_Byte_array(&file_name, (Byte_array_slice){ rest, end });
         const char* included_file = as_c_string(&file_name);
-        mut_Byte_array bin = {0};
-        int err = read_file(&bin, included_file);
-        if (err) {
-          print_file_error(err, included_file, &bin);
-          fprintf(out, ";\n#error %s: %s\n", strerror(errno), included_file);
+        errno = 0;
+        size_t bin_len = get_file_size(included_file);
+        if (errno) {
+          fprintf(out, ";\n#error reading: %s\n", included_file);
+          perror("");
           destruct_Byte_array(&file_name);
           break;
         }
-        if (bin.len is 0) {
+        if (bin_len is 0) {
           fprintf(out, ";\n#error file is empty: %s\n", included_file);
           destruct_Byte_array(&file_name);
           break;
@@ -3152,22 +3496,113 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         const char* basename = strrchr(included_file, '/');
         if (not basename) basename = strrchr(included_file, '\\');
         if (basename) ++basename; else basename = included_file;
+
+        // Use `>` in case the compiler’s maximum counts the zero terminator.
+        bool as_string = options.embed_as_string > bin_len;
+
         if (len is 10) {
-          fprintf(out, "[%lu] = { /* %s */\n0x%02X",
-                  bin.len, basename, bin.start[0]);
-          for (size_t i = 1; i is_not bin.len; ++i) {
-            fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+          if (as_string) {
+            fprintf(out, "[%lu] = /* %s */\n", bin_len, basename);
+          } else {
+            fprintf(out, "[%lu] = { /* %s */\n", bin_len, basename);
           }
-          fputs("\n}", out);
         } else {
-          fprintf(out, "// %s\n0x%02X", basename, bin.start[0]);
-          for (size_t i = 1; i is_not bin.len; ++i) {
-            fprintf(out, (i & 0x0F) is 0? ",\n0x%02X": ",0x%02X", bin.start[i]);
+          if (as_string) {
+            fprintf(out, "\n/* %s */\n", basename);
+          } else {
+            fprintf(out, "/* %s */\n", basename);
           }
-          fputs("\n", out);
         }
-        destruct_Byte_array(&bin);
+        FILE* file = fopen(included_file, "r");
+        uint8_t buffer[8192];
+        if (as_string) {
+          fputc('"', out);
+          size_t length = 0;
+          size_t rest = bin_len;
+          while (rest is_not 0) {
+            size_t read = rest > sizeof(buffer)? sizeof(buffer): rest;
+            read = fread(buffer, 1, read, file);
+            if        (feof(file)) { err = EIO;   break; }
+            else if (ferror(file)) { err = errno; break; }
+            rest -= read;
+            for (size_t i = 0; i is_not read; ++i) {
+              uint8_t c = buffer[i];
+              switch (c) {
+                case ' ': case '!': fputc(c, out); break;
+                case '\a': fputs("\\a", out); break;
+                case '\b': fputs("\\b", out); break;
+                case '\t': fputs("\\t", out); break;
+                case '\v': fputs("\\v", out); break;
+                case '\f': fputs("\\f", out); break;
+                case '\r': fputs("\\r", out); break;
+                case '"': case '\\': fputc('\\', out); fputc(c, out); break;
+                case '\n':
+                  // Avoid adding an empty string literal when the file
+                  // ends with an empty line, typical for text formats.
+                  fputs(rest is 0 and i+1 is read? "\\n": "\\n\"\n\"", out);
+                  length = 0;
+                  break;
+                default:
+                  if (in('#', c, '>') or in('A', c, '[') or in(']', c, '~')) {
+                    fputc(c, out);
+                  } else {
+                    // Use octal escapes because hexadecimal escapes
+                    // are not fixed in size. If the next byte is a valid digit
+                    // character it gets parsed as part of the escaped literal.
+                    // https://en.cppreference.com/w/cpp/language/escape#Notes
+                    fputc('\\', out);
+                    fputc('0'+((c&0xC0)>>6), out);
+                    fputc('0'+((c&0x38)>>3), out);
+                    fputc('0'+((c&0x07)   ), out);
+                  }
+              }
+              // Keep string literals under the old C89 guideline of 509:
+              if (length++ > 500) { fputs("\"\n\"", out); length = 0; }
+            }
+          }
+          fputc('"', out);
+        } else {
+          uint8_t c = fgetc(file);
+          if        (feof(file)) { err = EIO;   }
+          else if (ferror(file)) { err = errno; }
+          else {
+            const char* const hexadecimal_digit = "0123456789ABCDEF";
+            fputc('0', out);
+            fputc('x', out);
+            fputc(hexadecimal_digit[(c&0xF0)>>4], out);
+            fputc(hexadecimal_digit[(c&0x0F)   ], out);
+            bool first = true;
+            size_t rest = bin_len - 1;
+            while (rest is_not 0) {
+              size_t read = rest > sizeof(buffer)? sizeof(buffer): rest;
+              if (first) { --read; first = false; }
+              read = fread(buffer, 1, read, file);
+              if        (feof(file)) { err = EIO;   break; }
+              else if (ferror(file)) { err = errno; break; }
+              rest -= read;
+              for (size_t i = 0; i is_not read; ++i) {
+                c = buffer[i];
+                fputc(',', out);
+                if (i and (i & 0x0F) is 0) fputc('\n', out);
+                fputc('0', out);
+                fputc('x', out);
+                fputc(hexadecimal_digit[(c&0xF0)>>4], out);
+                fputc(hexadecimal_digit[(c&0x0F)   ], out);
+              }
+            }
+            if (len is 10) fputs("\n}", out); else fputc('\n', out);
+          }
+        }
+        if (err) {
+          print_file_error(err, included_file, bin_len);
+          fprintf(out, ";\n#error %s: %s\n", strerror(errno), included_file);
+        }
+        fclose(file);
         destruct_Byte_array(&file_name);
+        if (err) {
+          m = m_end;
+          goto exit;
+        }
         // Now check that there is only space and comments after it:
         rest = end + 1;
         if (rest < text.end_p) {
@@ -3306,11 +3741,7 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         pending_space = NULL;
         m = skip_space_forward(m + 1, m_end);
         continue;
-      } /*else if (m->len is 1 and m != m_end and (m+1)->token_type is T_OP_13) {
-        // Count valid pointer path length.
-        ++m;
-        continue;
-      } */else if (m->len is 1 and replacements) {
+      } else if (m->len is 1 and replacements) {
         if (++m is m_end) break;
         // Token as string literal like in the standard #define.
         // https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing
@@ -3672,9 +4103,12 @@ usage_es =
     "  --embed-directive     Activa la directiva `#embed`.\n"
     "                        Lo mismo que `#pragma Cedro 1.0 #embed`.\n"
     "  --no-embed-directive  Desactiva la directiva `#embed`. (implícito)\n"
+    "  --embed-as-string=<límite> Usa cadenas literales en vez de octetos\n"
+    "                             para ficheros menores que <límite>.\n"
+    "                             Valor implícito: 0\n"
     "  --defer-instead-of-auto    Usa la palabra clave `defer` en vez de `auto`.\n"
     "                             Lo mismo que `#pragma Cedro 1.0 defer`.\n"
-    "  --no-defer-instead-of-auto No usa la palabra clave `auto`. (implícito)\n"
+    "  --no-defer-instead-of-auto Usa la palabra clave `auto`. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
@@ -3715,6 +4149,9 @@ usage_en =
     "  --embed-directive     Enables the `#embed` directive.\n"
     "                        Same as `#pragma Cedro 1.0 #embed`.\n"
     "  --no-embed-directive  Disables the `#embed` directive. (default)\n"
+    "  --embed-as-string=<limit> Use string literals instead of bytes\n"
+    "                            for files smaller than <limit>.\n"
+    "                            Default value: 0\n"
     "  --defer-instead-of-auto    Use the keyword `defer` instead of `auto`.\n"
     "                             Same as `#pragma Cedro 1.0 defer`.\n"
     "  --no-defer-instead-of-auto Use the keyword auto. (default)\n"
@@ -3759,12 +4196,15 @@ int main(int argc, char** argv)
     .discard_space             = false,
     .insert_line_directives    = false,
     .enable_embed_directive    = false,
+    .embed_as_string           = 0,
     .use_defer_instead_of_auto = false
   };
 
   bool opt_print_markers    = false;
   bool opt_run_benchmark    = false;
   const char* opt_validate  = NULL;
+
+  FILE* out = stdout;
 
   for (int i = 1; i < argc; ++i) {
     char* arg = argv[i];
@@ -3788,6 +4228,20 @@ int main(int argc, char** argv)
       } else if (str_eq("--embed-directive", arg) or
                  str_eq("--no-embed-directive", arg)) {
         options.enable_embed_directive = flag_value;
+      } else if (strn_eq("--embed-as-string=", arg,
+                         strlen("--embed-as-string="))) {
+        char* end = arg + strlen("--embed-as-string=");
+        long value = strtol(end, &end, 10);
+        if (errno or end is_not arg + strlen(arg)) {
+          fprintf(out, "#error Value must be an integer: %s\n", arg);
+          err = 12;
+          return err;
+        } else {
+          options.embed_as_string = (size_t)value;
+        }
+      } else if (str_eq("--defer-instead-of-auto", arg) or
+                 str_eq("--no-defer-instead-of-auto", arg)) {
+        options.use_defer_instead_of_auto = flag_value;
       } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
@@ -3813,14 +4267,12 @@ int main(int argc, char** argv)
   mut_Marker_array markers = init_Marker_array(8192);
   mut_Byte_array src = init_Byte_array(16384);
 
-  FILE* out = stdout;
-
   for (int i = 1; not err and i < argc; ++i) {
-    char* file_name = argv[i];
-    if (file_name[0] is '-') {
-      if (file_name[1] is_not '\0') continue;
-      file_name[0] = '\0'; // Make file_name the empty string.
-    } else if (file_name[0] is '\0') {
+    char* src_file_name = argv[i];
+    if (src_file_name[0] is '-') {
+      if (src_file_name[1] is_not '\0') continue;
+      src_file_name[0] = '\0'; // Make src_file_name the empty string.
+    } else if (src_file_name[0] is '\0') {
       // Do not allow `cedro ""` as alternative for `cedro -` because it is
       // likely to be a mistake, e.g. an undefined variable in a shell script.
       fprintf(out, "#error The file name is the empty string.\n");
@@ -3831,12 +4283,12 @@ int main(int argc, char** argv)
     markers.len = 0;
     src.len = 0;
 
-    int err = file_name[0]?
-        read_file(&src, file_name):
+    int err = src_file_name[0]?
+        read_file(&src, src_file_name):
         read_stream(&src, stdin);
     if (err) {
-      print_file_error(err, file_name, &src);
-      if (file_name[0] is '\0') {
+      print_file_error(err, src_file_name, src.len);
+      if (src_file_name[0] is '\0') {
         fprintf(out, "#error The file name is the empty string.\n");
       }
       err = 11;
@@ -3852,26 +4304,37 @@ int main(int argc, char** argv)
       err = 1;
       eprintln("#line %lu \"%s\"\n#error %s\n",
                original_line_number((size_t)(parse_end - src.start), &src),
-               file_name,
+               src_file_name,
                error_buffer);
       error_buffer[0] = 0;
       break;
     }
 
+    if (options.enable_embed_directive and options.embed_as_string) {
+      err = prepare_binary_embedding(&markers, &src, src_file_name);
+      if (err) {
+        eprintln("#line %lu \"%s\"\n#error %s\n",
+                 original_line_number((size_t)(parse_end - src.start), &src),
+                 src_file_name,
+                 error_buffer);
+        break;
+      }
+    }
+
     size_t original_src_len = src.len;
 
     if (opt_run_benchmark) {
-      double t = benchmark(&src, file_name, options);
-      if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, file_name);
-      else         eprintln("%.1fs for %s", t         , file_name);
+      double t = benchmark(&src, src_file_name, options);
+      if (t < 1.0) eprintln("%.fms for %s", t * 1000.0, src_file_name);
+      else         eprintln("%.1fs for %s", t         , src_file_name);
     } else if (opt_validate) {
       mut_Byte_array src_ref = {0};
       err = read_file(&src_ref, opt_validate);
       if (err) {
-        print_file_error(err, opt_validate, &src_ref);
+        print_file_error(err, opt_validate, src_ref.len);
         err = 12;
       } else if (not validate_eq(&src,      &src_ref,
-                                 file_name, opt_validate)) {
+                                 src_file_name, opt_validate)) {
         err = 27;
       }
       destruct_Byte_array(&src_ref);
@@ -3889,7 +4352,7 @@ int main(int argc, char** argv)
       } else {
         unparse(bounds_of_Marker_array(&markers),
                 &src, original_src_len,
-                file_name,
+                src_file_name,
                 options, out);
       }
     }
