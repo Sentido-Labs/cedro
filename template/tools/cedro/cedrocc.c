@@ -363,13 +363,15 @@ include(const char* file_name, FILE* cc_stdin,
         // Included file is not a Cedro file.
         return -1;
       } else {
-        fputc('\n', cc_stdin);
+        // Does not depend on options.insert_line_directives
+        // because it does not cause syntax problems
+        // as it is right at the beginning of an input file.
+        fprintf(cc_stdin, "\n#line %lu \"%s\"\n",
+                original_line_number((size_t)(region.start_p - src.start),
+                                     &src),
+            file_name);
       }
     }
-    // Does not depend on options.insert_line_directives
-    // because it does not cause syntax problems
-    // as it is right at the beginning of an input file.
-    fprintf(cc_stdin, "#line 1 \"%s\"\n", file_name);
 
     size_t original_src_len = src.len;
 
