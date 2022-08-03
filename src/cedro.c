@@ -4251,9 +4251,14 @@ int main(int argc, char** argv)
         opt_validate = arg + strlen("--validate=");
       } else if (str_eq("--version", arg)) {
         eprintln(CEDRO_VERSION);
+      } else if (str_eq("-h", arg) or str_eq("--help", arg)) {
+        eprintln(LANG(usage_es, usage_en));
       } else {
         eprintln(LANG(usage_es, usage_en));
-        err = str_eq("-h", arg) or str_eq("--help", arg)? 0: 1;
+        eprintln(LANG("Error: opción desconocida: %s",
+                      "Error: unknown option: %s"),
+                 arg);
+        err = 1;
         return err;
       }
     }
