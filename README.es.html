@@ -4,7 +4,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Extensión del lenguaje de programación C: pre-procesador Cedro</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } /* WebKit-specific: */ :root { color-scheme: light dark; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code>b { background:#000; } url, code { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } td > url, td > code.command-line-option { display:block; text-align:right; } td > code.command-line-option { font-style:italic; background:transparent; border:none; padding:0; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th:empty, td:empty { border:none; } th { font-weight:normal; } p,ul,blockquote { max-width:50em; text-align:justify; } blockquote { border-left:thin solid; padding-left:0.5em; font-style:italic; margin-left:3em; max-width:45em; } blockquote>address { text-align:right; } blockquote>address::before { content:"— "; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } code>b { background:#fff; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } } [title]::after { content:" †"; font-size:75%; vertical-align:top; } table.benchmark td { text-align:right; font-family:monospace; font-family:'Input', 'Fira Code', 'monospace'; }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } /* WebKit-specific: */ :root { color-scheme: light dark; } html { background:#111; } body { margin:0; } section:first-child { margin-top:0; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code>b { background:#000; } url, code, tt { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } td > url, td > code.command-line-option { display:block; text-align:right; } td > code.command-line-option { font-style:italic; background:transparent; border:none; padding:0; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th:empty, td:empty { border:none; } th { font-weight:normal; } p,ul,blockquote { max-width:50em; text-align:justify; } blockquote { border-left:thin solid; padding-left:0.5em; font-style:italic; margin-left:3em; max-width:45em; } blockquote>address { text-align:right; } blockquote>address::before { content:"— "; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } code>b { background:#fff; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } } [title]::after { content:" †"; font-size:75%; vertical-align:top; } table.benchmark td { text-align:right; font-family:monospace; font-family:'Input', 'Fira Code', 'monospace'; }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -15,7 +15,7 @@
       </h1>
       <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con siete prestaciones:</p>
       <ol>
-        <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html">en inglés</a>] (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
+        <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html#backstitch-macro">en inglés</a>] (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
         <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> o <code>defer ...</code> (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
         <li><a href="#label-break">Salida de <em>bucles anidados</em> <code>break <em>etiqueta</em>;</code></a> (<a href="#label-break-related-work">obras relacionadas</a>).</li>
         <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code><em>ristra</em>[<em>inicio</em>..<em>fin</em>]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
@@ -32,16 +32,16 @@
         <a href="#deferred-resource-release"><code>defer</code> en vez de <code>auto</code></a>
         y de
         <a href="#binary-include"><code>#embed "…"</code> en vez de <code>#include {…}</code></a>.</p>
-      <p>El <b>código fuente</b> (licencia Apache 2.0) se encuentra en <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">la biblioteca</a>.<br/><code>cedro</code> sólo usa las funciones estándar C, <code>cedrocc</code> y <code>cedro-new</code> requieren <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
+      <p>El <b>código fuente</b> (licencia <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a>) se encuentra en <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">la biblioteca</a>.<br/><code>cedro</code> sólo usa las funciones estándar C, <code>cedrocc</code> y <code>cedro-new</code> requieren <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
 
       <code>Uso: cedro [opciones] &lt;fichero.c&gt;…
-     cedro new nombre # Ejecuta: <a href="#cedro-new">cedro-new</a> &lt;nombre&gt;
+     cedro new &lt;nombre&gt; # Ejecuta: <a href="#cedro-new">cedro-new</a> &lt;nombre&gt;
   Para leer desde stdin, se pone - en vez de &lt;fichero.c&gt;.
   El resultado va a stdout, se puede compilar sin fichero intermedio:
  cedro fichero.c | cc -x c - -o fichero
   Es lo que hace el programa <a href="#cedrocc">cedrocc</a>:
  cedrocc -o fichero fichero.c
-  Con cedrocc, la siguientes opciones son implícitas:
+  Con cedrocc, las siguientes opciones son implícitas:
     --insert-line-directives
   Sólo se modifica el código tras la línea `#pragma Cedro 1.0`,
  que puede incluir ciertas opciones: `#pragma Cedro 1.0 defer,#embed`
@@ -64,7 +64,7 @@
                              Valor implícito: 0
   --defer-instead-of-auto    Usa la palabra clave `defer` en vez de `auto`.
                              Lo mismo que `#pragma Cedro 1.0 defer`.
-  --no-defer-instead-of-auto No usa la palabra clave `auto`. (implícito)
+  --no-defer-instead-of-auto Usa la palabra clave `auto`. (implícito)
 
   --print-markers    Imprime los marcadores.
   --no-print-markers No imprime los marcadores. (implícito)
@@ -1900,7 +1900,7 @@ int main(void)
             <code>#include &lt;stdint.h&gt;
 <b>#pragma Cedro 1.0 #embed</b>
 const uint8_t imagen[] = {
-<b>#embed "images/cedro-32x32.png"</b>
+<b>#embed "../images/cedro-32x32.png"</b>
 };</code>
           </td><td>
             <br/><code>#include &lt;stdint.h&gt;
@@ -2014,7 +2014,7 @@ const char const dos_líneas[] = {
         que con octetos,
         usando 7 veces menos memoria.</p>
       <table class="benchmark">
-        <tr><th></th><th colspan="2">Generar código</th><th colspan="2">Compilar con GCC 11</th><th colspan="2">Compilar con clang 12</tr>
+        <tr><th></th><th colspan="2">Generar código</th><th colspan="2">Compilar con GCC 11</th><th colspan="2">Compilar con clang 12</th></tr>
         <tr><th><code>cedro</code></th><td>0.23 s</td><td>1.56 MB</td><td>27.66 s</td><td>1328.13 MB</td><td>30.44 s</td><td>984.59 MB</td></tr>
         <tr><th><code>cedro --embed-as-string=…</code></th><td>0.17 s</td><td>1.87 MB</td><td>0.99 s</td><td>125.32 MB</td><td>0.42 s</td><td>144.95 MB</td></tr>
         <tr><th><code>bin2c</code></th></th><td>0.03 s</td><td>1.37 MB</td><td>0.90 s</td><td>108.70 MB</td><td>0.52 s</td><td>145.73 MB</td></tr>
@@ -2039,7 +2039,7 @@ const char const two lines[] = {
 };</code>
           </td><td>
             <code class="command-line-option" title="Insertar como cadena si el fichero es menor de 30 octetos.">--embed-as-string=30</code>
-            <code>const char const dos_líneas[25] =
+            <code>const char const dos_líneas[<b>25</b>] =
 /* línea-de-texto-1.txt */
 <b>"First line.""\n"</b>
 /* línea-de-texto-2.txt */
@@ -2050,6 +2050,11 @@ const char const two lines[] = {
             <p>Nótese cómo Cedro se da cuenta de que el último octeto es cero
               y lo elimina, porque al haber una cadena justo antes,
               el compilador añadirá el terminador cero automáticamente.<p>
+            <p>En el siguiente ejemplo, al no haber un octeto cero tras
+              la línea <code>#embed</code>,
+              el tamaño <code>1559</code> corresponde exactamente
+              al tamaño del fichero.
+              Así evitamos tener un cero de más al final por usar cadenas.</p>
         </td></tr>
           <td>
             <code><b>#pragma Cedro 1.0 #embed</b>
@@ -2079,7 +2084,7 @@ const char const sombreador_de_fragmento[] = {
             <code>#include &lt;stdint.h&gt;
 <b>#pragma Cedro 1.0 #embed</b>
 const uint8_t imagen[] = {
-<b>#embed "images/cedro-32x32.png"</b>
+<b>#embed "../images/cedro-32x32.png"</b>
 };</code>
           </td><td>
             <code class="command-line-option" title="Insertar como cadena si el fichero es menor de 1600 octetos.">--embed-as-string=1600</code>
@@ -2128,7 +2133,7 @@ const uint8_t imagen
 <b>#pragma Cedro 1.0 #embed</b>
 
 const uint8_t imagen[] = {
-<b>#embed "images/cedro-32x32.png"</b>
+<b>#embed "../images/cedro-32x32.png"</b>
 };
 const size_t sizeof_imagen = sizeof(imagen);</code></td></tr>
         <tr><td><url>main.c</url><code>#include &lt;stdint.h&gt;

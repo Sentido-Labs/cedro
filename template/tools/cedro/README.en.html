@@ -37,7 +37,7 @@
       <code>Usage: cedro [options] &lt;file.c&gt;…
        cedro new &lt;name&gt; # Runs: <a href="#cedro-new">cedro-new</a> &lt;name&gt;
   To read from stdin, put - instead of &lt;file.c&gt;.
-  The result goes to stdout, can be used without an intermediate file:
+  The result goes to stdout, can be compiled without intermediate file:
  cedro file.c | cc -x c - -o file
   It is what the <a href="#cedrocc">cedrocc</a> program does:
  cedrocc -o file file.c
@@ -64,7 +64,7 @@
                             Default value: 0
   --defer-instead-of-auto    Use the keyword `defer` instead of `auto`.
                              Same as `#pragma Cedro 1.0 defer`.
-  --no-defer-instead-of-auto Use the keyword auto. (default)
+  --no-defer-instead-of-auto Use the keyword `auto`. (default)
 
   --print-markers    Prints the markers.
   --no-print-markers Does not print the markers. (default)
