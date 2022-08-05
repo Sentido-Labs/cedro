@@ -83,10 +83,6 @@ void test_array()
 
 int main(int argc, char** argv)
 {
-  // Enable core dumps on assert() failures:
-  struct rlimit core_limit = { RLIM_INFINITY, RLIM_INFINITY };
-  assert(setrlimit(RLIMIT_CORE, &core_limit) == 0);
-
   run_test(array);
   run_test(const);
 

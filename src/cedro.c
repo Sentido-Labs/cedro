@@ -65,8 +65,6 @@ typedef unsigned long uint32_t;
 #define is     ==
 #define in(min, x, max) (x >= min and x <= max)
 
-#include <sys/resource.h> // rlimit, setrlimit()
-
 #define CEDRO_VERSION "1.0"
 /** Versions with the same major number are compatible in that they produce
  * semantically equivalent output: there might be differeces in indentation
