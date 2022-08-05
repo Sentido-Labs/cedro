@@ -1103,36 +1103,64 @@ number(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
-  if (c is '.') { ++cursor; if (cursor is end) return NULL; c = *cursor; }
+  if (c is '.') {
+    ++cursor;
+    if (cursor is end) return NULL;
+    c = *cursor;
+    if (c is '\\' and *(cursor+1) is '\n') { cursor += 2; c = *cursor; }
+  }
   // No need to check bounds thanks to PADDING_Byte_array:
-  if (c is '\\' and *(cursor+1) is '\n') { cursor += 2; c = *cursor; }
-  if (in('0',c,'9')) {
+  if        (c is '0' and *(cursor+1) is 'x') {
+    cursor += 2;
+    while (cursor is_not end) {
+      c = *cursor;
+      if (in('0',c,'9') or in('a',c,'f') or in('A',c,'F')) {
+        ++cursor;
+      } else if (c is '\\' and *(cursor+1) is '\n') {
+        // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
+        // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
+        cursor += 2;
+      } else break;
+    }
+    return cursor;
+  } else if (c is '0' and *(cursor+1) is 'b') {
+    cursor += 2;
+    while (cursor is_not end) {
+      c = *cursor;
+      if (c is '0' or c is '1') {
+        ++cursor;
+      } else if (c is '\\' and *(cursor+1) is '\n') {
+        // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
+        // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
+        cursor += 2;
+      } else break;
+    }
+    return cursor;
+  } else if (in('0',c,'9')) {
     ++cursor;
     while (cursor is_not end) {
       c = *cursor;
       if (in('0',c,'9')) {
         ++cursor;
-        continue;
       } else if (c is '.') {
         if (*(cursor - 1) is '.') return cursor - 1;
         ++cursor;
-        continue;
       } else if (c is 'e' or c is 'E' or c is 'p' or c is 'P') {
         if (++cursor is end) break;
         c = *cursor;
-        if (c is '+' or c is '-') {
-          ++cursor;
-          continue;
-        }
+        if (c is_not '+' and c is_not '-') break;
+        ++cursor;
       } else if (c is '\\' and *(cursor+1) is '\n') {
         // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
         // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
         cursor += 2;
-        continue;
+      } else {
+        // C++ user-defined literals:
+        // https://en.cppreference.com/w/cpp/language/user_literal
+        Byte_p identifier_nondigit = identifier(cursor, end);
+        if (identifier_nondigit) cursor = identifier_nondigit;
+        break;
       }
-      Byte_p identifier_nondigit = identifier(cursor, end);
-      if (not identifier_nondigit) break;
-      cursor = identifier_nondigit;
     }
     return cursor;
   } else {
@@ -2001,7 +2029,7 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
         if (m->len is_not 0) {
           mut_Byte c = 0, digit;
           if (src->start[m->start] is '0' and m->len is_not 1) {
-            if (m->len is 4 and src->start[m->start+1] is 'x') {
+            if (src->start[m->start+1] is 'x') {
               for (Byte_mut_p p = &src->start[m->start+2], end = p + m->len-2;
                    p is_not end; ++p) {
                 digit = *p;
@@ -2016,6 +2044,21 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
                   goto exit;
                 }
                 c = (c << 4) | value;
+              }
+            } else if (src->start[m->start+1] is 'b') {
+              for (Byte_mut_p p = &src->start[m->start+2], end = p + m->len-2;
+                   p is_not end; ++p) {
+                digit = *p;
+                if (digit is '_') continue;
+                Byte value =
+                    in('0',digit,'1')? digit-'0':
+                    0xFF;
+                if (value is 0xFF) {
+                  err->position = m;
+                  err->message = "Error in binary byte literal.";
+                  goto exit;
+                }
+                c = (c << 1) | value;
               }
             } else {
               for (Byte_mut_p p = &src->start[m->start], end = p + m->len;
