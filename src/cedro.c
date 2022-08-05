@@ -1114,7 +1114,8 @@ number(Byte_p start, Byte_p end)
     cursor += 2;
     while (cursor is_not end) {
       c = *cursor;
-      if (in('0',c,'9') or in('a',c,'f') or in('A',c,'F')) {
+      if (in('0',c,'9') or in('a',c,'f') or in('A',c,'F') or
+          c is '_' or c is '\'') {
         ++cursor;
       } else if (c is '\\' and *(cursor+1) is '\n') {
         // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
@@ -1127,7 +1128,8 @@ number(Byte_p start, Byte_p end)
     cursor += 2;
     while (cursor is_not end) {
       c = *cursor;
-      if (c is '0' or c is '1') {
+      if (c is '0' or c is '1' or
+          c is '_' or c is '\'') {
         ++cursor;
       } else if (c is '\\' and *(cursor+1) is '\n') {
         // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
@@ -1140,7 +1142,8 @@ number(Byte_p start, Byte_p end)
     ++cursor;
     while (cursor is_not end) {
       c = *cursor;
-      if (in('0',c,'9')) {
+      if (in('0',c,'9') or
+          c is '_' or c is '\'') {
         ++cursor;
       } else if (c is '.') {
         if (*(cursor - 1) is '.') return cursor - 1;
@@ -2033,6 +2036,7 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
               for (Byte_mut_p p = &src->start[m->start+2], end = p + m->len-2;
                    p is_not end; ++p) {
                 digit = *p;
+                if (digit is '_') continue;
                 Byte value =
                     in('0',digit,'9')? digit-'0':
                     in('A',digit,'F')? digit-'A'+10:
@@ -2064,6 +2068,7 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
               for (Byte_mut_p p = &src->start[m->start], end = p + m->len;
                    p is_not end; ++p) {
                 digit = *p;
+                if (digit is '_') continue;
                 Byte value = in('0',digit,'7')? digit-'0': 0xFF;
                 if (value is 0xFF) {
                   err->position = m;
@@ -2747,6 +2752,13 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
   } else if (m->token_type is T_OTHER and m->len is 6 and
              mem_eq(get_Byte_array(src, m->start), "\\u0040", 6)) {
     putc('@', out);
+  } else if (m->token_type is T_NUMBER) {
+    // Number literal separators.
+    for (Byte_mut_p p = text.start_p; p is_not text.end_p; ++p) {
+      char c = *p;
+      // TODO: add option to produce C23 separators instead.
+      if (c is_not '_' and c is_not '\'') putc(c, out);
+    }
   } else {
     fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
   }
