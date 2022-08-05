@@ -82,7 +82,7 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
-#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
+#define LANG(es, en) (strn_eq(getenv("LANG")?getenv("LANG"):"", "es", 2)? es: en)
 
 #include "utf8.h"
 
