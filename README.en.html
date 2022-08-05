@@ -128,9 +128,9 @@
           if they are available, and if not
           “Your Name Here &lt;email@example.com&gt;”.</li>
         <li><code>{#Template}</code>: the project name,
-          e.g. «Cedro».</li>
+          e.g. “Cedro”.</li>
         <li><code>{#template}</code>: the program name,
-          e.g. «cedro».</li>
+          e.g. “cedro”.</li>
       </ul>
 
       <p>The template includes several project drafts, that can be activated in the generated <url>Makefile</url>:</p>
@@ -397,7 +397,7 @@ int main() {
         that get run <strong>implicitly</strong>
         when exiting a variable’s scope.</p>
       <p>The programming language Go introduced an <strong>explicit</strong> notation called
-        «<a href="https://blog.golang.org/defer-panic-and-recover"><em>defer</em></a>»
+        “<a href="https://blog.golang.org/defer-panic-and-recover"><em>defer</em></a>”
         that fits better the style of C.
         The first difference is that in Go,
         all releases happen when exiting the function,
@@ -839,7 +839,7 @@ int main(int argc, char **argv) {
 
       <h3 id="deferred-resource-release-related-work">Related work <a class="anchor" href="#deferred-resource-release-related-work">#…-related-work</a></h3>
       <p>Apart from the already mentioned
-        «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
+        “<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>”,
         there are macros that use a <code>for</code> loop as
         <code>for (<em>allocation and initialization</em>; <em>condition</em>; <em>release</em>) { <em>actions</em> }</code>
         [<a href="#note-defer-1" name="node-defer-1-ref">1</a>]
@@ -2192,14 +2192,14 @@ cc -o program main.o assets.o</code></td></tr>
           in the hope of it working on old compilers.</p>
         <p>More references with information on other methods:</p>
         <ul>
-          <li>«<a href="http://gareus.org/wiki/embedding_resources_in_executables">Embedding Blobs in Binaries</a>», ca. 2014, Robin Gareus. Discussion: <a href="https://news.ycombinator.com/item?id=8656856">Hacker News 2014-11-25</a></li>
-          <li>«<a href="https://www.devever.net/~hl/incbin">Embedding of binary data into programs</a>», 2016-01-15, Hugo Landau.</a></li>
-          <li>«<a href="https://csl.name/post/embedding-binary-data/">Embedding binary data in executables</a>», 2016-06-07, Christian Stigen Larsen.</li>
-          <li>«<a href="https://drewdevault.com/2018/05/29/Embedding-files-in-C.html">Embedding files in C programs with kolo</a>», 2018-05-29, Drew DeVault. Discussion: <a href="https://news.ycombinator.com/item?id=17191119">Hacker News 2018-05-30</a></li>
-          <li>«<a href="https://flak.tedunangst.com/post/embedding-binary-objects-in-c">Embedding binary objects in c</a>», 2020-04-16, Ted Unangst. Discussion: <a href="https://lobste.rs/s/9zvyeu/embedding_binary_objects_c">Lobsters 2020-04-16</a>, <a href="https://news.ycombinator.com/item?id=22888318">Hacker News 2020-04-16</a></li>
-          <li>«<a href="https://cupdev.net/blog/013_bin2c.html">How to Analyze Assembly Code to Guide Optimization Strategies</a>» <em>(Describing Adobe’s bin2c’s implementation)</em>, 2020-05-29, Karolin Varner. Discussion: <a href="https://www.reddit.com/r/C_Programming/comments/gsxvh3/how_to_analyze_assembly_code_to_guide/">Reddit 2020-05-29</a></li>
-          <li>«<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>, 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>, <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
-          <li>«<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>», 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
+          <li>“<a href="http://gareus.org/wiki/embedding_resources_in_executables">Embedding Blobs in Binaries</a>”, ca. 2014, Robin Gareus. Discussion: <a href="https://news.ycombinator.com/item?id=8656856">Hacker News 2014-11-25</a></li>
+          <li>“<a href="https://www.devever.net/~hl/incbin">Embedding of binary data into programs</a>”, 2016-01-15, Hugo Landau.</a></li>
+          <li>“<a href="https://csl.name/post/embedding-binary-data/">Embedding binary data in executables</a>”, 2016-06-07, Christian Stigen Larsen.</li>
+          <li>“<a href="https://drewdevault.com/2018/05/29/Embedding-files-in-C.html">Embedding files in C programs with kolo</a>”, 2018-05-29, Drew DeVault. Discussion: <a href="https://news.ycombinator.com/item?id=17191119">Hacker News 2018-05-30</a></li>
+          <li>“<a href="https://flak.tedunangst.com/post/embedding-binary-objects-in-c">Embedding binary objects in c</a>”, 2020-04-16, Ted Unangst. Discussion: <a href="https://lobste.rs/s/9zvyeu/embedding_binary_objects_c">Lobsters 2020-04-16</a>, <a href="https://news.ycombinator.com/item?id=22888318">Hacker News 2020-04-16</a></li>
+          <li>“<a href="https://cupdev.net/blog/013_bin2c.html">How to Analyze Assembly Code to Guide Optimization Strategies</a>” <em>(Describing Adobe’s bin2c’s implementation)</em>, 2020-05-29, Karolin Varner. Discussion: <a href="https://www.reddit.com/r/C_Programming/comments/gsxvh3/how_to_analyze_assembly_code_to_guide/">Reddit 2020-05-29</a></li>
+          <li>“<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>”, 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>, <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
+          <li>“<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>”, 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
         </ul>
     </section>
 
