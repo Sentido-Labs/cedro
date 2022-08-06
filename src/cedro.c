@@ -82,7 +82,18 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
-#define LANG(es, en) (strn_eq(getenv("LANG")?getenv("LANG"):"", "es", 2)? es: en)
+static const char*
+lang()
+{
+  const char* lang = getenv("LANG");
+  return lang? lang: "";
+}
+#define LANG(es, en) (strn_eq(lang(), "es", 2)? es: en)
+static bool
+lang_use_utf8()
+{
+  return strstr(lang(), "UTF-8");
+}
 
 #include "utf8.h"
 
@@ -162,7 +173,7 @@ eprint(const char * const fmt, ...)
   va_list args;
   va_start(args, fmt);
 
-  if (strstr(getenv("LANG"), "UTF-8")) {
+  if (lang_use_utf8()) {
     vfprintf(stderr, fmt, args);
   } else {
     char* buffer;
