@@ -469,7 +469,7 @@ typedef const char* FilePath;
 static size_t
 get_file_size(FilePath path)
 {
-  mut_File_p input = fopen(path, "r");
+  mut_File_p input = fopen(path, "rb");
   if (not input) return 0;
   fseek(input, 0, SEEK_END);
   long size = ftell(input);
@@ -482,7 +482,7 @@ static int
 read_file(mut_Byte_array_p _, FilePath path)
 {
   int err = 0; // No error.
-  mut_File_p input = fopen(path, "r");
+  mut_File_p input = fopen(path, "rb");
   if (not input) return errno;
   fseek(input, 0, SEEK_END);
   size_t size = (size_t)ftell(input);
@@ -3522,7 +3522,7 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
             fprintf(out, "/* %s */\n", basename);
           }
         }
-        FILE* file = fopen(included_file, "r");
+        FILE* file = fopen(included_file, "rb");
         uint8_t buffer[8192];
         if (as_string) {
           fputc('"', out);

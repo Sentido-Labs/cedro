@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
                   "Failed to finalize the zip archive."));
   }
 
-  mut_File_p output = fopen(zip_file_name, "w");
+  mut_File_p output = fopen(zip_file_name, "wb");
   if (not output) {
     eprint(LANG("Fallo al abrir el fichero «%s»",
                 "Failed to open the file “%s”"),

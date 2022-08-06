@@ -370,7 +370,7 @@ int main(int argc, char* argv[])
       ++cursor;
     }
 
-    mut_File_p output = fopen(as_c_string(&path), "w");
+    mut_File_p output = fopen(as_c_string(&path), "wb");
     if (not output) {
       eprint(LANG("Fallo al abrir el fichero «%s» para escritura.",
                   "Failed to open the file “%s” for writing."),
