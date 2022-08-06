@@ -433,8 +433,10 @@ push_fmt(mut_Byte_array_p _, const char * const fmt, ...)
     available = _->capacity - _->len;
     vsnprintf((char*) end_of_Byte_array(_), available, fmt, args);
   }
-  // len excludes the zero terminator.
-  _->len += (needed > available? available: needed - 1);
+  // “return value (number of bytes that would be written
+  //  not including the null terminator)”
+  // https://en.cppreference.com/w/c/io/vfprintf
+  _->len += (needed > available? available: needed);
 
   va_end(args);
 
