@@ -109,7 +109,7 @@ doc:
 test: src/$(NAME)-test.c test/* bin/$(NAME) bin/$(NAME)-debug
 	@$(CC) $(CFLAGS) -o bin/$@ $<
 	@bin/$@
-	@for f in test/*.c; do echo -n "$${f} ... "; OPTS=""; if [ -z "$${f##*-line-directives*}" ]; then OPTS="--insert-line-directives $${OPTS}"; fi; if [ -z "$${f##*-embed-as-string*}" ]; then OPTS="--embed-as-string=80 $${OPTS}"; fi; ERROR=$$(bin/$(NAME) $${OPTS} "$${f}" | bin/$(NAME) - $${OPTS} --validate="test/reference/$${f##test/}" 2>&1); if [ "$$ERROR" ]; then echo "ERROR"; echo "$${ERROR}"; exit 7; else echo -n "OK"; fi; if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet bin/$(NAME) $${OPTS} $${f}"; if $$CMD </dev/null >/dev/null; then echo ", valgrind OK"; else echo ", valgrind ERROR"; echo Run check with: "$(VALGRIND_CHECK) bin/$(NAME) $${OPTS} $${f}"; fi; fi; done
+	@for f in test/*.c; do echo -n "$${f} ... "; OPTS=""; if [ -z "$${f##*-line-directives*}" ]; then OPTS="--insert-line-directives $${OPTS}"; fi; if [ -z "$${f##*-embed-as-string*}" ]; then OPTS="--embed-as-string=80 $${OPTS}"; fi; ERROR=$$(bin/$(NAME) $${OPTS} "$${f}" | bin/$(NAME) - $${OPTS} --validate="test/reference/$${f##test/}" 2>&1); if [ "$$ERROR" ]; then echo "ERROR"; echo "$${ERROR}"; exit 7; else echo -n "OK"; fi; if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet bin/$(NAME) $${OPTS} $${f}"; if $$CMD </dev/null >/dev/null; then echo ", valgrind OK"; else echo ", valgrind ERROR"; echo Run check with: "$(VALGRIND_CHECK) bin/$(NAME) $${OPTS} $${f}"; fi; else echo ""; fi; done
 
 # gcc -fanalyzer needs at least GCC 11. GCC 10 gives false positives.
 # https://valgrind.org/
