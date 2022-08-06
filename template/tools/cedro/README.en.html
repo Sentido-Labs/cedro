@@ -4,7 +4,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>C programming language extension: Cedro pre-processor</title>
-    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } /* WebKit-specific: */ :root { color-scheme: light dark; } html { background:#111; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code>b { background:#000; } url, code { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } td > url, td > code.command-line-option { display:block; text-align:right; } td > code.command-line-option { font-style:italic; background:transparent; border:none; padding:0; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th:empty, td:empty { border:none; } th { font-weight:normal; } p,ul,blockquote { max-width:50em; text-align:justify; } blockquote { border-left:thin solid; padding-left:0.5em; font-style:italic; margin-left:3em; max-width:45em; } blockquote>address { text-align:right; } blockquote>address::before { content:"— "; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } code>b { background:#fff; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } } [title]::after { content:" †"; font-size:75%; vertical-align:top; } table.benchmark td { text-align:right; font-family:monospace; font-family:'Input', 'Fira Code', 'monospace'; }</style>
+    <style type="text/css">@font-face { font-family: 'sorts_mill_goudyregular'; src: local('OFL Sorts Mill Goudy TT'), url('doc/fonts/GoudyStM-webfont.woff') format('woff'); font-weight: normal; font-style: normal; } /* WebKit-specific: */ :root { color-scheme: light dark; } html { background:#111; } body { margin:0; } section:first-child { margin-top:0; } section, footer { font-family:sans-serif; line-height:1.5; max-width:82em; margin:0.5em auto 0.5em auto; background:#222; color:#c92; text-shadow:0 0.1em 0.1em #000; border:thin solid #222; padding:1em; } section + section, section + footer { margin-top:2em; } section>h2:first-child { margin-top:0; } p,ul,table { } a, a:visited { color:#99e; text-decoration:none; box-shadow:0 2px 1px -1px #77e; } a.img { box-shadow:none; } a.img > img { vertical-align:bottom; } a>code { border-bottom:none; background-color:transparent; } code>a { color:inherit !important; } code>b { background:#000; } url, code, tt { display:inline; vertical-align:baseline; padding:0; font-family:'Input', 'Fira Code', 'monospace'; white-space:pre-wrap; } url { color:#ccc; } url:before, url:after { content:'"'; color:#777; } td > url, td > code.command-line-option { display:block; text-align:right; } td > code.command-line-option { font-style:italic; background:transparent; border:none; padding:0; } code { background:#111; color:#8d8; border:thin solid #333; border-radius:0.25em; padding:0.25em; } section > code, td > code { display:inline-block; vertical-align:baseline; overflow-wrap:anywhere; word-break:break-all; } h1 { font-size:200%; margin:0; background-color:#070707; color:#eee; font-family:sorts_mill_goudyregular, serif; font-weight:normal; } h1::after { clear:both; content:""; display:block; } h1>img { vertical-align:bottom; } h2 { font-size:128%; } h3 { font-size:116%; } h4 { font-size:110%; } h2, h3, h4 { font-family:sans-serif; font-weight:normal; color:#c72; border-left:0.75rem solid rgba(204,119,34,0.25); margin-left:-1rem; margin-right:-0.25rem; padding-left:0.25rem; padding-right:0.25rem; } h1>a.anchor, h2>a.anchor, h3>a.anchor, h4>a.anchor { visibility:hidden; } h1:hover>a.anchor, h2:hover>a.anchor, h3:hover>a.anchor, h4:hover>a.anchor { visibility:visible; } table { border-collapse:collapse; background:inherit; } th, td { vertical-align:top; border:thin solid #777; padding:0.5em; } th:empty, td:empty { border:none; } th { font-weight:normal; } p,ul,blockquote { max-width:50em; text-align:justify; } blockquote { border-left:thin solid; padding-left:0.5em; font-style:italic; margin-left:3em; max-width:45em; } blockquote>address { text-align:right; } blockquote>address::before { content:"— "; } .language-selector { padding:0.25rem; font-size:1rem; } .link-to-table-of-contents { background:#111; padding:0.25em; position:fixed; bottom:0; right:0; } @media (prefers-color-scheme:light) { html { background:#ddd; } section, footer { background:#eee; color:#111; text-shadow:none; border-color:#ccc; } a, a:visited { color:#11d; box-shadow:0 2px 1px -1px #ccd; } h1 a, h1 a:visited { color:#ccf; } code { background:#f7f7f7; color:#000; border-color:#eee; } code>b { background:#fff; } url { color:#444; } url:before, url:after { color:#999; } h2, h3, h4 { color:#222; border-color: rgba(34,34,34,0.15); } .link-to-table-of-contents { background:#ddd; } } [title]::after { content:" †"; font-size:75%; vertical-align:top; } table.benchmark td { text-align:right; font-family:monospace; font-family:'Input', 'Fira Code', 'monospace'; }</style>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
   </head>
   <body>
@@ -32,7 +32,7 @@
         <a href="#deferred-resource-release"><code>defer</code> instead of <code>auto</code></a>
         and of
         <a href="#binary-include"><code>#embed "…"</code> instead of <code>#include {…}</code></a>.</p>
-      <p>The <b>source code</b> (Apache 2.0 license) can be found at <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">the library</a>.<br/><code>cedro</code> only uses the standard C functions, <code>cedrocc</code> and <code>cedro-new</code> require <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
+      <p>The <b>source code</b> (<a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a> license) can be found at <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">the library</a>.<br/><code>cedro</code> only uses the standard C functions, <code>cedrocc</code> and <code>cedro-new</code> require <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
 
       <code>Usage: cedro [options] &lt;file.c&gt;…
        cedro new &lt;name&gt; # Runs: <a href="#cedro-new">cedro-new</a> &lt;name&gt;
@@ -128,9 +128,9 @@
           if they are available, and if not
           “Your Name Here &lt;email@example.com&gt;”.</li>
         <li><code>{#Template}</code>: the project name,
-          e.g. «Cedro».</li>
+          e.g. “Cedro”.</li>
         <li><code>{#template}</code>: the program name,
-          e.g. «cedro».</li>
+          e.g. “cedro”.</li>
       </ul>
 
       <p>The template includes several project drafts, that can be activated in the generated <url>Makefile</url>:</p>
@@ -397,7 +397,7 @@ int main() {
         that get run <strong>implicitly</strong>
         when exiting a variable’s scope.</p>
       <p>The programming language Go introduced an <strong>explicit</strong> notation called
-        «<a href="https://blog.golang.org/defer-panic-and-recover"><em>defer</em></a>»
+        “<a href="https://blog.golang.org/defer-panic-and-recover"><em>defer</em></a>”
         that fits better the style of C.
         The first difference is that in Go,
         all releases happen when exiting the function,
@@ -839,7 +839,7 @@ int main(int argc, char **argv) {
 
       <h3 id="deferred-resource-release-related-work">Related work <a class="anchor" href="#deferred-resource-release-related-work">#…-related-work</a></h3>
       <p>Apart from the already mentioned
-        «<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>»,
+        “<a href="#a-defer-mechanism-for-c"><em>A defer mechanism for C</em></a>”,
         there are macros that use a <code>for</code> loop as
         <code>for (<em>allocation and initialization</em>; <em>condition</em>; <em>release</em>) { <em>actions</em> }</code>
         [<a href="#note-defer-1" name="node-defer-1-ref">1</a>]
@@ -1900,7 +1900,7 @@ int main(void)
             <code>#include &lt;stdint.h&gt;
 <b>#pragma Cedro 1.0 #embed</b>
 const uint8_t image[] = {
-<b>#embed "images/cedro-32x32.png"</b>
+<b>#embed "../images/cedro-32x32.png"</b>
 };</code>
           </td><td>
             <br/><code>#include &lt;stdint.h&gt;
@@ -1930,7 +1930,7 @@ const uint8_t image[] = {
             <code>#include &lt;stdint.h&gt;
 <b>#pragma Cedro 1.0</b>
 const uint8_t image
-<b>#include {images/cedro-32x32.png}</b>
+<b>#include {../images/cedro-32x32.png}</b>
 ;</code>
           </td><td>
             <br/><code>#include &lt;stdint.h&gt;
@@ -1984,6 +1984,7 @@ const char const two_lines[] = {
         </tr>
       </table>
 
+      <h3 id="embed-as-string">Embed as string</h3>
       <p>Instead of inserting byte literals one by one,
         they can be put all at once in a literal string
         with the option <code>--embed-as-string=&lt;limit&gt;</code>,
@@ -2013,7 +2014,7 @@ const char const two_lines[] = {
         than with bytes,
         using 7 times less memory.</p>
       <table class="benchmark">
-        <tr><th></th><th colspan="2">Generate code</th><th colspan="2">Compile with GCC 11</th><th colspan="2">Compile with clang 12</tr>
+        <tr><th></th><th colspan="2">Generate code</th><th colspan="2">Compile with GCC 11</th><th colspan="2">Compile with clang 12</th></tr>
         <tr><th><code>cedro</code></th><td>0.19 s</td><td>1.80 MB</td><td>27.66 s</td><td>1328.13 MB</td><td>30.44 s</td><td>984.59 MB</td></tr>
         <tr><th><code>cedro --embed-as-string=…</code></th><td>0.14 s</td><td>1.63 MB</td><td>0.99 s</td><td>125.32 MB</td><td>0.42 s</td><td>144.95 MB</td></tr>
         <tr><th><code>bin2c</code></th></th><td>0.03 s</td><td>1.37 MB</td><td>0.90 s</td><td>108.70 MB</td><td>0.52 s</td><td>145.73 MB</td></tr>
@@ -2038,7 +2039,7 @@ const char const dos_líneas[] = {
 };</code>
           </td><td>
             <code class="command-line-option" title="Insert as string if the file is smaller than 30 bytes.">--embed-as-string=30</code>
-            <code>const char const two lines[25] =
+            <code>const char const two lines[<b>25</b>] =
 /* text-line-1.txt */
 <b>"First line.""\n"</b>
 /* text-line-2.txt */
@@ -2048,8 +2049,10 @@ const char const dos_líneas[] = {
         <tr><td colspan="2">
             <p>Note how Cedro realizes that the last byte is zero
               and removes it, because since there is a string just before,
-              the compiler will add the zero terminator automatically..<p>
-        </td></tr>
+              the compiler will add the zero terminator automatically..</p>
+          </td>
+        </tr>
+        <tr>
           <td>
             <code><b>#pragma Cedro 1.0 #embed</b>
 const char const fragment_shader[] = {
@@ -2078,12 +2081,12 @@ const char const fragment_shader[] = {
             <code>#include &lt;stdint.h&gt;
 <b>#pragma Cedro 1.0 #embed</b>
 const uint8_t image[] = {
-<b>#embed "images/cedro-32x32.png"</b>
+<b>#embed "../images/cedro-32x32.png"</b>
 };</code>
           </td><td>
             <code class="command-line-option" title="Insert as string if the file is smaller than 1600 bytes.">--embed-as-string=1600</code>
             <code>#include &lt;stdint.h&gt;
-const uint8_t imagen[<b>1559</b>] = <b>/* cedro-32x32.png */
+const uint8_t image[<b>1559</b>] = <b>/* cedro-32x32.png */
 "\211PNG\r\n"
 "\032\n"
 "\000\000\000\rIHDR\000\000\000 \000\000\000 \b\002…"
@@ -2096,12 +2099,12 @@ const uint8_t imagen[<b>1559</b>] = <b>/* cedro-32x32.png */
             <code>#include &lt;stdint.h&gt;
 <b>#pragma Cedro 1.0</b>
 const uint8_t image
-<b>#include {images/cedro-32x32.png}</b>
+<b>#include {../images/cedro-32x32.png}</b>
 ;</code>
           </td><td>
             <code class="command-line-option" title="Insert as string if the file is smaller than 1600 bytes.">--embed-as-string=1600</code>
             <code>#include &lt;stdint.h&gt;
-const uint8_t imagen
+const uint8_t image
 [<b>1559</b>] = { /* cedro-32x32.png */
 <b>"\211PNG\r\n"
 "\032\n"
@@ -2127,7 +2130,7 @@ const uint8_t imagen
 <b>#pragma Cedro 1.0 #embed</b>
 
 const uint8_t image[] = {
-<b>#embed "images/cedro-32x32.png"</b>
+<b>#embed "../images/cedro-32x32.png"</b>
 };
 const size_t sizeof_image = sizeof(image);</code></td></tr>
         <tr><td><url>main.c</url><code>#include &lt;stdint.h&gt;
@@ -2182,21 +2185,21 @@ cc -o program main.o assets.o</code></td></tr>
           that produces byte literals like <code>xxd</code>),
           and although I haven’t looked in its source code,
           Cedro follows
-          <a href="https://github.com/adobe/bin2c#encoding">the speicifiedin in its documentation</a>
+          <a href="https://github.com/adobe/bin2c#encoding">the specification in its documentation</a>
           except the ends of line, where Cedro splits the string literal
           in the same way as is usually done by hand
           and also limits the size of each individual string to 500 bytes
           in the hope of it working on old compilers.</p>
         <p>More references with information on other methods:</p>
         <ul>
-          <li>«<a href="http://gareus.org/wiki/embedding_resources_in_executables">Embedding Blobs in Binaries</a>», ca. 2014, Robin Gareus. Discussion: <a href="https://news.ycombinator.com/item?id=8656856">Hacker News 2014-11-25</a></li>
-          <li>«<a href="https://www.devever.net/~hl/incbin">Embedding of binary data into programs</a>», 2016-01-15, Hugo Landau.</a></li>
-          <li>«<a href="https://csl.name/post/embedding-binary-data/">Embedding binary data in executables</a>», 2016-06-07, Christian Stigen Larsen.</li>
-          <li>«<a href="https://drewdevault.com/2018/05/29/Embedding-files-in-C.html">Embedding files in C programs with kolo</a>», 2018-05-29, Drew DeVault. Discussion: <a href="https://news.ycombinator.com/item?id=17191119">Hacker News 2018-05-30</a></li>
-          <li>«<a href="https://flak.tedunangst.com/post/embedding-binary-objects-in-c">Embedding binary objects in c</a>», 2020-04-16, Ted Unangst. Discussion: <a href="https://lobste.rs/s/9zvyeu/embedding_binary_objects_c">Lobsters 2020-04-16</a>, <a href="https://news.ycombinator.com/item?id=22888318">Hacker News 2020-04-16</a></li>
-          <li>«<a href="https://cupdev.net/blog/013_bin2c.html">How to Analyze Assembly Code to Guide Optimization Strategies</a>» <em>(Describing Adobe’s bin2c’s implementation)</em>, 2020-05-29, Karolin Varner. Discussion: <a href="https://www.reddit.com/r/C_Programming/comments/gsxvh3/how_to_analyze_assembly_code_to_guide/">Reddit 2020-05-29</a></li>
-          <li>«<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>, 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>, <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
-          <li>«<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>», 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
+          <li>“<a href="http://gareus.org/wiki/embedding_resources_in_executables">Embedding Blobs in Binaries</a>”, ca. 2014, Robin Gareus. Discussion: <a href="https://news.ycombinator.com/item?id=8656856">Hacker News 2014-11-25</a></li>
+          <li>“<a href="https://www.devever.net/~hl/incbin">Embedding of binary data into programs</a>”, 2016-01-15, Hugo Landau.</a></li>
+          <li>“<a href="https://csl.name/post/embedding-binary-data/">Embedding binary data in executables</a>”, 2016-06-07, Christian Stigen Larsen.</li>
+          <li>“<a href="https://drewdevault.com/2018/05/29/Embedding-files-in-C.html">Embedding files in C programs with kolo</a>”, 2018-05-29, Drew DeVault. Discussion: <a href="https://news.ycombinator.com/item?id=17191119">Hacker News 2018-05-30</a></li>
+          <li>“<a href="https://flak.tedunangst.com/post/embedding-binary-objects-in-c">Embedding binary objects in c</a>”, 2020-04-16, Ted Unangst. Discussion: <a href="https://lobste.rs/s/9zvyeu/embedding_binary_objects_c">Lobsters 2020-04-16</a>, <a href="https://news.ycombinator.com/item?id=22888318">Hacker News 2020-04-16</a></li>
+          <li>“<a href="https://cupdev.net/blog/013_bin2c.html">How to Analyze Assembly Code to Guide Optimization Strategies</a>” <em>(Describing Adobe’s bin2c’s implementation)</em>, 2020-05-29, Karolin Varner. Discussion: <a href="https://www.reddit.com/r/C_Programming/comments/gsxvh3/how_to_analyze_assembly_code_to_guide/">Reddit 2020-05-29</a></li>
+          <li>“<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>”, 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>, <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
+          <li>“<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>”, 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
         </ul>
     </section>
 

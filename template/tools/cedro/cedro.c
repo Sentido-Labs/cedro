@@ -65,8 +65,6 @@ typedef unsigned long uint32_t;
 #define is     ==
 #define in(min, x, max) (x >= min and x <= max)
 
-#include <sys/resource.h> // rlimit, setrlimit()
-
 #define CEDRO_VERSION "1.0"
 /** Versions with the same major number are compatible in that they produce
  * semantically equivalent output: there might be differeces in indentation
@@ -84,7 +82,18 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
-#define LANG(es, en) (strn_eq(getenv("LANG"), "es", 2)? es: en)
+static const char*
+lang()
+{
+  const char* lang = getenv("LANG");
+  return lang? lang: "";
+}
+#define LANG(es, en) (strn_eq(lang(), "es", 2)? es: en)
+static bool
+lang_use_utf8()
+{
+  return strstr(lang(), "UTF-8");
+}
 
 #include "utf8.h"
 
@@ -164,7 +173,7 @@ eprint(const char * const fmt, ...)
   va_list args;
   va_start(args, fmt);
 
-  if (strstr(getenv("LANG"), "UTF-8")) {
+  if (lang_use_utf8()) {
     vfprintf(stderr, fmt, args);
   } else {
     char* buffer;
@@ -460,7 +469,7 @@ typedef const char* FilePath;
 static size_t
 get_file_size(FilePath path)
 {
-  mut_File_p input = fopen(path, "r");
+  mut_File_p input = fopen(path, "rb");
   if (not input) return 0;
   fseek(input, 0, SEEK_END);
   long size = ftell(input);
@@ -473,7 +482,7 @@ static int
 read_file(mut_Byte_array_p _, FilePath path)
 {
   int err = 0; // No error.
-  mut_File_p input = fopen(path, "r");
+  mut_File_p input = fopen(path, "rb");
   if (not input) return errno;
   fseek(input, 0, SEEK_END);
   size_t size = (size_t)ftell(input);
@@ -3513,7 +3522,7 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
             fprintf(out, "/* %s */\n", basename);
           }
         }
-        FILE* file = fopen(included_file, "r");
+        FILE* file = fopen(included_file, "rb");
         uint8_t buffer[8192];
         if (as_string) {
           fputc('"', out);
