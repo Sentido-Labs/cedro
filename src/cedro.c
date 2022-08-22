@@ -2589,7 +2589,7 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
               TOKEN2(T_OP_2);
               break;
             case '=': TOKEN2(T_OP_14);  break;
-            case '>': TOKEN2(T_OP_2);   break;
+            case '>': TOKEN2(T_OP_1);   break;
             default: // Binary form is T_OP_4.
               TOKEN1(previous_token_is_value? T_OP_4: T_OP_2);
           }
