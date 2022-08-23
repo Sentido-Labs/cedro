@@ -248,6 +248,11 @@ eprint(const char * const fmt, ...)
     *                   T##_mut_p,              \
     * const             T##_p
 
+typedef enum {
+  // Use C89 instead of C90 because it is more distinctive.
+  C89, C99, C11, C17, C23
+} MUT_CONST_TYPE_VARIANTS(CStandard);
+
 /** Parameters set by command line options. */
 typedef struct Options {
   /// Apply the macros.
@@ -267,6 +272,8 @@ typedef struct Options {
   size_t embed_as_string;
   /// Use `defer` instead of `auto`.
   bool use_defer_instead_of_auto;
+  /// Which standard to target for output.
+  mut_CStandard c_standard;
 } MUT_CONST_TYPE_VARIANTS(Options);
 
 /** Binary string, `const unsigned char const*`. */
@@ -2756,8 +2763,9 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
     // Number literal separators.
     for (Byte_mut_p p = text.start_p; p is_not text.end_p; ++p) {
       char c = *p;
-      // TODO: add option to produce C23 separators instead.
-      if (c is_not '_' and c is_not '\'') putc(c, out);
+      if (c is '_' or c is '\'') {
+        if (options.c_standard is C23) putc('\'', out);
+      } else putc(c, out);
     }
   } else {
     fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
@@ -3478,11 +3486,15 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         goto exit;
       }
 
-      if        (m->len >= 10 and not options.enable_embed_directive and
+      if        (m->len >= 10 and
                  strn_eq("#include {", (char*)rest, 10)) {
+        eprintln(LANG("Aviso: «#include {}» está desfasado,"
+                      " mejor use «#embed».",
+                      "Warning: “#include {}” is deprecated,"
+                      " better use “#embed”."));
         len = 10;
         rest += len;
-      } else if (m->len >=  7 and     options.enable_embed_directive and
+      } else if (m->len >=  7 and options.c_standard is_not C23 and
                  strn_eq("#embed ",    (char*)rest,  7)) {
         len =  7;
         rest += len;
@@ -4140,6 +4152,18 @@ exit:
 }
 
 
+static Options DEFAULT_OPTIONS = {
+  .apply_macros              = true,
+  .escape_ucn                = false,
+  .discard_comments          = false,
+  .discard_space             = false,
+  .insert_line_directives    = false,
+  .enable_embed_directive    = false,
+  .embed_as_string           = 0,
+  .use_defer_instead_of_auto = false,
+  .c_standard                = C99
+};
+
 #ifndef USE_CEDRO_AS_LIBRARY
 
 static const char* const
@@ -4166,15 +4190,22 @@ usage_es =
     "  --no-discard-space    No descarta los espacios.    (implícito)\n"
     "  --insert-line-directives    Inserta directivas `#line`.\n"
     "  --no-insert-line-directives No inserta directivas `#line`. (implícito)\n"
-    "  --embed-directive     Activa la directiva `#embed`.\n"
-    "                        Lo mismo que `#pragma Cedro 1.0 #embed`.\n"
-    "  --no-embed-directive  Desactiva la directiva `#embed`. (implícito)\n"
+    "  --c99 Produce código fuente para C99. (implícito)\n"
+    "        Elimina los separadores de dígitos («'» | «_»),\n"
+    "        y expande `#embed`.\n"
+    "        No es un traductor entre distintas versiones de C.\n"
+    "  --c89 Produce código fuente para C89/C90. "
+    "Por ahora es lo mismo que --c99.\n"
+    "  --c11 Produce código fuente para C11.     "
+    "Por ahora es lo mismo que --c99.\n"
+    "  --c17 Produce código fuente para C17.     "
+    "Por ahora es lo mismo que --c99.\n"
+    "  --c23 Produce código fuente para C23.\n"
+    "        Por ejemplo, mantiene los sparadores de dígitos: «'» | «_» → «'»\n"
+    "        y no expande las directivas `#embed`.\n"
     "  --embed-as-string=<límite> Usa cadenas literales en vez de octetos\n"
     "                             para ficheros menores que <límite>.\n"
     "                             Valor implícito: 0\n"
-    "  --defer-instead-of-auto    Usa la palabra clave `defer` en vez de `auto`.\n"
-    "                             Lo mismo que `#pragma Cedro 1.0 defer`.\n"
-    "  --no-defer-instead-of-auto Usa la palabra clave `auto`. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
@@ -4212,15 +4243,22 @@ usage_en =
     "  --insert-line-directives    Insert `#line` directives.\n"
     "  --no-insert-line-directives Does not insert `#line` directives."
     " (default)\n"
-    "  --embed-directive     Enables the `#embed` directive.\n"
-    "                        Same as `#pragma Cedro 1.0 #embed`.\n"
-    "  --no-embed-directive  Disables the `#embed` directive. (default)\n"
+    "  --c99 Produces source code for C99. (default)\n"
+    "        Removes the digit separators («'» | «_»),\n"
+    "        and expands `#embed`.\n"
+    "        It is not a translator between different C versions.\n"
+    "  --c89 Produces source code for C89/C90. "
+    "For now it is the same as --c99.\n"
+    "  --c11 Produces source code for C11.     "
+    "For now it is the same as --c99.\n"
+    "  --c17 Produces source code for C17.     "
+    "For now it is the same as --c99.\n"
+    "  --c23 Produces source code for C23.\n"
+    "        For instance, maintains the digit separators: “'” | “_” → “'”\n"
+    "        and does not expand the `#embed` directives.\n"
     "  --embed-as-string=<limit> Use string literals instead of bytes\n"
     "                            for files smaller than <limit>.\n"
     "                            Default value: 0\n"
-    "  --defer-instead-of-auto    Use the keyword `defer` instead of `auto`.\n"
-    "                             Same as `#pragma Cedro 1.0 defer`.\n"
-    "  --no-defer-instead-of-auto Use the keyword `auto`. (default)\n"
     "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
@@ -4236,6 +4274,8 @@ usage_en =
 
 int main(int argc, char** argv)
 {
+  mut_Options options = DEFAULT_OPTIONS;
+
   int err = 0;
 
   if (argc > 2 and str_eq("new", argv[1])) {
@@ -4254,17 +4294,6 @@ int main(int argc, char** argv)
     destruct_Byte_array(&cmd);
     return err;
   }
-
-  mut_Options options = { // Remember to keep the usage strings updated.
-    .apply_macros              = true,
-    .escape_ucn                = false,
-    .discard_comments          = false,
-    .discard_space             = false,
-    .insert_line_directives    = false,
-    .enable_embed_directive    = false,
-    .embed_as_string           = 0,
-    .use_defer_instead_of_auto = false
-  };
 
   bool opt_print_markers    = false;
   bool opt_run_benchmark    = false;
@@ -4291,9 +4320,29 @@ int main(int argc, char** argv)
       } else if (str_eq("--insert-line-directives", arg) or
                  str_eq("--no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
+      } else if (str_eq("--c89", arg)) {
+        options.c_standard = C89;
+      } else if (str_eq("--c99", arg)) {
+        options.c_standard = C99;
+      } else if (str_eq("--c11", arg)) {
+        options.c_standard = C11;
+      } else if (str_eq("--c17", arg)) {
+        options.c_standard = C17;
+      } else if (str_eq("--c23", arg)) {
+        options.c_standard = C23;
       } else if (str_eq("--embed-directive", arg) or
                  str_eq("--no-embed-directive", arg)) {
-        options.enable_embed_directive = flag_value;
+        eprintln(LANG("Aviso: la opción «%s» está obsoleta,\n"
+                      "       use %s",
+                      "Warning: the option “%s” is obsolete,\n"
+                      "         use %s"),
+                 arg,
+                 flag_value?
+                 LANG("--c99 (implícita) para procesar #embed.",
+                      "--c99 (default) to process #embed."):
+                 LANG("--c23 para dejar los #embed al compilador.",
+                      "--c23 to leave the #embed to the compiler."));
+        options.c_standard = flag_value? C99: C23;
       } else if (strn_eq("--embed-as-string=", arg,
                          strlen("--embed-as-string="))) {
         char* end = arg + strlen("--embed-as-string=");
@@ -4307,7 +4356,13 @@ int main(int argc, char** argv)
         }
       } else if (str_eq("--defer-instead-of-auto", arg) or
                  str_eq("--no-defer-instead-of-auto", arg)) {
-        options.use_defer_instead_of_auto = flag_value;
+        eprintln(LANG("Error: la opción «%s» está obsoleta,\n"
+                      "       use `#pragma Cedro 1.0 defer`.",
+                      "Error: the option “%s” is obsolete,\n"
+                      "       use `#pragma Cedro 1.0 defer`."),
+                 arg);
+        err = 13;
+        return err;
       } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;

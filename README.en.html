@@ -21,17 +21,15 @@
         <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a> (<a href="#slice-notation-related-work">related work</a>).</li>
         <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">related work</a>)-->.</li>
         <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">related work</a>)-->.</li>
-        <li><a href="#binary-include"><em>Binary</em> inclusion <code>#include {...}</code>/<code>#embed "..."</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
+        <li><a href="#binary-include"><em>Binary</em> inclusion <code>#embed "..."</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
       </ol>
       <p>To activate it, the source file must contain this line:
         <code>#pragma Cedro 1.0</code><br/>
         Otherwise, the file is copied directly to the output.</p>
       <p>This line can contain certain options, for instance
-        <code>#pragma Cedro 1.0 defer,#embed</code>
+        <code>#pragma Cedro 1.0 defer</code>
         to activate the use of
-        <a href="#deferred-resource-release"><code>defer</code> instead of <code>auto</code></a>
-        and of
-        <a href="#binary-include"><code>#embed "…"</code> instead of <code>#include {…}</code></a>.</p>
+        <a href="#deferred-resource-release"><code>defer</code> instead of <code>auto</code></a>.</p>
       <p>The <b>source code</b> (<a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a> license) can be found at <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">the library</a>.<br/><code>cedro</code> only uses the standard C functions, <code>cedrocc</code> and <code>cedro-new</code> require <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
 
       <code>Usage: cedro [options] &lt;file.c&gt;…
@@ -44,7 +42,7 @@
   With cedrocc, the following options are the defaults:
     --insert-line-directives
   Code gets modified only after the line `#pragma Cedro 1.0`,
- which can include certain options: `#pragma Cedro 1.0 defer,#embed`
+ which can include certain options: `#pragma Cedro 1.0 defer`
 
   --apply-macros     Applies the macros: backstitch, defer, etc. (default)
   --no-apply-macros  Does not apply the macros.
@@ -56,15 +54,17 @@
   --no-discard-space    Does not discard whitespace. (default)
   --insert-line-directives    Insert `#line` directives.
   --no-insert-line-directives Does not insert `#line` directives. (default)
-  --embed-directive     Enables the `#embed` directive.
-                        Same as `#pragma Cedro 1.0 #embed`.
-  --no-embed-directive  Disables the `#embed` directive. (default)
   --embed-as-string=&lt;limit&gt; Use string literals instead of bytes
                             for files smaller than &lt;limit&gt;.
                             Default value: 0
-  --defer-instead-of-auto    Use the keyword `defer` instead of `auto`.
-                             Same as `#pragma Cedro 1.0 defer`.
-  --no-defer-instead-of-auto Use the keyword `auto`. (default)
+  --c99 Produces source code for C99. (default)
+        Expands `#embed`.
+        It is not a translator between different C versions.
+  --c89 Produces source code for C89/C90. For now it is the same as --c99.
+  --c11 Produces source code for C11.     For now it is the same as --c99.
+  --c17 Produces source code for C17.     For now it is the same as --c99.
+  --c23 Produces source code for C23.
+        Does not expand the `#embed` directives.
 
   --print-markers    Prints the markers.
   --no-print-markers Does not print the markers. (default)
@@ -115,6 +115,13 @@ clean:   remove bin/ directory, and clean also inside doc/.
  for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.
   The following option is the default:
     --cedro:insert-line-directives
+  Some GCC options activate Cedro options automatically:
+    --std=c90|c89|iso9899:1990|iso8999:199409 → --cedro:c90
+    --std=c99|c9x|iso9899:1999|iso9899:199x   → --cedro:c99
+    --std=c11|c1x|iso9899:2011                → --cedro:c11
+    --std=c17|c18|iso9899:2017|iso9899:2018   → --cedro:c17
+    --std=c2x                                 → --cedro:c23
+
   In addition, for each `#include`, if it finds the file it reads it and
  if it finds `#pragma Cedro 1.0` processes it and inserts the result
  in place of the `#include`.
@@ -435,8 +442,7 @@ int main() {
       because it is the default and can be replaced with <code>signed</code> as
       <a href="https://stackoverflow.com/a/60890064/291462">it has the same effect</a>.</p>
       <p>It is also possible to use <code>defer</code> instead of <code>auto</code>
-        with the option <code>--defer-instead-of-auto</code>,
-        or adding the keyword “defer” to the “pragma”:
+        adding the keyword “defer” to the “pragma”:
         <code>#pragma Cedro 1.0 <b>defer</b></code>.</p>
       <table>
         <tr>
@@ -1910,13 +1916,13 @@ int main(void)
     <section id="binary-include">
       <h2>Binary inclusion: <a class="anchor" href="#binary-include">#binary-include</a></h2>
       <p>Inserts a file as a byte array,
-        or as literal strings as described below.</p>
+        or as a literal string as described below.</p>
       <p>The name of the file is relative to the including C file.</p>
       <table>
         <tr>
           <td>
             <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
+<b>#pragma Cedro 1.0</b>
 const uint8_t image[] = {
 <b>#embed "../images/cedro-32x32.png"</b>
 };</code>
@@ -1932,7 +1938,7 @@ const uint8_t image[] = {
         </tr>
         <tr><td colspan="2">
       <p>The form <code>#include {...}</code> was the original in Cedro
-        and is kept for backwards compatibility,
+        and is kept for now because of backwards compatibility,
         while <code>#embed "..."</code> follows the future C23 standard
         (“<a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3017.htm">N3017 #embed - a scannable, tooling-friendly binary resource inclusion mechanism</a>”)
         except that it only accepts
@@ -1950,6 +1956,7 @@ const uint8_t image[] = {
 const uint8_t image
 <b>#include {../images/cedro-32x32.png}</b>
 ;</code>
+            <div><em>This is form is obsolete, and will be removed.</em></div>
           </td><td>
             <br/><code>#include &lt;stdint.h&gt;
 const uint8_t image
@@ -1967,7 +1974,7 @@ const uint8_t image
       <table>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const vertex_shader[] = {
 <b>#embed "shader.frag.glsl"</b>
 , 0x00 // Zero-terminated string.
@@ -1984,7 +1991,7 @@ const char const vertex_shader[] = {
         </tr>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const two_lines[] = {
 <b>#embed "text-line-1.txt"</b>
 , '\n',
@@ -2048,7 +2055,7 @@ const char const two_lines[] = {
       <table>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const dos_líneas[] = {
 <b>#embed "línea-de-texto-1.txt"</b>
 , '\n',
@@ -2072,7 +2079,7 @@ const char const dos_líneas[] = {
         </tr>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const fragment_shader[] = {
 <b>#embed "shader.frag.glsl"</b>
 , 0x00 // Zero-terminated string.
@@ -2097,7 +2104,7 @@ const char const fragment_shader[] = {
         <tr>
           <td>
             <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
+<b>#pragma Cedro 1.0</b>
 const uint8_t image[] = {
 <b>#embed "../images/cedro-32x32.png"</b>
 };</code>
@@ -2119,11 +2126,12 @@ const uint8_t image[<b>1559</b>] = <b>/* cedro-32x32.png */
 const uint8_t image
 <b>#include {../images/cedro-32x32.png}</b>
 ;</code>
+            <div><em>This is form is obsolete, and will be removed.</em></div>
           </td><td>
             <code class="command-line-option" title="Insert as string if the file is smaller than 1600 bytes.">--embed-as-string=1600</code>
             <code>#include &lt;stdint.h&gt;
 const uint8_t image
-[<b>1559</b>] = { /* cedro-32x32.png */
+[<b>1559</b>] = /* cedro-32x32.png */
 <b>"\211PNG\r\n"
 "\032\n"
 "\000\000\000\rIHDR\000\000\000 \000\000\000 \b\002…"
@@ -2145,7 +2153,7 @@ const uint8_t image
         <tr><td><url>assets.c</url><code>#include &lt;stdint.h&gt;
 #include &lt;stdlib.h&gt;
 
-<b>#pragma Cedro 1.0 #embed</b>
+<b>#pragma Cedro 1.0</b>
 
 const uint8_t image[] = {
 <b>#embed "../images/cedro-32x32.png"</b>

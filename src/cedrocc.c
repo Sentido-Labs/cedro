@@ -35,49 +35,6 @@
 #include <unistd.h>
 #include <sys/wait.h> // For WEXITSTATUS etc.
 
-static const char* const
-usage_es =
-    "Uso: cedrocc [opciones] <fichero.c> [<fichero2.o>…]\n"
-    "  Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
-    " y compila el resultado con «%s» mas los otros argumentos.\n"
-    "    cedrocc -o fichero fichero.c\n"
-    "    cedro fichero.c | cc -x c - -o fichero\n"
-    "  Las opciones se pasan tal cual al compilador, excepto las que\n"
-    " empiecen con «--cedro:…» que corresponden a opciones de cedro,\n"
-    " por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».\n"
-    "  La siguiente opción es implícita:\n"
-    "    --cedro:insert-line-directives\n"
-    "  Además, para cada `#include`, si encuentra el fichero lo lee y\n"
-    " si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado\n"
-    " en lugar del `#include`.\n"
-    "  Se puede especificar el compilador, p.ej. `gcc`:\n"
-    "    CEDRO_CC='gcc -x c - -x none' cedrocc …\n"
-    "  Para depuración, esto escribe el código que iría entubado a `cc`,\n"
-    " en `stdout`:\n"
-    "    CEDRO_CC='' cedrocc …"
-    ;
-static const char* const
-usage_en =
-    "Usage: cedrocc [options] <file.c> [<file2.o>…]\n"
-    "  Runs Cedro on the first file name that ends with “.c”,\n"
-    " and compiles the result with “%s” plus the other arguments.\n"
-    "    cedrocc -o file file.c\n"
-    "    cedro file.c | cc -x c - -o file\n"
-    "  The options get passed as is to the compiler, except for those that\n"
-    " start with “--cedro:…” that correspond to cedro options,\n"
-    " for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.\n"
-    "  The following option is the default:\n"
-    "    --cedro:insert-line-directives\n"
-    "  In addition, for each `#include`, if it finds the file it reads it and\n"
-    " if it finds `#pragma Cedro 1.0` processes it and inserts the result\n"
-    " in place of the `#include`.\n"
-    "  You can specify the compiler, e.g. `gcc`:\n"
-    "    CEDRO_CC='gcc -x c - -x none' cedrocc …\n"
-    "  For debugging, this writes the code that would be piped into `cc`,\n"
-    " into `stdout` instead:\n"
-    "    CEDRO_CC='' cedrocc …"
-    ;
-
 typedef size_t mut_size_t, * mut_size_t_mut_p, * const mut_size_t_p;
 typedef const size_t * size_t_mut_p, * const size_t_p;
 DEFINE_ARRAY_OF(size_t, 0, {});
@@ -405,8 +362,70 @@ include(const char* file_name, FILE* cc_stdin,
   return return_code;
 }
 
+static const char* const
+usage_es =
+    "Uso: cedrocc [opciones] <fichero.c> [<fichero2.o>…]\n"
+    "  Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,\n"
+    " y compila el resultado con «%s» mas los otros argumentos.\n"
+    "    cedrocc -o fichero fichero.c\n"
+    "    cedro fichero.c | cc -x c - -o fichero\n"
+    "  Las opciones se pasan tal cual al compilador, excepto las que\n"
+    " empiecen con «--cedro:…» que corresponden a opciones de cedro,\n"
+    " por ejemplo «--cedro:escape-ucn» es como «cedro --escape-ucn».\n"
+    "  La siguiente opción es implícita:\n"
+    "    --cedro:insert-line-directives\n"
+    "  Algunas opciones de GCC activan opciones de Cedro automáticamente:\n"
+    "    --std=c89|c90|iso9899:1990|iso8999:199409 → --cedro:c89\n"
+    "    --std=c99|c9x|iso9899:1999|iso9899:199x   → --cedro:c99\n"
+    "    --std=c11|c1x|iso9899:2011                → --cedro:c11\n"
+    "    --std=c17|c18|iso9899:2017|iso9899:2018   → --cedro:c17\n"
+    "    --std=c2x                                 → --cedro:c23\n"
+    "\n"
+    "  Además, para cada `#include`, si encuentra el fichero lo lee y\n"
+    " si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado\n"
+    " en lugar del `#include`.\n"
+    "\n"
+    "  Se puede especificar el compilador, p.ej. `gcc`:\n"
+    "    CEDRO_CC='gcc -x c - -x none' cedrocc …\n"
+    "  Para depuración, esto escribe el código que iría entubado a `cc`,\n"
+    " en `stdout`:\n"
+    "    CEDRO_CC='' cedrocc …"
+    ;
+static const char* const
+usage_en =
+    "Usage: cedrocc [options] <file.c> [<file2.o>…]\n"
+    "  Runs Cedro on the first file name that ends with “.c”,\n"
+    " and compiles the result with “%s” plus the other arguments.\n"
+    "    cedrocc -o file file.c\n"
+    "    cedro file.c | cc -x c - -o file\n"
+    "  The options get passed as is to the compiler, except for those that\n"
+    " start with “--cedro:…” that correspond to cedro options,\n"
+    " for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.\n"
+    "  The following option is the default:\n"
+    "    --cedro:insert-line-directives\n"
+    "  Some GCC options activate Cedro options automatically:\n"
+    "    --std=c89|c90|iso9899:1990|iso8999:199409 → --cedro:c89\n"
+    "    --std=c99|c9x|iso9899:1999|iso9899:199x   → --cedro:c99\n"
+    "    --std=c11|c1x|iso9899:2011                → --cedro:c11\n"
+    "    --std=c17|c18|iso9899:2017|iso9899:2018   → --cedro:c17\n"
+    "    --std=c2x                                 → --cedro:c23\n"
+    "\n"
+    "  In addition, for each `#include`, if it finds the file it reads it and\n"
+    " if it finds `#pragma Cedro 1.0` processes it and inserts the result\n"
+    " in place of the `#include`.\n"
+    "\n"
+    "  You can specify the compiler, e.g. `gcc`:\n"
+    "    CEDRO_CC='gcc -x c - -x none' cedrocc …\n"
+    "  For debugging, this writes the code that would be piped into `cc`,\n"
+    " into `stdout` instead:\n"
+    "    CEDRO_CC='' cedrocc …"
+    ;
+
 int main(int argc, char* argv[])
 {
+  mut_Options options = DEFAULT_OPTIONS;
+  options.insert_line_directives = true;
+
   int return_code = EXIT_SUCCESS;
 
   char* cc = getenv("CEDRO_CC");
@@ -424,14 +443,6 @@ int main(int argc, char* argv[])
   };
   auto destruct_IncludePaths(&include_context.paths);
   auto destruct_IncludePaths(&include_context.paths_quote);
-
-  mut_Options options = {
-    .apply_macros           = true,
-    .escape_ucn             = false,
-    .discard_comments       = false,
-    .discard_space          = false,
-    .insert_line_directives = true
-  };
 
   // The number of arguments is either the same if no .c file name given,
   // or one less when extracting the .c file name.
@@ -466,9 +477,45 @@ int main(int argc, char* argv[])
       } else if (str_eq("--cedro:insert-line-directives", arg) or
                  str_eq("--cedro:no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
+      } else if (str_eq("--cedro:c89", arg) or
+                 str_eq("-std=c89", arg) or
+                 str_eq("-std=c90", arg) or
+                 str_eq("-std=iso9899:1990", arg) or
+                 str_eq("-std=iso9899:199409", arg)) {
+        options.c_standard = C89;
+      } else if (str_eq("--cedro:c99", arg) or
+                 str_eq("-std=c99", arg) or
+                 str_eq("-std=c9x", arg) or
+                 str_eq("-std=iso9899:1999", arg) or
+                 str_eq("-std=iso9899:199x", arg)) {
+        options.c_standard = C99;
+      } else if (str_eq("--cedro:c11", arg) or
+                 str_eq("-std=c11", arg) or
+                 str_eq("-std=c1x", arg) or
+                 str_eq("-std=iso9899:2011", arg)) {
+        options.c_standard = C11;
+      } else if (str_eq("--cedro:c17", arg) or
+                 str_eq("-std=c17", arg) or
+                 str_eq("-std=c18", arg) or
+                 str_eq("-std=iso9899:2017", arg) or
+                 str_eq("-std=iso9899:2018", arg)) {
+        options.c_standard = C17;
+      } else if (str_eq("--cedro:c23", arg) or
+                 str_eq("-std=c2x", arg)) {
+        options.c_standard = C23;
       } else if (str_eq("--cedro:embed-directive", arg) or
                  str_eq("--cedro:no-embed-directive", arg)) {
-        options.enable_embed_directive = flag_value;
+        eprintln(LANG("Aviso: la opción «%s» está obsoleta,\n"
+                      "       use %s",
+                      "Warning: the option “%s” is obsolete,\n"
+                      "         use %s"),
+                 arg,
+                 flag_value?
+                 LANG("--cedro:c99 (implícita) para procesar #embed.",
+                      "--cedro:c99 (default) to process #embed."):
+                 LANG("--cedro:c23 para dejar los #embed al compilador.",
+                      "--cedro:c23 to leave the #embed to the compiler."));
+        options.c_standard = flag_value? C99: C23;
       } else if (strn_eq("--cedro:embed-as-string=", arg,
                          strlen("--cedro:embed-as-string="))) {
         char* end = arg + strlen("--cedro:embed-as-string=");
@@ -481,7 +528,12 @@ int main(int argc, char* argv[])
         }
       } else if (str_eq("--cedro:defer-instead-of-auto", arg) or
                  str_eq("--cedro:no-defer-instead-of-auto", arg)) {
-        options.use_defer_instead_of_auto = flag_value;
+        eprintln(LANG("Error: la opción «%s» está obsoleta,\n"
+                      "       use `#pragma Cedro 1.0 defer`.",
+                      "Error: the option “%s” is obsolete,\n"
+                      "       use `#pragma Cedro 1.0 defer`."),
+                 arg);
+        return 13;
       } else if (str_eq("--cedro:version", arg)) {
         eprintln(CEDRO_VERSION);
         return EXIT_SUCCESS;
