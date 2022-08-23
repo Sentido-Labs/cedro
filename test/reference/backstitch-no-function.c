@@ -1,3 +1,9 @@
+ristra_de_números[3]=44;
+ristra_de_números[2]=11;
+*ristra_de_números++ = 1;
+*ristra_de_números++ = 2;
+punto_central_de_figura.x=44;
+punto_central_de_figura.y=11;
 c->tamaño = (size_t)(cursor - inicio);
 c->x      = 24;
 c->válido = true;
