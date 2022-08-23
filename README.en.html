@@ -84,6 +84,24 @@
       <p>For API documentation, see <url><a href="doc/api/index.html">doc/api/index.html</a></url>
         after running <code>make doc</code> that requires having
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
+      <code>$ make help
+Available targets:
+release: optimized build, assertions disabled, NDEBUG defined.
+         → bin/cedro*
+debug:   debugging build, assertions enabled.
+         → bin/cedro*-debug
+static:  same as release, only statically linked.
+         → bin/cedro*-static
+doc:     build documentation with Doxygen https://www.doxygen.org
+         → doc/api/index.html
+test:    build both release and debug, then run test suite.
+check:   apply several static analysis tools:
+  sparse:   <a href="https://sparse.docs.kernel.org/">https://sparse.docs.kernel.org/</a>
+  valgrind: <a href="https://valgrind.org/">https://valgrind.org/</a>
+  gcc -fanalyzer:
+            <a href="https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html">https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html</a>
+clean:   remove bin/ directory, and clean also inside doc/.
+      </code>
 
       <h2><code id="cedrocc">cedrocc</code> <a class="anchor" href="#cedrocc">#cedrocc</a></h2>
       <p>The second executable, <code>cedrocc</code>, allows using Cedro as if it was part of the C compiler.</p>
