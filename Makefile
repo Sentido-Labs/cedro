@@ -64,20 +64,16 @@ static:  bin/$(NAME)-static bin/$(NAME)cc-static bin/$(NAME)-new-static
 bin/$(NAME)-debug: src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $<
-	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 bin/$(NAME):       src/cedro.c src/*.c src/*.h src/macros/*.h Makefile
 	@mkdir -p bin
 	$(CC) $(CFLAGS) -o $@ $< $(OPTIMIZATION)
-	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 
 bin/$(NAME)cc-debug: src/cedrocc.c Makefile bin/$(NAME)-debug
 	@mkdir -p bin
 	bin/$(NAME)-debug --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@
-	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ -o /dev/null $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 bin/$(NAME)cc:       src/cedrocc.c Makefile bin/$(NAME)
 	@mkdir -p bin
 	bin/$(NAME)       --insert-line-directives $< | $(CC) $(CFLAGS) -I src -x c - -o $@  $(OPTIMIZATION)
-	@if which valgrind >/dev/null; then CMD="$(VALGRIND_CHECK) --quiet $@ -o /dev/null $(TEST_ARGUMENTS)"; if $$CMD </dev/null >/dev/null; then echo Valgrind check passed: $@; else echo Valgrind check failed: $@; echo Run check with: "$(VALGRIND_CHECK) $@ $(TEST_ARGUMENTS)"; fi; fi
 
 bin/$(NAME)-new-debug: src/cedro-new.c template.zip Makefile bin/$(NAME)cc-debug
 	@mkdir -p bin
