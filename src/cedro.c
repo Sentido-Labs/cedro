@@ -83,14 +83,14 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 #endif
 
 static const char*
-lang()
+lang(void)
 {
   const char* lang = getenv("LANG");
   return lang? lang: "";
 }
 #define LANG(es, en) (strn_eq(lang(), "es", 2)? es: en)
 static bool
-lang_use_utf8()
+lang_use_utf8(void)
 {
   return strstr(lang(), "UTF-8");
 }
@@ -2370,7 +2370,7 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
             if (*cursor is ' ') { ++cursor; break; }
             ++cursor;
           }
-          Byte_mut_p start = cursor;
+          Byte_mut_p start;
           do {
             start = cursor;
             while (cursor is_not token_end and *cursor is_not ',') ++cursor;

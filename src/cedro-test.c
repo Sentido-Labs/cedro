@@ -29,7 +29,7 @@ char* to_string_Byte_array(Byte_array_p array)
 {
   char* string = malloc(array->len * sizeof(char) + 1);
   for (size_t i = 0; i < array->len; ++i) {
-    string[i] = *get_Byte_array(array, i);
+    string[i] = (char)*get_Byte_array(array, i);
   }
   string[array->len] = 0;
   return string;
