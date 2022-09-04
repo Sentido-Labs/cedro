@@ -27,7 +27,7 @@ MAIN=src/main.c
 # MAIN=src/main.nanovg.c
 
 LDFLAGS:=$(LDFLAGS) -L build/lib
-LIBRARIES:=$(LIBRARIES) lib/build/btree.c-0.2.1/btree.o
+LIBRARIES:=$(LIBRARIES) lib/build/btree.c-0.3.0/btree.o
 
 TEST_ARGUMENTS="--exit-after-brief-delay"
 

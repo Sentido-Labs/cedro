@@ -62,7 +62,7 @@ typedef unsigned char uint8_t;
 // Custom hash table from khash with a slightly different API:
 #include <hash-table.h>
 
-#include <btree.c-0.2.1/btree.h>
+#include <btree.c-0.3.0/btree.h>
 
 DEFINE_HASH_TABLE_STR(unsigned int, StringCount);
 struct string_count {
