@@ -469,6 +469,8 @@ as_c_string(mut_Byte_array_p _)
   return (const char *) _->start;
 }
 
+static const char* const hexadecimal_digit = "0123456789ABCDEF";
+
 typedef FILE* mut_File_p;
 typedef char*   mut_FilePath;
 typedef const char* FilePath;
@@ -2760,12 +2762,56 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
              mem_eq(get_Byte_array(src, m->start), "\\u0040", 6)) {
     putc('@', out);
   } else if (m->token_type is T_NUMBER) {
-    // Number literal separators.
-    for (Byte_mut_p p = text.start_p; p is_not text.end_p; ++p) {
-      char c = *p;
-      if (c is '_' or c is '\'') {
-        if (options.c_standard is C23) putc('\'', out);
-      } else putc(c, out);
+    if (options.c_standard is_not C23 and
+        text.start_p+2 < text.end_p /* Ensure p is valid below. */ and
+        *text.start_p is '0' and *(text.start_p+1) is 'b') {
+      // Binary literals are standard only from C23 onwards.
+      // As GCC extension since v4.3: https://gcc.gnu.org/gcc-4.3/changes.html
+      // https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
+      // https://gcc.gnu.org/onlinedocs/gcc/C-Dialect-Options.html
+      putc('0', out); putc('x', out);
+      Byte_mut_p p = text.start_p+2;
+      mut_Byte bit_count = 0;
+      while (p is_not text.end_p) {
+        char c = *p++;
+        if (c is_not '_' and c is_not '\'') ++bit_count;
+      }
+      bit_count &= 3;
+      p = text.start_p+2;
+      mut_Byte nibble = 0;
+      switch (bit_count) {
+        case 3:
+          while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+          if (*p++ is '1') nibble |= 4; // fall-through
+        case 2:
+          while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+          if (*p++ is '1') nibble |= 2; // fall-through
+        case 1:
+          while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+          if (*p++ is '1') nibble |= 1; // fall-through
+          putc(hexadecimal_digit[nibble], out);
+      }
+      nibble = 0;
+      while (p is_not text.end_p) {
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 8;
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 4;
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 2;
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 1;
+        putc(hexadecimal_digit[nibble], out);
+        nibble = 0;
+      }
+    } else {
+      // Number literal separators.
+      for (Byte_mut_p p = text.start_p; p is_not text.end_p; ++p) {
+        char c = *p;
+        if (c is '_' or c is '\'') {
+          if (options.c_standard is C23) putc('\'', out);
+        } else putc(c, out);
+      }
     }
   } else {
     fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
@@ -3644,7 +3690,6 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
           if        (feof(file)) { err = EIO;   }
           else if (ferror(file)) { err = errno; }
           else {
-            const char* const hexadecimal_digit = "0123456789ABCDEF";
             fputc('0', out);
             fputc('x', out);
             fputc(hexadecimal_digit[(c&0xF0)>>4], out);

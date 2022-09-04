@@ -13,7 +13,7 @@
         <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
         <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><img alt="Sentido-Labs.com" src="doc/sentido-labs-mono.svg" style="width:5em" width="157" height="33"/></a>
       </h1>
-      <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with seven features:</p>
+      <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with eight features:</p>
       <ol>
         <li>The <a href="#backstitch-macro"><em>backstitch</em> <code>@</code> macro</a> (<a href="#backstitch-macro-related-work">related work</a>).</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release <code>auto ...</code></a> or <code>defer ...</code> (<a href="#deferred-resource-release-related-work">related work</a>).</li>
@@ -22,6 +22,7 @@
         <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">related work</a>)-->.</li>
         <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">related work</a>)-->.</li>
         <li><a href="#binary-include"><em>Binary</em> inclusion <code>#embed "..."</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
+        <li>Better <a href="#number-literals">number literals</a> (<code>12'34</code> | <code>12_34</code> → <code>1234</code>, <code>0b1010</code> → <code>0xA</code>).</li>
       </ol>
       <p>To activate it, the source file must contain this line:
         <code>#pragma Cedro 1.0</code><br/>
@@ -58,13 +59,17 @@
                             for files smaller than &lt;limit&gt;.
                             Default value: 0
   --c99 Produces source code for C99. (default)
-        Expands `#embed`.
+        Removes the digit separators (“'” | “_”),
+        converts binary literals into hexadecimal (“0b1010” → “0xA”),
+        and expands `#embed`.
         It is not a translator between different C versions.
   --c89 Produces source code for C89/C90. For now it is the same as --c99.
   --c11 Produces source code for C11.     For now it is the same as --c99.
   --c17 Produces source code for C17.     For now it is the same as --c99.
   --c23 Produces source code for C23.
-        Does not expand the `#embed` directives.
+        For instance, maintains the digit separators (“'” | “_” → “'”),
+        the binary literals (“0b1010” → “0b1010”),
+        and does not expand the `#embed` directives.
 
   --print-markers    Prints the markers.
   --no-print-markers Does not print the markers. (default)
@@ -2227,6 +2232,46 @@ cc -o program main.o assets.o</code></td></tr>
           <li>“<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>”, 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>, <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
           <li>“<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>”, 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
         </ul>
+    </section>
+
+    <section id="number-literals">
+      <h2>Number literals: <a class="anchor" href="#number-literals">#number-literals</a></h2>
+      <p>Allows using digit separators (<code>&apos;</code> or <code>_</code>)
+      and binary literals (<code>0b…</code>).</p>
+      <p>Starting from C23, the apostrophe separator and the binary literals
+      are standard.
+      If your compiler accepts C23, you can use the option
+      <a href="#usage-cedro"><code>--c23</code></a> to leave them as they are.</p>
+      <p>Several compilers, for instance
+      <a href="https://gcc.gnu.org/gcc-4.3/changes.html">GCC starting from v4.3</a>,
+      allow binary literals
+      <a href="https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html">as extensions to the C language</a>.</p>
+      <table>
+        <tr>
+          <td><code>123&apos;45&apos;67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>123_45_67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>123&apos;45_67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>0b10100110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+        <tr>
+          <td><code>0b_1010_0110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+        <tr>
+          <td><code>0b&apos;1010_0110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+      </table>
     </section>
 
     <a class="link-to-table-of-contents" href="#">↑ Contents</a>

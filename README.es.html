@@ -13,7 +13,7 @@
         <span class="language-selector">Español, <a href="README.en.html">English</a></span>
         <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><img alt="Sentido-Labs.com" src="doc/sentido-labs-mono.svg" style="width:5em"/></a>
       </h1>
-      <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con siete prestaciones:</p>
+      <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con ocho prestaciones:</p>
       <ol>
         <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>@</code></a> [«<em>backstitch</em>» <a href="README.en.html#backstitch-macro">en inglés</a>] (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
         <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> o <code>defer ...</code> (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
@@ -22,6 +22,7 @@
         <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">obras relacionadas</a>)-->.</li>
         <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">obras relacionadas</a>)-->.</li>
         <li><a href="#binary-include">Inclusión <em>binaria</em> <code>#embed "..."</code></a> (<a href="#binary-include-related-work">obras relacionadas</a>).</li>
+        <li>Mejores <a href="#number-literals">literales numéricos</a> (<code>12'34</code> | <code>12_34</code> → <code>1234</code>, <code>0b1010</code> → <code>0xA</code>).</li>
       </ol>
       <p>Para activarlo, el fichero fuente debe contener esta línea:
         <code>#pragma Cedro 1.0</code><br/>
@@ -58,13 +59,17 @@
                              para ficheros menores que &lt;límite&gt;.
                              Valor implícito: 0
   --c99 Produce código fuente para C99. (implícito)
-        Expande `#embed`.
+        Elimina los separadores de dígitos («'» | «_»),
+        convierte literales binarios en hexadecimales («0b1010» → «0xA»),
+        y expande `#embed`.
         No es un traductor entre distintas versiones de C.
   --c89 Produce código fuente para C89/C90. Por ahora es lo mismo que --c99.
   --c11 Produce código fuente para C11.     Por ahora es lo mismo que --c99.
   --c17 Produce código fuente para C17.     Por ahora es lo mismo que --c99.
   --c23 Produce código fuente para C23.
-        No expande las directivas `#embed`.
+        Por ejemplo, mantiene los separadores de dígitos («'» | «_» → «'»),
+        los literales binarios («0b1010» → «0b1010»),
+        y no expande las directivas `#embed`.
 
   --print-markers    Imprime los marcadores.
   --no-print-markers No imprime los marcadores. (implícito)
@@ -2230,6 +2235,46 @@ cc -o programa main.o assets.o</code></td></tr>
           <li>«<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>», 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>», <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
           <li>«<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>», 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
         </ul>
+    </section>
+
+    <section id="number-literals">
+      <h2>Literales numéricos: <a class="anchor" href="#number-literals">#number-literals</a></h2>
+      <p>Permite usar separadores de dígitos (<code>&apos;</code> o <code>_</code>)
+      y literales binarios (<code>0b…</code>).</p>
+      <p>A partir de C23, el separador apóstrofe y los literales binarios
+      son estándar.
+      Si tu compilador acepta C23, puedes usar la opción
+      <a href="#usage-cedro"><code>--c23</code></a> para dejarlos como están.</p>
+      <p>Varios compiladores, por ejemplo
+      <a href="https://gcc.gnu.org/gcc-4.3/changes.html">GCC a partir de v4.3</a>,
+      permiten literales binarios
+      <a href="https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html">como extensión del lenguage C</a>.</p>
+      <table>
+        <tr>
+          <td><code>123&apos;45&apos;67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>123_45_67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>123&apos;45_67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>0b10100110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+        <tr>
+          <td><code>0b_1010_0110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+        <tr>
+          <td><code>0b&apos;1010_0110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+      </table>
     </section>
 
     <a class="link-to-table-of-contents" href="#">↑ Sumario</a>
