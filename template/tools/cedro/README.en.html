@@ -13,7 +13,7 @@
         <span class="language-selector"><a href="README.es.html">Español</a>, English</span>
         <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><img alt="Sentido-Labs.com" src="doc/sentido-labs-mono.svg" style="width:5em" width="157" height="33"/></a>
       </h1>
-      <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with seven features:</p>
+      <p style="clear:both"><em>Cedro</em> is a C language extension that works as a pre-processor with eight features:</p>
       <ol>
         <li>The <a href="#backstitch-macro"><em>backstitch</em> <code>@</code> macro</a> (<a href="#backstitch-macro-related-work">related work</a>).</li>
         <li><a href="#deferred-resource-release"><em>Deferred</em> resource release <code>auto ...</code></a> or <code>defer ...</code> (<a href="#deferred-resource-release-related-work">related work</a>).</li>
@@ -21,20 +21,19 @@
         <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a> (<a href="#slice-notation-related-work">related work</a>).</li>
         <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">related work</a>)-->.</li>
         <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">related work</a>)-->.</li>
-        <li><a href="#binary-include"><em>Binary</em> inclusion <code>#include {...}</code>/<code>#embed "..."</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
+        <li><a href="#binary-include"><em>Binary</em> inclusion <code>#embed "..."</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
+        <li>Better <a href="#number-literals">number literals</a> (<code>12'34</code> | <code>12_34</code> → <code>1234</code>, <code>0b1010</code> → <code>0xA</code>).</li>
       </ol>
       <p>To activate it, the source file must contain this line:
         <code>#pragma Cedro 1.0</code><br/>
         Otherwise, the file is copied directly to the output.</p>
       <p>This line can contain certain options, for instance
-        <code>#pragma Cedro 1.0 defer,#embed</code>
+        <code>#pragma Cedro 1.0 defer</code>
         to activate the use of
-        <a href="#deferred-resource-release"><code>defer</code> instead of <code>auto</code></a>
-        and of
-        <a href="#binary-include"><code>#embed "…"</code> instead of <code>#include {…}</code></a>.</p>
-      <p>The <b>source code</b> (<a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a> license) can be found at <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">the library</a>.<br/><code>cedro</code> only uses the standard C functions, <code>cedrocc</code> and <code>cedro-new</code> require <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
+        <a href="#deferred-resource-release"><code>defer</code> instead of <code>auto</code></a>.</p>
+      <p>The <b>source code</b> (<a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a> license) can be found at <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">the library</a>.<br/>To compile it, see <a href="#compile">Compile</a>.<br/><code>cedro</code> only uses the standard C functions, <code>cedrocc</code> and <code>cedro-new</code> require <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
 
-      <code>Usage: cedro [options] &lt;file.c&gt;…
+      <code id="usage-cedro">Usage: cedro [options] &lt;file.c&gt;…
        cedro new &lt;name&gt; # Runs: <a href="#cedro-new">cedro-new</a> &lt;name&gt;
   To read from stdin, put - instead of &lt;file.c&gt;.
   The result goes to stdout, can be compiled without intermediate file:
@@ -44,7 +43,7 @@
   With cedrocc, the following options are the defaults:
     --insert-line-directives
   Code gets modified only after the line `#pragma Cedro 1.0`,
- which can include certain options: `#pragma Cedro 1.0 defer,#embed`
+ which can include certain options: `#pragma Cedro 1.0 defer`
 
   --apply-macros     Applies the macros: backstitch, defer, etc. (default)
   --no-apply-macros  Does not apply the macros.
@@ -56,15 +55,21 @@
   --no-discard-space    Does not discard whitespace. (default)
   --insert-line-directives    Insert `#line` directives.
   --no-insert-line-directives Does not insert `#line` directives. (default)
-  --embed-directive     Enables the `#embed` directive.
-                        Same as `#pragma Cedro 1.0 #embed`.
-  --no-embed-directive  Disables the `#embed` directive. (default)
   --embed-as-string=&lt;limit&gt; Use string literals instead of bytes
                             for files smaller than &lt;limit&gt;.
                             Default value: 0
-  --defer-instead-of-auto    Use the keyword `defer` instead of `auto`.
-                             Same as `#pragma Cedro 1.0 defer`.
-  --no-defer-instead-of-auto Use the keyword `auto`. (default)
+  --c99 Produces source code for C99. (default)
+        Removes the digit separators (“'” | “_”),
+        converts binary literals into hexadecimal (“0b1010” → “0xA”),
+        and expands `#embed`.
+        It is not a translator between different C versions.
+  --c89 Produces source code for C89/C90. For now it is the same as --c99.
+  --c11 Produces source code for C11.     For now it is the same as --c99.
+  --c17 Produces source code for C17.     For now it is the same as --c99.
+  --c23 Produces source code for C23.
+        For instance, maintains the digit separators (“'” | “_” → “'”),
+        the binary literals (“0b1010” → “0b1010”),
+        and does not expand the `#embed` directives.
 
   --print-markers    Prints the markers.
   --no-print-markers Does not print the markers. (default)
@@ -85,9 +90,29 @@
         after running <code>make doc</code> that requires having
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
 
+      <h2><code id="compile">Compile</code> <a class="anchor" href="#compile">#compile</a></h2>
+      <p>The simplest way is <code>cc -o bin/cedro src/cedro.c</code>, but it’s more convenient to use <code>make</code>:</p>
+      <code>$ make help
+Available targets:
+release: optimized build, assertions disabled, NDEBUG defined.
+         → bin/cedro*
+debug:   debugging build, assertions enabled.
+         → bin/cedro*-debug
+static:  same as release, only statically linked.
+         → bin/cedro*-static
+doc:     build documentation with Doxygen https://www.doxygen.org
+         → doc/api/index.html
+test:    build both release and debug, then run test suite.
+check:   apply several static analysis tools:
+  sparse:   <a href="https://sparse.docs.kernel.org/">https://sparse.docs.kernel.org/</a>
+  valgrind: <a href="https://valgrind.org/">https://valgrind.org/</a>
+  gcc -fanalyzer:
+            <a href="https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html">https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html</a>
+clean:   remove bin/ directory, and clean also inside doc/.</code>
+
       <h2><code id="cedrocc">cedrocc</code> <a class="anchor" href="#cedrocc">#cedrocc</a></h2>
       <p>The second executable, <code>cedrocc</code>, allows using Cedro as if it was part of the C compiler.</p>
-      <code>Usage: cedrocc [options] &lt;file.c&gt; [&lt;file2.o&gt;…]
+      <code id="usage-cedrocc">Usage: cedrocc [options] &lt;file.c&gt; [&lt;file2.o&gt;…]
   Runs Cedro on the first file name that ends with “.c”,
  and compiles the result with “cc -x c - -x none” plus the other arguments.
     cedrocc -o file file.c
@@ -97,9 +122,17 @@
  for instance “--cedro:escape-ucn” is like “cedro --escape-ucn”.
   The following option is the default:
     --cedro:insert-line-directives
+  Some GCC options activate Cedro options automatically:
+    --std=c90|c89|iso9899:1990|iso8999:199409 → --cedro:c90
+    --std=c99|c9x|iso9899:1999|iso9899:199x   → --cedro:c99
+    --std=c11|c1x|iso9899:2011                → --cedro:c11
+    --std=c17|c18|iso9899:2017|iso9899:2018   → --cedro:c17
+    --std=c2x                                 → --cedro:c23
+
   In addition, for each `#include`, if it finds the file it reads it and
  if it finds `#pragma Cedro 1.0` processes it and inserts the result
  in place of the `#include`.
+
   You can specify the compiler, e.g. `gcc`:
     CEDRO_CC='gcc -x c - -x none' cedrocc …
   For debugging, this writes the code that would be piped into `cc`,
@@ -111,7 +144,7 @@
 
       <h2 id="cedro-new"><code>cedro-new</code> <a class="anchor" href="#cedro-new">#cedro-new</a></h2>
       <p>There is a third executable, <code>cedro-new</code>, that produces a program draft in a similar way to <code>cargo new</code> in Rust. <code>cedro new …</code> will actually run <code>cedro-new …</code>. The content is produced from the template in the <url>template/</url> directory, that gets included in the <code>cedro-new</code> executable at compilation.</p>
-      <code>Usage: cedro-new [options] &lt;name&gt;
+      <code id="usage-cedro-new">Usage: cedro-new [options] &lt;name&gt;
   Creates a directory named &lt;name&gt;/ with the template.
   -h, --help        Shows this message.
   -i, --interactive Asks for the names for command and project.
@@ -232,7 +265,7 @@ nvgFill(graphics_context);</code>
           <td><code>number_array[3]=44; number_array[2]=11;</code></td>
         </tr>
         <tr>
-          <td><code>*number_array++ = @ 1, 2;</code></td>
+          <td><code>*number_array++ @ = 1, = 2;</code></td>
           <td><code>*number_array++ = 1; *number_array++ = 2;</code></td>
         </tr>
         <tr>
@@ -368,6 +401,7 @@ int main() {
       <table>
         <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code>|</code></td><td><em><a href="http://doc.cat-v.org/unix/pipes/">pipe</a></em> operator</td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
         <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code>&</code></td><td><em><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">reverse application</a></em> operator</td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
+        <tr><th><a href="https://ocaml.org/">OCaml</a></th><td><code>|&gt;</code></td><td><em><a href="https://v2.ocaml.org/api/Stdlib.html#VAL(|%3E)">reverse application</a></em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
         <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code>|&gt;</code></td><td><em><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">pipe</a></em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
         <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code>-&gt;</code></td><td><em><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">threading</a></em> macro</td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
         <tr><th><a href="#">Cedro</a></th><td><code>@</code></td><td><em><a href="#backstitch-macro">backstitch</a></em> macro</td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
@@ -417,8 +451,7 @@ int main() {
       because it is the default and can be replaced with <code>signed</code> as
       <a href="https://stackoverflow.com/a/60890064/291462">it has the same effect</a>.</p>
       <p>It is also possible to use <code>defer</code> instead of <code>auto</code>
-        with the option <code>--defer-instead-of-auto</code>,
-        or adding the keyword “defer” to the “pragma”:
+        adding the keyword “defer” to the “pragma”:
         <code>#pragma Cedro 1.0 <b>defer</b></code>.</p>
       <table>
         <tr>
@@ -1068,13 +1101,13 @@ $ valgrind --leak-check=yes /tmp/find-number-decomposition
 …
 Jump from x=11 to x=37
 Found 157 = 58 + 99
-==1077== 
+==1077==
 ==1077== HEAP SUMMARY:
 ==1077==     in use at exit: 0 bytes in 0 blocks
 ==1077==   total heap usage: 2,236 allocs, 2,236 frees, 6,683 bytes allocated
-==1077== 
+==1077==
 ==1077== All heap blocks were freed -- no leaks are possible
-==1077== 
+==1077==
 ==1077== For lists of detected and suppressed errors, rerun with: -s
 ==1077== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)</code></td></tr>
         </table>
@@ -1892,13 +1925,13 @@ int main(void)
     <section id="binary-include">
       <h2>Binary inclusion: <a class="anchor" href="#binary-include">#binary-include</a></h2>
       <p>Inserts a file as a byte array,
-        or as literal strings as described below.</p>
+        or as a literal string as described below.</p>
       <p>The name of the file is relative to the including C file.</p>
       <table>
         <tr>
           <td>
             <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
+<b>#pragma Cedro 1.0</b>
 const uint8_t image[] = {
 <b>#embed "../images/cedro-32x32.png"</b>
 };</code>
@@ -1914,7 +1947,7 @@ const uint8_t image[] = {
         </tr>
         <tr><td colspan="2">
       <p>The form <code>#include {...}</code> was the original in Cedro
-        and is kept for backwards compatibility,
+        and is kept for now because of backwards compatibility,
         while <code>#embed "..."</code> follows the future C23 standard
         (“<a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3017.htm">N3017 #embed - a scannable, tooling-friendly binary resource inclusion mechanism</a>”)
         except that it only accepts
@@ -1932,6 +1965,7 @@ const uint8_t image[] = {
 const uint8_t image
 <b>#include {../images/cedro-32x32.png}</b>
 ;</code>
+            <div><em>This is form is obsolete, and will be removed.</em></div>
           </td><td>
             <br/><code>#include &lt;stdint.h&gt;
 const uint8_t image
@@ -1949,7 +1983,7 @@ const uint8_t image
       <table>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const vertex_shader[] = {
 <b>#embed "shader.frag.glsl"</b>
 , 0x00 // Zero-terminated string.
@@ -1966,7 +2000,7 @@ const char const vertex_shader[] = {
         </tr>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const two_lines[] = {
 <b>#embed "text-line-1.txt"</b>
 , '\n',
@@ -2001,7 +2035,7 @@ const char const two_lines[] = {
         allow much bigger strings.
       </p>
       <p>That’s why it’s necessary to specify a limit for the size:
-        if the file is greater goes over that limit,
+        if the file goes over that limit,
         the result will be an array of bytes instead of a string.</p>
       <p>In an informal test <code>/usr/bin/time -v</code>,
         taking the fastest run values with an 8 MB file,
@@ -2030,7 +2064,7 @@ const char const two_lines[] = {
       <table>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const dos_líneas[] = {
 <b>#embed "línea-de-texto-1.txt"</b>
 , '\n',
@@ -2054,14 +2088,14 @@ const char const dos_líneas[] = {
         </tr>
         <tr>
           <td>
-            <code><b>#pragma Cedro 1.0 #embed</b>
+            <code><b>#pragma Cedro 1.0</b>
 const char const fragment_shader[] = {
 <b>#embed "shader.frag.glsl"</b>
 , 0x00 // Zero-terminated string.
 };</code>
           </td><td>
             <code class="command-line-option" title="Insert as string if the file is smaller than 170 bytes.">--embed-as-string=170</code>
-            <code>const char const fragment_shader[<b>164</b>] = 
+            <code>const char const fragment_shader[<b>164</b>] =
 /* shader.frag.glsl */
 <b>"#version 140\n"
 "\n"
@@ -2079,7 +2113,7 @@ const char const fragment_shader[] = {
         <tr>
           <td>
             <code>#include &lt;stdint.h&gt;
-<b>#pragma Cedro 1.0 #embed</b>
+<b>#pragma Cedro 1.0</b>
 const uint8_t image[] = {
 <b>#embed "../images/cedro-32x32.png"</b>
 };</code>
@@ -2101,11 +2135,12 @@ const uint8_t image[<b>1559</b>] = <b>/* cedro-32x32.png */
 const uint8_t image
 <b>#include {../images/cedro-32x32.png}</b>
 ;</code>
+            <div><em>This is form is obsolete, and will be removed.</em></div>
           </td><td>
             <code class="command-line-option" title="Insert as string if the file is smaller than 1600 bytes.">--embed-as-string=1600</code>
             <code>#include &lt;stdint.h&gt;
 const uint8_t image
-[<b>1559</b>] = { /* cedro-32x32.png */
+[<b>1559</b>] = /* cedro-32x32.png */
 <b>"\211PNG\r\n"
 "\032\n"
 "\000\000\000\rIHDR\000\000\000 \000\000\000 \b\002…"
@@ -2127,7 +2162,7 @@ const uint8_t image
         <tr><td><url>assets.c</url><code>#include &lt;stdint.h&gt;
 #include &lt;stdlib.h&gt;
 
-<b>#pragma Cedro 1.0 #embed</b>
+<b>#pragma Cedro 1.0</b>
 
 const uint8_t image[] = {
 <b>#embed "../images/cedro-32x32.png"</b>
@@ -2201,6 +2236,46 @@ cc -o program main.o assets.o</code></td></tr>
           <li>“<a href="https://thephd.dev/finally-embed-in-c23">#embed is in C23</a>”, 2022-07-23, JeanHeyd Meneide. Discussion: <a href="https://lobste.rs/s/vwqjil/finally_embed_c">Lobsters 2022-07-23</a>, <a href="https://news.ycombinator.com/item?id=32201951">Hacker News 2022-07-23</a></li>
           <li>“<a href="https://tratt.net/laurie/blog/2022/whats_the_most_portable_way_to_include_binary_blobs_in_an_executable.html">What’s the Most Portable Way to Include Binary Blobs in an Executable?</a>”, 2022-07-25, Laurence Tratt. Discussion: <a href="https://lobste.rs/s/xhwvur/what_s_most_portable_way_include_binary">Lobsters 2022-07-25</a></li>
         </ul>
+    </section>
+
+    <section id="number-literals">
+      <h2>Number literals: <a class="anchor" href="#number-literals">#number-literals</a></h2>
+      <p>Allows using digit separators (<code>&apos;</code> or <code>_</code>)
+      and binary literals (<code>0b…</code>).</p>
+      <p>Starting from C23, the apostrophe separator and the binary literals
+      are standard.
+      If your compiler accepts C23, you can use the option
+      <a href="#usage-cedro"><code>--c23</code></a> to leave them as they are.</p>
+      <p>Several compilers, for instance
+      <a href="https://gcc.gnu.org/gcc-4.3/changes.html">GCC starting from v4.3</a>,
+      allow binary literals
+      <a href="https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html">as extensions to the C language</a>.</p>
+      <table>
+        <tr>
+          <td><code>123&apos;45&apos;67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>123_45_67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>123&apos;45_67</code></td>
+          <td><code>1234567</code></td>
+        </tr>
+        <tr>
+          <td><code>0b10100110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+        <tr>
+          <td><code>0b_1010_0110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+        <tr>
+          <td><code>0b&apos;1010_0110</code></td>
+          <td><code>0xA6</code></td>
+        </tr>
+      </table>
     </section>
 
     <a class="link-to-table-of-contents" href="#">↑ Contents</a>

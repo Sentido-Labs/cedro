@@ -83,14 +83,14 @@ typedef uint32_t SrcLenType; // Must be enough for the maximum token length.
 #endif
 
 static const char*
-lang()
+lang(void)
 {
   const char* lang = getenv("LANG");
   return lang? lang: "";
 }
 #define LANG(es, en) (strn_eq(lang(), "es", 2)? es: en)
 static bool
-lang_use_utf8()
+lang_use_utf8(void)
 {
   return strstr(lang(), "UTF-8");
 }
@@ -248,6 +248,11 @@ eprint(const char * const fmt, ...)
     *                   T##_mut_p,              \
     * const             T##_p
 
+typedef enum {
+  // Use C89 instead of C90 because it is more distinctive.
+  C89, C99, C11, C17, C23
+} MUT_CONST_TYPE_VARIANTS(CStandard);
+
 /** Parameters set by command line options. */
 typedef struct Options {
   /// Apply the macros.
@@ -267,6 +272,8 @@ typedef struct Options {
   size_t embed_as_string;
   /// Use `defer` instead of `auto`.
   bool use_defer_instead_of_auto;
+  /// Which standard to target for output.
+  mut_CStandard c_standard;
 } MUT_CONST_TYPE_VARIANTS(Options);
 
 /** Binary string, `const unsigned char const*`. */
@@ -461,6 +468,8 @@ as_c_string(mut_Byte_array_p _)
   *(_->start + _->len) = 0;
   return (const char *) _->start;
 }
+
+static const char* const hexadecimal_digit = "0123456789ABCDEF";
 
 typedef FILE* mut_File_p;
 typedef char*   mut_FilePath;
@@ -1103,36 +1112,67 @@ number(Byte_p start, Byte_p end)
 {
   Byte_mut_p cursor = start;
   mut_Byte c = *cursor;
-  if (c is '.') { ++cursor; if (cursor is end) return NULL; c = *cursor; }
-  // No need to check bounds thanks to PADDING_Byte_array:
-  if (c is '\\' and *(cursor+1) is '\n') { cursor += 2; c = *cursor; }
-  if (in('0',c,'9')) {
+  if (c is '.') {
     ++cursor;
+    if (cursor is end) return NULL;
+    c = *cursor;
+    if (c is '\\' and *(cursor+1) is '\n') { cursor += 2; c = *cursor; }
+  }
+  // No need to check bounds thanks to PADDING_Byte_array:
+  if        (c is '0' and *(cursor+1) is 'x') {
+    cursor += 2;
     while (cursor is_not end) {
       c = *cursor;
-      if (in('0',c,'9')) {
+      if (in('0',c,'9') or in('a',c,'f') or in('A',c,'F') or
+          c is '_' or c is '\'') {
         ++cursor;
-        continue;
-      } else if (c is '.') {
-        if (*(cursor - 1) is '.') return cursor - 1;
-        ++cursor;
-        continue;
-      } else if (c is 'e' or c is 'E' or c is 'p' or c is 'P') {
-        if (++cursor is end) break;
-        c = *cursor;
-        if (c is '+' or c is '-') {
-          ++cursor;
-          continue;
-        }
       } else if (c is '\\' and *(cursor+1) is '\n') {
         // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
         // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
         cursor += 2;
-        continue;
+      } else break;
+    }
+    return cursor;
+  } else if (c is '0' and *(cursor+1) is 'b') {
+    cursor += 2;
+    while (cursor is_not end) {
+      c = *cursor;
+      if (c is '0' or c is '1' or
+          c is '_' or c is '\'') {
+        ++cursor;
+      } else if (c is '\\' and *(cursor+1) is '\n') {
+        // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
+        // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
+        cursor += 2;
+      } else break;
+    }
+    return cursor;
+  } else if (in('0',c,'9')) {
+    ++cursor;
+    while (cursor is_not end) {
+      c = *cursor;
+      if (in('0',c,'9') or
+          c is '_' or c is '\'') {
+        ++cursor;
+      } else if (c is '.') {
+        if (*(cursor - 1) is '.') return cursor - 1;
+        ++cursor;
+      } else if (c is 'e' or c is 'E' or c is 'p' or c is 'P') {
+        if (++cursor is end) break;
+        c = *cursor;
+        if (c is_not '+' and c is_not '-') break;
+        ++cursor;
+      } else if (c is '\\' and *(cursor+1) is '\n') {
+        // “C8X Rationale” n897.pdf 5.1.1.2 paragraph 30
+        // http://www.open-std.org/jtc1/sc22/wg14/www/docs/n897.pdf#18
+        cursor += 2;
+      } else {
+        // C++ user-defined literals:
+        // https://en.cppreference.com/w/cpp/language/user_literal
+        Byte_p identifier_nondigit = identifier(cursor, end);
+        if (identifier_nondigit) cursor = identifier_nondigit;
+        break;
       }
-      Byte_p identifier_nondigit = identifier(cursor, end);
-      if (not identifier_nondigit) break;
-      cursor = identifier_nondigit;
     }
     return cursor;
   } else {
@@ -1969,7 +2009,7 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
         goto exit;
       }
       string.len = 1; string.start[0] = '"' /* Opening quotes. */;
-      }
+    }
     switch (m->token_type) {
       case T_CHARACTER:
         if (previous_token_type is_not T_COMMA and
@@ -1977,7 +2017,7 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
           err->position = m;
           err->message = "Missing comma.";
           goto exit;
-      }
+        }
         previous_token_type = m->token_type;
         // Anything valid inside a character literal
         // is also valid inside a string literal, just remove the apostrophes.
@@ -1988,23 +2028,24 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
           err->position = m;
           err->message = "Out of memory.";
           goto exit;
-      }
-      break;
+        }
+        break;
       case T_NUMBER:
         if (previous_token_type is_not T_COMMA and
             previous_token_type is_not T_NONE) {
           err->position = m;
           err->message = "Missing comma.";
           goto exit;
-      }
+        }
         previous_token_type = m->token_type;
         if (m->len is_not 0) {
           mut_Byte c = 0, digit;
           if (src->start[m->start] is '0' and m->len is_not 1) {
-            if (m->len is 4 and src->start[m->start+1] is 'x') {
+            if (src->start[m->start+1] is 'x') {
               for (Byte_mut_p p = &src->start[m->start+2], end = p + m->len-2;
                    p is_not end; ++p) {
                 digit = *p;
+                if (digit is '_') continue;
                 Byte value =
                     in('0',digit,'9')? digit-'0':
                     in('A',digit,'F')? digit-'A'+10:
@@ -2014,22 +2055,38 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
                   err->position = m;
                   err->message = "Error in hexadecimal byte literal.";
                   goto exit;
-      }
+                }
                 c = (c << 4) | value;
-      }
+              }
+            } else if (src->start[m->start+1] is 'b') {
+              for (Byte_mut_p p = &src->start[m->start+2], end = p + m->len-2;
+                   p is_not end; ++p) {
+                digit = *p;
+                if (digit is '_') continue;
+                Byte value =
+                    in('0',digit,'1')? digit-'0':
+                    0xFF;
+                if (value is 0xFF) {
+                  err->position = m;
+                  err->message = "Error in binary byte literal.";
+                  goto exit;
+                }
+                c = (c << 1) | value;
+              }
             } else {
               for (Byte_mut_p p = &src->start[m->start], end = p + m->len;
                    p is_not end; ++p) {
                 digit = *p;
+                if (digit is '_') continue;
                 Byte value = in('0',digit,'7')? digit-'0': 0xFF;
                 if (value is 0xFF) {
                   err->position = m;
                   err->message = "Error in octal byte literal.";
                   goto exit;
-      }
+                }
                 c = (c << 3) | value;
-      }
-      }
+              }
+            }
           } else {
             for (Byte_mut_p p = &src->start[m->start], end = p + m->len;
                  p is_not end; ++p) {
@@ -2039,10 +2096,10 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
                 err->position = m;
                 err->message = "Error in decimal byte literal.";
                 goto exit;
-      }
+              }
               c = (c * 10) + value;
-      }
-      }
+            }
+          }
           bool ok = true;
           switch (c) { // Adapted from unparse_fragment().
             case ' ': case '!': ok &= push_Byte_array(&string, c); break;
@@ -2055,7 +2112,7 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
             case '"': case '\\':
               ok &= (push_Byte_array(&string, '\\') and
                      push_Byte_array(&string, c));
-      break;
+              break;
             case '\n':
               ok &= push_str(&string, "\n\"\\n\"");
               if (ok) continue; // Avoid splitting the line here.
@@ -2073,13 +2130,13 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
                   push_Byte_array(&string, '0'+((c&0xC0)>>6)) and
                   push_Byte_array(&string, '0'+((c&0x38)>>3)) and
                   push_Byte_array(&string, '0'+((c&0x07)   ));
-      }
+          }
           if (not ok) {
             err->position = m;
             err->message = "Out of memory.";
             goto exit;
-      }
-      }
+          }
+        }
         break;
       case T_SPACE:
         if (m is_not start and (m-1)->token_type is T_COMMENT) {
@@ -2091,18 +2148,18 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
               err->position = m;
               err->message = "Out of memory.";
               goto exit;
-      }
+            }
             string.len = 1; string.start[0] = '"' /* Opening quotes. */;
           }
           push_Marker_array(markers, *m);
-      }
-      break;
+        }
+        break;
       case T_COMMA:
         if (previous_token_type is T_COMMA) {
           err->position = m;
           err->message = "Empty item.";
           goto exit;
-      }
+        }
         previous_token_type = m->token_type;
         break;
       default: // Copy any other markers, such as T_PREPROCESSOR and T_STRING.
@@ -2114,14 +2171,14 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
             err->position = m;
             err->message = "Out of memory.";
             goto exit;
-      }
+          }
           string.len = 1; string.start[0] = '"' /* Opening quotes. */;
-      }
+        }
         push_Marker_array(markers, *m);
         previous_token_type = m->token_type;
-      break;
-      }
-      }
+        break;
+    }
+  }
   if (string.len > 1 /* If there is more than the opening quotes. */) {
     if (not push_Byte_array(&string, '"' /* Closing quotes. */) or
         not push_Marker_array(markers,
@@ -2130,8 +2187,8 @@ append_byte_literals_as_strings(mut_Marker_array_p markers,
       err->position = start;
       err->message = "Out of memory.";
       goto exit;
-      }
-      }
+    }
+  }
 
 exit:
   destruct_Byte_array(&string);
@@ -2202,7 +2259,7 @@ prepare_binary_embedding(mut_Marker_array_p markers, mut_Byte_array_p src,
         error("Error getting size of included file: %s",
               as_c_string(&file_name));
         perror("");
-      break;
+        break;
       } else {
         mut_Marker_array replacement = init_Marker_array(10);
         // Go back to brackets and insert file size.
@@ -2238,9 +2295,9 @@ prepare_binary_embedding(mut_Marker_array_p markers, mut_Byte_array_p src,
                   // Optimize out the trailing zero byte.
                   delete_Marker_array(&replacement,
                                       (size_t)(m - replacement.start), 1);
-      }
-      break;
-  }
+                }
+                break;
+              }
             }
             size_t insertion_point = (size_t)(m - markers->start);
             if (err.message) {
@@ -2322,7 +2379,7 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
             if (*cursor is ' ') { ++cursor; break; }
             ++cursor;
           }
-          Byte_mut_p start = cursor;
+          Byte_mut_p start;
           do {
             start = cursor;
             while (cursor is_not token_end and *cursor is_not ',') ++cursor;
@@ -2541,7 +2598,7 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
               TOKEN2(T_OP_2);
               break;
             case '=': TOKEN2(T_OP_14);  break;
-            case '>': TOKEN2(T_OP_2);   break;
+            case '>': TOKEN2(T_OP_1);   break;
             default: // Binary form is T_OP_4.
               TOKEN1(previous_token_is_value? T_OP_4: T_OP_2);
           }
@@ -2704,6 +2761,58 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
   } else if (m->token_type is T_OTHER and m->len is 6 and
              mem_eq(get_Byte_array(src, m->start), "\\u0040", 6)) {
     putc('@', out);
+  } else if (m->token_type is T_NUMBER) {
+    if (options.c_standard is_not C23 and
+        text.start_p+2 < text.end_p /* Ensure p is valid below. */ and
+        *text.start_p is '0' and *(text.start_p+1) is 'b') {
+      // Binary literals are standard only from C23 onwards.
+      // As GCC extension since v4.3: https://gcc.gnu.org/gcc-4.3/changes.html
+      // https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
+      // https://gcc.gnu.org/onlinedocs/gcc/C-Dialect-Options.html
+      putc('0', out); putc('x', out);
+      Byte_mut_p p = text.start_p+2;
+      mut_Byte bit_count = 0;
+      while (p is_not text.end_p) {
+        char c = *p++;
+        if (c is_not '_' and c is_not '\'') ++bit_count;
+      }
+      bit_count &= 3;
+      p = text.start_p+2;
+      mut_Byte nibble = 0;
+      switch (bit_count) {
+        case 3:
+          while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+          if (*p++ is '1') nibble |= 4; // fall-through
+        case 2:
+          while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+          if (*p++ is '1') nibble |= 2; // fall-through
+        case 1:
+          while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+          if (*p++ is '1') nibble |= 1; // fall-through
+          putc(hexadecimal_digit[nibble], out);
+      }
+      nibble = 0;
+      while (p is_not text.end_p) {
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 8;
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 4;
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 2;
+        while ((*p is '_' or *p is '\'') and p is_not text.end_p) { ++p; }
+        if (*p++ is '1') nibble |= 1;
+          putc(hexadecimal_digit[nibble], out);
+          nibble = 0;
+      }
+    } else {
+      // Number literal separators.
+      for (Byte_mut_p p = text.start_p; p is_not text.end_p; ++p) {
+        char c = *p;
+        if (c is '_' or c is '\'') {
+          if (options.c_standard is C23) putc('\'', out);
+        } else putc(c, out);
+      }
+    }
   } else {
     fwrite(text.start_p, sizeof(text.start_p[0]), m->len, out);
   }
@@ -3423,11 +3532,15 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
         goto exit;
       }
 
-      if        (m->len >= 10 and not options.enable_embed_directive and
+      if        (m->len >= 10 and
                  strn_eq("#include {", (char*)rest, 10)) {
+        eprintln(LANG("Aviso: «#include {}» está desfasado,"
+                      " mejor use «#embed».",
+                      "Warning: “#include {}” is deprecated,"
+                      " better use “#embed”."));
         len = 10;
         rest += len;
-      } else if (m->len >=  7 and     options.enable_embed_directive and
+      } else if (m->len >=  7 and options.c_standard is_not C23 and
                  strn_eq("#embed ",    (char*)rest,  7)) {
         len =  7;
         rest += len;
@@ -3577,7 +3690,6 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
           if        (feof(file)) { err = EIO;   }
           else if (ferror(file)) { err = errno; }
           else {
-            const char* const hexadecimal_digit = "0123456789ABCDEF";
             fputc('0', out);
             fputc('x', out);
             fputc(hexadecimal_digit[(c&0xF0)>>4], out);
@@ -4085,6 +4197,18 @@ exit:
 }
 
 
+static Options DEFAULT_OPTIONS = {
+  .apply_macros              = true,
+  .escape_ucn                = false,
+  .discard_comments          = false,
+  .discard_space             = false,
+  .insert_line_directives    = false,
+  .enable_embed_directive    = false,
+  .embed_as_string           = 0,
+  .use_defer_instead_of_auto = false,
+  .c_standard                = C99
+};
+
 #ifndef USE_CEDRO_AS_LIBRARY
 
 static const char* const
@@ -4111,15 +4235,22 @@ usage_es =
     "  --no-discard-space    No descarta los espacios.    (implícito)\n"
     "  --insert-line-directives    Inserta directivas `#line`.\n"
     "  --no-insert-line-directives No inserta directivas `#line`. (implícito)\n"
-    "  --embed-directive     Activa la directiva `#embed`.\n"
-    "                        Lo mismo que `#pragma Cedro 1.0 #embed`.\n"
-    "  --no-embed-directive  Desactiva la directiva `#embed`. (implícito)\n"
+    "  --c99 Produce código fuente para C99. (implícito)\n"
+    "        Elimina los separadores de dígitos («'» | «_»),\n"
+    "        y expande `#embed`.\n"
+    "        No es un traductor entre distintas versiones de C.\n"
+    "  --c89 Produce código fuente para C89/C90. "
+    "Por ahora es lo mismo que --c99.\n"
+    "  --c11 Produce código fuente para C11.     "
+    "Por ahora es lo mismo que --c99.\n"
+    "  --c17 Produce código fuente para C17.     "
+    "Por ahora es lo mismo que --c99.\n"
+    "  --c23 Produce código fuente para C23.\n"
+    "        Por ejemplo, mantiene los sparadores de dígitos: «'» | «_» → «'»\n"
+    "        y no expande las directivas `#embed`.\n"
     "  --embed-as-string=<límite> Usa cadenas literales en vez de octetos\n"
     "                             para ficheros menores que <límite>.\n"
     "                             Valor implícito: 0\n"
-    "  --defer-instead-of-auto    Usa la palabra clave `defer` en vez de `auto`.\n"
-    "                             Lo mismo que `#pragma Cedro 1.0 defer`.\n"
-    "  --no-defer-instead-of-auto Usa la palabra clave `auto`. (implícito)\n"
     "\n"
     "  --print-markers    Imprime los marcadores.\n"
     "  --no-print-markers No imprime los marcadores. (implícito)\n"
@@ -4157,15 +4288,22 @@ usage_en =
     "  --insert-line-directives    Insert `#line` directives.\n"
     "  --no-insert-line-directives Does not insert `#line` directives."
     " (default)\n"
-    "  --embed-directive     Enables the `#embed` directive.\n"
-    "                        Same as `#pragma Cedro 1.0 #embed`.\n"
-    "  --no-embed-directive  Disables the `#embed` directive. (default)\n"
+    "  --c99 Produces source code for C99. (default)\n"
+    "        Removes the digit separators («'» | «_»),\n"
+    "        and expands `#embed`.\n"
+    "        It is not a translator between different C versions.\n"
+    "  --c89 Produces source code for C89/C90. "
+    "For now it is the same as --c99.\n"
+    "  --c11 Produces source code for C11.     "
+    "For now it is the same as --c99.\n"
+    "  --c17 Produces source code for C17.     "
+    "For now it is the same as --c99.\n"
+    "  --c23 Produces source code for C23.\n"
+    "        For instance, maintains the digit separators: “'” | “_” → “'”\n"
+    "        and does not expand the `#embed` directives.\n"
     "  --embed-as-string=<limit> Use string literals instead of bytes\n"
     "                            for files smaller than <limit>.\n"
     "                            Default value: 0\n"
-    "  --defer-instead-of-auto    Use the keyword `defer` instead of `auto`.\n"
-    "                             Same as `#pragma Cedro 1.0 defer`.\n"
-    "  --no-defer-instead-of-auto Use the keyword `auto`. (default)\n"
     "\n"
     "  --print-markers    Prints the markers.\n"
     "  --no-print-markers Does not print the markers. (default)\n"
@@ -4181,6 +4319,8 @@ usage_en =
 
 int main(int argc, char** argv)
 {
+  mut_Options options = DEFAULT_OPTIONS;
+
   int err = 0;
 
   if (argc > 2 and str_eq("new", argv[1])) {
@@ -4199,17 +4339,6 @@ int main(int argc, char** argv)
     destruct_Byte_array(&cmd);
     return err;
   }
-
-  mut_Options options = { // Remember to keep the usage strings updated.
-    .apply_macros              = true,
-    .escape_ucn                = false,
-    .discard_comments          = false,
-    .discard_space             = false,
-    .insert_line_directives    = false,
-    .enable_embed_directive    = false,
-    .embed_as_string           = 0,
-    .use_defer_instead_of_auto = false
-  };
 
   bool opt_print_markers    = false;
   bool opt_run_benchmark    = false;
@@ -4236,9 +4365,29 @@ int main(int argc, char** argv)
       } else if (str_eq("--insert-line-directives", arg) or
                  str_eq("--no-insert-line-directives", arg)) {
         options.insert_line_directives = flag_value;
+      } else if (str_eq("--c89", arg)) {
+        options.c_standard = C89;
+      } else if (str_eq("--c99", arg)) {
+        options.c_standard = C99;
+      } else if (str_eq("--c11", arg)) {
+        options.c_standard = C11;
+      } else if (str_eq("--c17", arg)) {
+        options.c_standard = C17;
+      } else if (str_eq("--c23", arg)) {
+        options.c_standard = C23;
       } else if (str_eq("--embed-directive", arg) or
                  str_eq("--no-embed-directive", arg)) {
-        options.enable_embed_directive = flag_value;
+        eprintln(LANG("Aviso: la opción «%s» está obsoleta,\n"
+                      "       use %s",
+                      "Warning: the option “%s” is obsolete,\n"
+                      "         use %s"),
+                 arg,
+                 flag_value?
+                 LANG("--c99 (implícita) para procesar #embed.",
+                      "--c99 (default) to process #embed."):
+                 LANG("--c23 para dejar los #embed al compilador.",
+                      "--c23 to leave the #embed to the compiler."));
+        options.c_standard = flag_value? C99: C23;
       } else if (strn_eq("--embed-as-string=", arg,
                          strlen("--embed-as-string="))) {
         char* end = arg + strlen("--embed-as-string=");
@@ -4252,7 +4401,13 @@ int main(int argc, char** argv)
         }
       } else if (str_eq("--defer-instead-of-auto", arg) or
                  str_eq("--no-defer-instead-of-auto", arg)) {
-        options.use_defer_instead_of_auto = flag_value;
+        eprintln(LANG("Error: la opción «%s» está obsoleta,\n"
+                      "       use `#pragma Cedro 1.0 defer`.",
+                      "Error: the option “%s” is obsolete,\n"
+                      "       use `#pragma Cedro 1.0 defer`."),
+                 arg);
+        err = 13;
+        return err;
       } else if (str_eq("--print-markers", arg) or
                  str_eq("--no-print-markers", arg)) {
         opt_print_markers = flag_value;
@@ -4349,7 +4504,7 @@ int main(int argc, char** argv)
       if (err) {
         print_file_error(err, opt_validate, src_ref.len);
         err = 12;
-      } else if (not validate_eq(&src,      &src_ref,
+      } else if (not validate_eq(&src, &src_ref,
                                  src_file_name, opt_validate)) {
         err = 27;
       }
