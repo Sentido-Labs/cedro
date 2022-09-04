@@ -31,9 +31,9 @@
         <code>#pragma Cedro 1.0 defer</code>
         para activar el uso de
         <a href="#deferred-resource-release"><code>defer</code> en vez de <code>auto</code></a>.</p>
-      <p>El <b>código fuente</b> (licencia <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a>) se encuentra en <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">la biblioteca</a>.<br/><code>cedro</code> sólo usa las funciones estándar C, <code>cedrocc</code> y <code>cedro-new</code> requieren <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
+      <p>El <b>código fuente</b> (licencia <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a>) se encuentra en <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">la biblioteca</a>.<br/>Para compilarlo, véase <a href="#compile">Compilar</a>.<br/><code>cedro</code> sólo usa las funciones estándar C, <code>cedrocc</code> y <code>cedro-new</code> requieren <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
 
-      <code>Uso: cedro [opciones] &lt;fichero.c&gt;…
+      <code id="usage-cedro">Uso: cedro [opciones] &lt;fichero.c&gt;…
      cedro new &lt;nombre&gt; # Ejecuta: <a href="#cedro-new">cedro-new</a> &lt;nombre&gt;
   Para leer desde stdin, se pone - en vez de &lt;fichero.c&gt;.
   El resultado va a stdout, se puede compilar sin fichero intermedio:
@@ -89,6 +89,9 @@
       <p>Para la documentación (en inglés) de la API, véase <url><a href="doc/api/index.html">doc/api/index.html</a></url>
         tras ejecutar <code>make doc</code> que necesita tener
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> instalado.</p>
+
+      <h2><code id="compile">Compilar</code> <a class="anchor" href="#compile">#compile</a></h2>
+      <p>Lo más sencillo es <code>cc -o bin/cedro src/cedro.c</code>, pero es más conveniente usar <code>make</code>:</p>
       <code>$ make help
 Objetivos disponibles:
 release: compilación optimizada, comprobaciones desactivadas, NDEBUG definido.
@@ -105,12 +108,11 @@ check:   aplica varias herramientas de análisis estático:
   valgrind: <a href="https://valgrind.org/">https://valgrind.org/</a>
   gcc -fanalyzer:
             <a href="https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html">https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html</a>
-clean:   elimina el directorio bin/, y limpia también dentro de doc/.
-      </code>
+clean:   elimina el directorio bin/, y limpia también dentro de doc/.</code>
 
       <h2><code id="cedrocc">cedrocc</code> <a class="anchor" href="#cedrocc">#cedrocc</a></h2>
       <p>El segundo ejecutable, <code>cedrocc</code>, permite usar Cedro como si fuera parte del compilador C.</p>
-      <code>Uso: cedrocc [opciones] &lt;fichero.c&gt; [&lt;fichero2.o&gt;…]
+      <code id="usage-cedrocc">Uso: cedrocc [opciones] &lt;fichero.c&gt; [&lt;fichero2.o&gt;…]
   Ejecuta Cedro en el primer nombre de fichero que acabe en «.c»,
  y compila el resultado con «cc -x c - -x none» mas los otros argumentos.
     cedrocc -o fichero fichero.c
@@ -130,6 +132,7 @@ clean:   elimina el directorio bin/, y limpia también dentro de doc/.
   Además, para cada `#include`, si encuentra el fichero lo lee y
  si encuentra `#pragma Cedro 1.0` lo procesa e inserta el resultado
  en lugar del `#include`.
+
   Se puede especificar el compilador, p.ej. `gcc`:
     CEDRO_CC='gcc -x c - -x none' cedrocc …
   Para depuración, esto escribe el código que iría entubado a `cc`,
@@ -141,7 +144,7 @@ clean:   elimina el directorio bin/, y limpia también dentro de doc/.
 
       <h2 id="cedro-new"><code>cedro-new</code> <a class="anchor" href="#cedro-new">#cedro-new</a></h2>
       <p>Hay un tercer ejecutable, <code>cedro-new</code>, que produce un borrador de programa de manera similar a <code>cargo new</code> en Rust. <code>cedro new …</code> en realidad ejecuta <code>cedro-new …</code>. El contenido se produce a partir de la plantilla en el directorio <url>template/</url>, que se incluye en el ejecutable <code>cedro-new</code> al compilarlo.</p>
-      <code>Uso: cedro-new [opciones] &lt;nombre&gt;
+      <code id="usage-cedro-new">Uso: cedro-new [opciones] &lt;nombre&gt;
   Crea un directorio llamado &lt;nombre&gt;/ con la plantilla.
   -h, --help        Muestra este mensaje.
   -i, --interactive Pregunta por los nombres de programa y proyecto.
@@ -398,6 +401,7 @@ int main() {
       <table>
         <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code>|</code></td><td>operador <em><a href="http://doc.cat-v.org/unix/pipes/">tubería</a></em></td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
         <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code>&</code></td><td>operador <em><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">aplicación inversa</a></em></td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
+        <tr><th><a href="https://ocaml.org/">OCaml</a></th><td><code>|&gt;</code></td><td>operador <em><a href="https://v2.ocaml.org/api/Stdlib.html#VAL(|%3E)">aplicación inversa</a></em></td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
         <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code>|&gt;</code></td><td>operador <em><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">tubería</a></em></td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
         <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code>-&gt;</code></td><td>macro <em><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">hilvanado</a></em></td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
         <tr><th><a href="#">Cedro</a></th><td><code>@</code></td><td>macro <em><a href="#backstitch-macro">pespunte</a></em></td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
@@ -1097,13 +1101,13 @@ $ valgrind --leak-check=yes /tmp/find-number-decomposition
 …
 Saltamos de x=11 a x=37
 Encontrada 157 = 58 + 99
-==1077== 
+==1077==
 ==1077== HEAP SUMMARY:
 ==1077==     in use at exit: 0 bytes in 0 blocks
 ==1077==   total heap usage: 2,236 allocs, 2,236 frees, 6,683 bytes allocated
-==1077== 
+==1077==
 ==1077== All heap blocks were freed -- no leaks are possible
-==1077== 
+==1077==
 ==1077== For lists of detected and suppressed errors, rerun with: -s
 ==1077== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)</code></td></tr>
         </table>
@@ -2094,7 +2098,7 @@ const char const sombreador_de_fragmento[] = {
 };</code>
           </td><td>
             <code class="command-line-option" title="Insertar como cadena si el fichero es menor de 170 octetos.">--embed-as-string=170</code>
-            <code>const char const sombreador_de_fragmento[<b>164</b>] = 
+            <code>const char const sombreador_de_fragmento[<b>164</b>] =
 /* shader.frag.glsl */
 <b>"#version 140\n"
 "\n"
@@ -2218,7 +2222,7 @@ cc -o programa main.o assets.o</code></td></tr>
           <a href="https://github.com/gwilymk/bin2c">bin2c of 2012</a>
           que produce literales de octeto como <code>xxd</code>),
           y aunque no he mirado su código fuente,
-          Cedro sigue 
+          Cedro sigue
           <a href="https://github.com/adobe/bin2c#encoding">lo especificado en su documentación</a>
           excepto los finales de línea, donde Cedro parte el literal de cadena
           de la misma forma que suele hacerse a mano

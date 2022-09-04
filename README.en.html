@@ -31,9 +31,9 @@
         <code>#pragma Cedro 1.0 defer</code>
         to activate the use of
         <a href="#deferred-resource-release"><code>defer</code> instead of <code>auto</code></a>.</p>
-      <p>The <b>source code</b> (<a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a> license) can be found at <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">the library</a>.<br/><code>cedro</code> only uses the standard C functions, <code>cedrocc</code> and <code>cedro-new</code> require <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
+      <p>The <b>source code</b> (<a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0</a> license) can be found at <a href="https://sentido-labs.com/es/biblioteca/?filter=cedro">the library</a>.<br/>To compile it, see <a href="#compile">Compile</a>.<br/><code>cedro</code> only uses the standard C functions, <code>cedrocc</code> and <code>cedro-new</code> require <a href="https://es.wikipedia.org/wiki/POSIX">POSIX</a>.</p>
 
-      <code>Usage: cedro [options] &lt;file.c&gt;…
+      <code id="usage-cedro">Usage: cedro [options] &lt;file.c&gt;…
        cedro new &lt;name&gt; # Runs: <a href="#cedro-new">cedro-new</a> &lt;name&gt;
   To read from stdin, put - instead of &lt;file.c&gt;.
   The result goes to stdout, can be compiled without intermediate file:
@@ -89,6 +89,9 @@
       <p>For API documentation, see <url><a href="doc/api/index.html">doc/api/index.html</a></url>
         after running <code>make doc</code> that requires having
         <a href="https://www.doxygen.nl/index.html">Doxygen</a> installed.</p>
+
+      <h2><code id="compile">Compile</code> <a class="anchor" href="#compile">#compile</a></h2>
+      <p>The simplest way is <code>cc -o bin/cedro src/cedro.c</code>, but it’s more convenient to use <code>make</code>:</p>
       <code>$ make help
 Available targets:
 release: optimized build, assertions disabled, NDEBUG defined.
@@ -105,12 +108,11 @@ check:   apply several static analysis tools:
   valgrind: <a href="https://valgrind.org/">https://valgrind.org/</a>
   gcc -fanalyzer:
             <a href="https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html">https://gcc.gnu.org/onlinedocs/gcc/Static-Analyzer-Options.html</a>
-clean:   remove bin/ directory, and clean also inside doc/.
-      </code>
+clean:   remove bin/ directory, and clean also inside doc/.</code>
 
       <h2><code id="cedrocc">cedrocc</code> <a class="anchor" href="#cedrocc">#cedrocc</a></h2>
       <p>The second executable, <code>cedrocc</code>, allows using Cedro as if it was part of the C compiler.</p>
-      <code>Usage: cedrocc [options] &lt;file.c&gt; [&lt;file2.o&gt;…]
+      <code id="usage-cedrocc">Usage: cedrocc [options] &lt;file.c&gt; [&lt;file2.o&gt;…]
   Runs Cedro on the first file name that ends with “.c”,
  and compiles the result with “cc -x c - -x none” plus the other arguments.
     cedrocc -o file file.c
@@ -130,6 +132,7 @@ clean:   remove bin/ directory, and clean also inside doc/.
   In addition, for each `#include`, if it finds the file it reads it and
  if it finds `#pragma Cedro 1.0` processes it and inserts the result
  in place of the `#include`.
+
   You can specify the compiler, e.g. `gcc`:
     CEDRO_CC='gcc -x c - -x none' cedrocc …
   For debugging, this writes the code that would be piped into `cc`,
@@ -141,7 +144,7 @@ clean:   remove bin/ directory, and clean also inside doc/.
 
       <h2 id="cedro-new"><code>cedro-new</code> <a class="anchor" href="#cedro-new">#cedro-new</a></h2>
       <p>There is a third executable, <code>cedro-new</code>, that produces a program draft in a similar way to <code>cargo new</code> in Rust. <code>cedro new …</code> will actually run <code>cedro-new …</code>. The content is produced from the template in the <url>template/</url> directory, that gets included in the <code>cedro-new</code> executable at compilation.</p>
-      <code>Usage: cedro-new [options] &lt;name&gt;
+      <code id="usage-cedro-new">Usage: cedro-new [options] &lt;name&gt;
   Creates a directory named &lt;name&gt;/ with the template.
   -h, --help        Shows this message.
   -i, --interactive Asks for the names for command and project.
@@ -398,6 +401,7 @@ int main() {
       <table>
         <tr><th><a href="https://en.wikipedia.org/wiki/Thompson_shell">Shell</a></th><td><code>|</code></td><td><em><a href="http://doc.cat-v.org/unix/pipes/">pipe</a></em> operator</td><td><code>echo x | f₁ | f₂ | f₃</code></td></tr>
         <tr><th><a href="https://www.haskell.org/">Haskell</a></th><td><code>&</code></td><td><em><a href="https://downloads.haskell.org/~ghc/9.2.1/docs/html/libraries/base-4.16.0.0/Data-Function.html#v:-38-">reverse application</a></em> operator</td><td><code>x & f₁ & f₂ & f₃</code></td></tr>
+        <tr><th><a href="https://ocaml.org/">OCaml</a></th><td><code>|&gt;</code></td><td><em><a href="https://v2.ocaml.org/api/Stdlib.html#VAL(|%3E)">reverse application</a></em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
         <tr><th><a href="https://elixir-lang.org/">Elixir</a></th><td><code>|&gt;</code></td><td><em><a href="https://hexdocs.pm/elixir/Kernel.html#%7C%3E/2">pipe</a></em> operator</td><td><code>x |&gt; f₁ |&gt; f₂ |&gt; f₃</code></td></tr>
         <tr><th><a href="https://clojure.org/guides/threading_macros">Clojure</a></th><td><code>-&gt;</code></td><td><em><a href="https://clojure.github.io/clojure/clojure.core-api.html#clojure.core/-%3E">threading</a></em> macro</td><td><code>(-&gt; x f₁ f₂ f₃)</code></td></tr>
         <tr><th><a href="#">Cedro</a></th><td><code>@</code></td><td><em><a href="#backstitch-macro">backstitch</a></em> macro</td><td><code>x @ f₁() @ f₂() @ f₃()</code></td></tr>
@@ -1097,13 +1101,13 @@ $ valgrind --leak-check=yes /tmp/find-number-decomposition
 …
 Jump from x=11 to x=37
 Found 157 = 58 + 99
-==1077== 
+==1077==
 ==1077== HEAP SUMMARY:
 ==1077==     in use at exit: 0 bytes in 0 blocks
 ==1077==   total heap usage: 2,236 allocs, 2,236 frees, 6,683 bytes allocated
-==1077== 
+==1077==
 ==1077== All heap blocks were freed -- no leaks are possible
-==1077== 
+==1077==
 ==1077== For lists of detected and suppressed errors, rerun with: -s
 ==1077== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)</code></td></tr>
         </table>
@@ -2031,7 +2035,7 @@ const char const two_lines[] = {
         allow much bigger strings.
       </p>
       <p>That’s why it’s necessary to specify a limit for the size:
-        if the file is greater goes over that limit,
+        if the file goes over that limit,
         the result will be an array of bytes instead of a string.</p>
       <p>In an informal test <code>/usr/bin/time -v</code>,
         taking the fastest run values with an 8 MB file,
@@ -2091,7 +2095,7 @@ const char const fragment_shader[] = {
 };</code>
           </td><td>
             <code class="command-line-option" title="Insert as string if the file is smaller than 170 bytes.">--embed-as-string=170</code>
-            <code>const char const fragment_shader[<b>164</b>] = 
+            <code>const char const fragment_shader[<b>164</b>] =
 /* shader.frag.glsl */
 <b>"#version 140\n"
 "\n"
