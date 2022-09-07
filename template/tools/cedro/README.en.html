@@ -20,7 +20,7 @@
         <li><a href="#label-break">Break out of <em>nested loops</em> <code>break <em>label</em>;</code></a> (<a href="#label-break-">related work</a>).</li>
         <li><a href="#slice-notation">Notation for array <em>slices</em> <code>array[start..end]</code></a> (<a href="#slice-notation-related-work">related work</a>).</li>
         <li><a href="#block-macros"><em>Block</em> macros <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">related work</a>)-->.</li>
-        <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">related work</a>)-->.</li>
+        <li><a href="#loop-macros"><em>Loop</em> macros <code>#foreach { ... #foreach }</code></a> (<a href="#loop-macros-related-work">related work</a>).</li>
         <li><a href="#binary-include"><em>Binary</em> inclusion <code>#embed "..."</code></a> (<a href="#binary-include-related-work">related work</a>).</li>
         <li>Better <a href="#number-literals">number literals</a> (<code>12'34</code> | <code>12_34</code> → <code>1234</code>, <code>0b1010</code> → <code>0xA</code>).</li>
       </ol>
@@ -1920,6 +1920,78 @@ int main(void)
           </td>
         </tr>
       </table>
+
+      <h3 id="loop-macros-related-work">Related work <a class="anchor" href="#loop-macros-related-work">#…-related-work</a></h3>
+      <p>This can be done without Cedro with a technique called
+        “<a href="https://en.wikipedia.org/wiki/X_Macro">X Macros</a>”.</p>
+      <blockquote>
+        <p>The X macro technique was used extensively in the operating system and utilities for the DECsystem-10 as early as 1968, and probably dates back further to PDP-1 and TX-0 programmers at MIT.</p>
+        <address>Randy Meyers in «<a href="https://www.drdobbs.com/the-new-c-x-macros/184401387">The New C: X Macros</a>», Dr.Dobb’s 2001-05-01</address>
+      </blockquote>
+      <table>
+        <tr><th>Cedro</th><th>X macro</th></tr>
+        <tr>
+          <td>
+            <code>typedef enum {
+#foreach { V {                  \
+  <b>SPACE</b>, <b>NUMBER</b>,                \
+  <b>KEYWORD</b>, <b>IDENTIFIER</b>, <b>OPERATOR</b> \
+  }
+  T_##<b>V</b>#,
+#foreach }
+} TokenType;</code>
+          </td><td>
+            <code>#define LIST_OF_VARIABLES                \
+  X(<b>SPACE</b>), X(<b>NUMBER</b>),                   \
+  X(<b>KEYWORD</b>), X(<b>IDENTIFIER</b>), X(<b>OPERATOR</b>)
+typedef enum {
+#define X(V) T_##V
+  LIST_OF_VARIABLES
+#undef X
+} TokenType;
+#undef LIST_OF_VARIABLES</code>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code>#foreach { <b>VALUES</b> {{            \
+  <b>SPACE</b>, <b>NUMBER</b>,                \
+  <b>KEYWORD</b>, <b>IDENTIFIER</b>, <b>OPERATOR</b> \
+  }}
+typedef enum {
+#foreach { <b>V</b> <b>VALUES</b>
+  T_##<b>V</b>#,
+#foreach }
+} TokenType;
+
+const char* const TokenType_STRING[] = {
+#foreach { <b>V</b> <b>VALUES</b>
+  #<b>V</b>#,
+#foreach }
+};
+#foreach }
+</code>
+          </td><td>
+            <code>#define LIST_OF_VARIABLES                \
+  X(<b>SPACE</b>), X(<b>NUMBER</b>),                   \
+  X(<b>KEYWORD</b>), X(<b>IDENTIFIER</b>), X(<b>OPERATOR</b>)
+
+typedef enum {
+#define X(V) T_##V
+  LIST_OF_VARIABLES
+#undef X
+} TokenType;
+
+const char* const TokenType_STRING[] = {
+#define X(V) #<b>V</b>
+  LIST_OF_VARIABLES
+#undef X
+};
+#undef LIST_OF_VARIABLES
+</code>
+          </td>
+        </tr>
+      </table>
     </section>
 
     <section id="binary-include">
@@ -2246,6 +2318,17 @@ cc -o program main.o assets.o</code></td></tr>
       are standard.
       If your compiler accepts C23, you can use the option
       <a href="#usage-cedro"><code>--c23</code></a> to leave them as they are.</p>
+      <p>I prefer the underscore,
+        but the C23 committe could not use it because of compatibility with C++,
+        which could not use it because it
+        <a href="https://open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3499.html#Underscore">conflicts with custom literal suffixes</a>
+        which already uses the underscore:</p>
+      <blockquote>
+        <p>The syntax of digit separators is ripe for bikeshed discussions about what character to use as the separator token. The most common suggestions from the community are to use underscore (<code>_</code>), a single quote (<code>&apos;</code>), or whitespace as these seem like they would not produce any lexical ambiguities. However, two of these suggestions turn out to have usability issues in practice.</p>
+        <p>[...] Use of an underscore character is also problematic, but only for C++. C++ has the ability for users to define custom literal suffixes [<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2765.pdf">WG21 N2765</a>], and these suffixes are required to be named with a legal C++ identifier, which includes the underscore character. Using an underscore as a digit separator then becomes ambiguous for a construct like <code>0x1234_a</code> (does the <code>_a</code> require a lookup for a user-defined literal
+          suffix or is it part of the hexadecimal constant?).</p>
+        <address>Aaaron Ballman in <a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2606.pdf">N2606 “Digit Separators”</a>.</address>
+      </blockquote>
       <p>Several compilers, for instance
       <a href="https://gcc.gnu.org/gcc-4.3/changes.html">GCC starting from v4.3</a>,
       allow binary literals

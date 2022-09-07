@@ -20,7 +20,7 @@
         <li><a href="#label-break">Salida de <em>bucles anidados</em> <code>break <em>etiqueta</em>;</code></a> (<a href="#label-break-related-work">obras relacionadas</a>).</li>
         <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code><em>ristra</em>[<em>inicio</em>..<em>fin</em>]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
         <li><a href="#block-macros">Macros de <em>bloque</em> <code>#define { ... #define }</code></a><!-- (<a href="#block-macros-related-work">obras relacionadas</a>)-->.</li>
-        <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a><!-- (<a href="#loop-macros-related-work">obras relacionadas</a>)-->.</li>
+        <li><a href="#loop-macros">Macros de <em>bucle</em> <code>#foreach { ... #foreach }</code></a> (<a href="#loop-macros-related-work">obras relacionadas</a>).</li>
         <li><a href="#binary-include">Inclusión <em>binaria</em> <code>#embed "..."</code></a> (<a href="#binary-include-related-work">obras relacionadas</a>).</li>
         <li>Mejores <a href="#number-literals">literales numéricos</a> (<code>12'34</code> | <code>12_34</code> → <code>1234</code>, <code>0b1010</code> → <code>0xA</code>).</li>
       </ol>
@@ -1920,6 +1920,78 @@ int main(void)
           </td>
         </tr>
       </table>
+
+      <h3 id="loop-macros-related-work">Obras relacionadas <a class="anchor" href="#loop-macros-related-work">#…-related-work</a></h3>
+      <p>Esto puede hacerse sin Cedro con la llamadas
+        «<a href="https://en.wikipedia.org/wiki/X_Macro">X Macros</a>».</p>
+      <blockquote>
+        <p>The X macro technique was used extensively in the operating system and utilities for the DECsystem-10 as early as 1968, and probably dates back further to PDP-1 and TX-0 programmers at MIT.</p>
+        <address>Randy Meyers en «<a href="https://www.drdobbs.com/the-new-c-x-macros/184401387">The New C: X Macros</a>», Dr.Dobb’s 2001-05-01</address>
+      </blockquote>
+      <table>
+        <tr><th>Cedro</th><th>X macro</th></tr>
+        <tr>
+          <td>
+            <code>typedef enum {
+#foreach { V {                           \
+  <b>ESPACIO</b>, <b>NÚMERO</b>,                       \
+  <b>PALABRA_CLAVE</b>, <b>IDENTIFICADOR</b>, <b>OPERADOR</b> \
+  }
+  T_##<b>V</b>#,
+#foreach }
+} TipoDePieza;</code>
+          </td><td>
+            <code>#define LISTA_DE_VARIABLES \
+  X(<b>ESPACIO</b>), X(<b>NÚMERO</b>),   \
+  X(<b>PALABRA_CLAVE</b>), X(<b>IDENTIFICADOR</b>), X(<b>OPERADOR</b>)
+typedef enum {
+#define X(V) T_##V
+  LISTA_DE_VARIABLES
+#undef X
+} TipoDePieza;
+#undef LISTA_DE_VARIABLES</code>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code>#foreach { <b>VALORES</b> {{                    \
+  <b>ESPACIO</b>, <b>NÚMERO</b>,                       \
+  <b>PALABRA_CLAVE</b>, <b>IDENTIFICADOR</b>, <b>OPERADOR</b> \
+  }}
+typedef enum {
+#foreach { <b>V</b> <b>VALORES</b>
+  T_##<b>V</b>#,
+#foreach }
+} TipoDePieza;
+
+const char* const TipoDePieza_CADENA[] = {
+#foreach { <b>V</b> <b>VALORES</b>
+  #<b>V</b>#,
+#foreach }
+};
+#foreach }
+</code>
+          </td><td>
+            <code>#define LIST_OF_VARIABLES \
+  X(<b>ESPACIO</b>), X(<b>NÚMERO</b>),  \
+  X(<b>PALABRA_CLAVE</b>), X(<b>IDENTIFICADOR</b>), X(<b>OPERADOR</b>)
+
+typedef enum {
+#define X(V) T_##V
+  LISTA_DE_VARIABLES
+#undef X
+} TipoDePieza;
+
+const char* const TipoDePieza_CADENA[] = {
+#define X(V) #<b>V</b>
+  LISTA_DE_VARIABLES
+#undef X
+};
+#undef LISTA_DE_VARIABLES
+</code>
+          </td>
+        </tr>
+      </table>
     </section>
 
     <section id="binary-include">
@@ -2244,15 +2316,26 @@ cc -o programa main.o assets.o</code></td></tr>
     <section id="number-literals">
       <h2>Literales numéricos: <a class="anchor" href="#number-literals">#number-literals</a></h2>
       <p>Permite usar separadores de dígitos (<code>&apos;</code> o <code>_</code>)
-      y literales binarios (<code>0b…</code>).</p>
+        y literales binarios (<code>0b…</code>).</p>
       <p>A partir de C23, el separador apóstrofe y los literales binarios
-      son estándar.
-      Si tu compilador acepta C23, puedes usar la opción
-      <a href="#usage-cedro"><code>--c23</code></a> para dejarlos como están.</p>
+        son estándar.
+        Si tu compilador acepta C23, puedes usar la opción
+        <a href="#usage-cedro"><code>--c23</code></a> para dejarlos como están.</p>
+      <p>Yo prefiero el subrayado,
+        pero el comité del C23 no pudo usarlo por compatibilidad con el C++,
+        que no pudo usarlo porque
+        <a href="https://open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3499.html#Underscore">choca con los sufijos definibles</a>
+        que ya usaban el subrayado:</p>
+      <blockquote>
+        <p>The syntax of digit separators is ripe for bikeshed discussions about what character to use as the separator token. The most common suggestions from the community are to use underscore (<code>_</code>), a single quote (<code>&apos;</code>), or whitespace as these seem like they would not produce any lexical ambiguities. However, two of these suggestions turn out to have usability issues in practice.</p>
+        <p>[...] Use of an underscore character is also problematic, but only for C++. C++ has the ability for users to define custom literal suffixes [<a href="https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2008/n2765.pdf">WG21 N2765</a>], and these suffixes are required to be named with a legal C++ identifier, which includes the underscore character. Using an underscore as a digit separator then becomes ambiguous for a construct like <code>0x1234_a</code> (does the <code>_a</code> require a lookup for a user-defined literal
+          suffix or is it part of the hexadecimal constant?).</p>
+        <address>Aaaron Ballman en <a href="https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2606.pdf">N2606 “Digit Separators”</a>.</address>
+      </blockquote>
       <p>Varios compiladores, por ejemplo
-      <a href="https://gcc.gnu.org/gcc-4.3/changes.html">GCC a partir de v4.3</a>,
-      permiten literales binarios
-      <a href="https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html">como extensión del lenguage C</a>.</p>
+        <a href="https://gcc.gnu.org/gcc-4.3/changes.html">GCC a partir de v4.3</a>,
+        permiten literales binarios
+        <a href="https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html">como extensión del lenguage C</a>.</p>
       <table>
         <tr>
           <td><code>123&apos;45&apos;67</code></td>
