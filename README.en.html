@@ -1684,8 +1684,8 @@ void print_Point(Point point, FILE* out)
 
 int main(void)
 {
-  Punto punto = { .x = 12.3, .y = 4.56, .color = 0xFFa3f193 };
-  imprime_Punto(punto, stderr);
+  Point point = { .x = 12.3, .y = 4.56, .colour = 0xFFa3f193 };
+  print_Point(point, stderr);
 }</code>
           </td><td><br/>
             <code>#include &lt;stdio.h&gt;
@@ -2137,10 +2137,10 @@ const char const two_lines[] = {
         <tr>
           <td>
             <code><b>#pragma Cedro 1.0</b>
-const char const dos_líneas[] = {
-<b>#embed "línea-de-texto-1.txt"</b>
+const char const two_lines[] = {
+<b>#embed "text-line-1.txt"</b>
 , '\n',
-<b>#embed "línea-de-texto-2.txt"</b>
+<b>#embed "text-line-2.txt"</b>
 , 0x00
 };</code>
           </td><td>
