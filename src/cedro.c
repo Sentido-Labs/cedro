@@ -272,6 +272,9 @@ typedef struct Options {
   size_t embed_as_string;
   /// Use `defer` instead of `auto`.
   bool use_defer_instead_of_auto;
+  /// Convert `object->function(...)` to `object->function(object, ...)`
+  ///     and `object.function(...)`  to `object.function(&object, ...)`.
+  bool pass_self_to_member_functions;
   /// Which standard to target for output.
   mut_CStandard c_standard;
 } MUT_CONST_TYPE_VARIANTS(Options);
@@ -2388,6 +2391,8 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
               options->enable_embed_directive = true;
             } else if (len is 5 and mem_eq("defer", start, len)) {
               options->use_defer_instead_of_auto = true;
+            } else if (len is 4 and mem_eq("self", start, len)) {
+              options->pass_self_to_member_functions = true;
             }
             if (cursor is_not token_end) ++cursor;
           } while (cursor is_not token_end);
@@ -4054,7 +4059,8 @@ unparse(Marker_array_slice markers,
 }
 
 typedef void (*MacroFunction_p)(mut_Marker_array_p markers,
-                                mut_Byte_array_p src);
+                                mut_Byte_array_p src,
+                                Options options);
 typedef const struct Macro {
   MacroFunction_p function;
   const char* name;
@@ -4099,7 +4105,7 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name,
     if (options.apply_macros) {
       Macro_p macro = macros;
       while (macro->name and macro->function) {
-        macro->function(&markers, src_p);
+        macro->function(&markers, src_p, options);
         ++macro;
       }
     }
@@ -4198,15 +4204,16 @@ exit:
 
 
 static Options DEFAULT_OPTIONS = {
-  .apply_macros              = true,
-  .escape_ucn                = false,
-  .discard_comments          = false,
-  .discard_space             = false,
-  .insert_line_directives    = false,
-  .enable_embed_directive    = false,
-  .embed_as_string           = 0,
-  .use_defer_instead_of_auto = false,
-  .c_standard                = C99
+  .apply_macros                  = true,
+  .escape_ucn                    = false,
+  .discard_comments              = false,
+  .discard_space                 = false,
+  .insert_line_directives        = false,
+  .enable_embed_directive        = false,
+  .embed_as_string               = 0,
+  .use_defer_instead_of_auto     = false,
+  .pass_self_to_member_functions = false,
+  .c_standard                    = C99
 };
 
 #ifndef USE_CEDRO_AS_LIBRARY
@@ -4513,7 +4520,7 @@ int main(int argc, char** argv)
       if (options.apply_macros) {
         Macro_p macro = macros;
         while (macro->name and macro->function) {
-          macro->function(&markers, &src);
+          macro->function(&markers, &src, options);
           ++macro;
         }
       }

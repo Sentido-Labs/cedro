@@ -2,7 +2,8 @@
  * vi: set et ts=2 sw=2: */
 /// Reorganize `obj @ fn1(a), fn2(b)` as `fn1(obj, a), fn2(obj, b)`.
 static void
-macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src)
+macro_backstitch(mut_Marker_array_p markers, mut_Byte_array_p src,
+                 Options options)
 {
   Marker_mut_p start  = start_of_Marker_array(markers);
   Marker_mut_p cursor = start;

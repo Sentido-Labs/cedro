@@ -2,7 +2,8 @@
  * vi: set et ts=2 sw=2: */
 /// Simple `defer`-style functionality using the `auto` keyword.
 static void
-macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src);
+macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src,
+            Options options);
 
 typedef struct DeferredAction {
   size_t level;
@@ -120,7 +121,8 @@ exit_level(mut_DeferredAction_array_p pending, size_t level)
 }
 
 static void
-macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
+macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src,
+            Options options)
 {
   Marker space       = Marker_from(src, " ", T_SPACE);
   Marker block_start = Marker_from(src, "{", T_BLOCK_START);

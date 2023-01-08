@@ -334,7 +334,7 @@ include(const char* file_name, FILE* cc_stdin,
 
     Macro_p macro = macros;
     while (macro->name and macro->function) {
-      macro->function(&markers, &src);
+      macro->function(&markers, &src, options);
       ++macro;
     }
 

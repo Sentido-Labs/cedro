@@ -13,9 +13,10 @@
         <span class="language-selector">Español, <a href="README.en.html">English</a></span>
         <a style="display:inline-block;float:right;font-size:1rem;padding:0.5em" href="http://sentido-labs.com" class="img"><img alt="Sentido-Labs.com" src="doc/sentido-labs-mono.svg" style="width:5em"/></a>
       </h1>
-      <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con ocho prestaciones:</p>
+      <p><em>Cedro</em> es una extensión del lenguaje C que funciona como pre-procesador con nueve prestaciones:</p>
       <ol>
         <li>La <a href="#backstitch-macro">macro <em>pespunte</em> <code>x@ f(), g(y);</code> → <code>f(x); g(x, y);</code></a> (<a href="#backstitch-macro-related-work">obras relacionadas</a>).</li>
+        <li>La <a href="#self-macro">macro <em>mismo</em> <code>x->f(); a.g(y);</code> → <code>x->f(x); a.g(&amp;a, y);</code>.</li>
         <li><a href="#deferred-resource-release">Devolución <em>diferida</em> de recursos <code>auto ...</code></a> o <code>defer ...</code> (<a href="#deferred-resource-release-related-work">obras relacionadas</a>).</li>
         <li><a href="#label-break">Salida de <em>bucles anidados</em> <code>break <em>etiqueta</em>;</code></a> (<a href="#label-break-related-work">obras relacionadas</a>).</li>
         <li><a href="#slice-notation">Notación para <em>porciones</em> de ristras <code><em>ristra</em>[<em>inicio</em>..<em>fin</em>]</code></a> (<a href="#slice-notation-related-work">obras relacionadas</a>).</li>
@@ -411,6 +412,199 @@ int main() {
         que es más parecida al C++
         ya que la función exacta que se ejecuta no se puede determinar sin
         conocer qué métodos están implementados para el tipo de objeto.</p>
+    </section>
+
+    <section id="self-macro">
+      <h2>Macro mismo <a class="anchor" href="#self-macro">#self-macro</a></h2>
+      <p>Al llamar una función miembro, pasa el puntero del objeto como primer argumento de la función.</p>
+      <p>Se debe activar en el «pragma»:
+        <code>#pragma Cedro 1.0 <b>self</b></code>.</p>
+      <table>
+        <tr>
+          <td><code><b>#pragma Cedro 1.0 self</b>
+…
+objeto->f(a);</code></td>
+          <td><br/><br/><code>objeto->f(objeto, a);</code></td>
+        </tr>
+        <tr>
+          <td><code><b>#pragma Cedro 1.0 self</b>
+…
+objeto.f(a);</code></td>
+          <td><br/><br/><code>objeto.f(&amp;objeto, a);</code></td>
+        </tr>
+      </table>
+      <p>Ejemplo completo con tres tipos (<code>Number</code>, <code>Integer</code>, <code>Fraction</code>) y dos funciones miembro (<code>->delete()</code>, <code>->as_double()</code>):</p>
+      <table>
+        <tr>
+          <td><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+<b>#pragma Cedro 1.0 self</b>
+
+typedef struct Number *Number_p;
+typedef double (*Number_as_double)(Number_p n);
+typedef double (*Number_delete   )(Number_p n);
+typedef struct Number {
+  Number_delete    delete;
+  Number_as_double as_double;
+} Number;
+
+typedef struct Integer {
+  Number_as_double delete;
+  Number_as_double as_double;
+  int a;
+} Integer, *Integer_p;
+double
+as_double_Integer(Integer_p n)
+{
+  return (double)(n-&gt;a);
+}
+void
+delete_Integer(Integer_p self)
+{
+  free(self);
+}
+void*
+new_Integer(int a)
+{
+  Integer_p n = malloc(sizeof(Integer));
+  n-&gt;as_double = (Number_as_double)as_double_Integer;
+  n-&gt;delete    = (Number_delete   )   delete_Integer;
+  n-&gt;a = a;
+  return n;
+}
+
+typedef struct Fraction {
+  Number_as_double delete;
+  Number_as_double as_double;
+  Integer_p a; Integer_p b;
+} Fraction, *Fraction_p;
+void
+delete_Fraction(Fraction_p self)
+{
+  self-&gt;a-&gt;delete();
+  self-&gt;b-&gt;delete();
+  free(self);
+}
+double
+as_double_Fraction(Fraction_p n)
+{
+  return n-&gt;a-&gt;as_double() / n-&gt;b-&gt;as_double();
+}
+void*
+new_Fraction(int a, int b)
+{
+  Fraction_p n = malloc(sizeof(Fraction));
+  n-&gt;as_double = (Number_as_double)as_double_Fraction;
+  n-&gt;delete    = (Number_delete   )   delete_Fraction;
+  n-&gt;a = new_Integer(a);
+  n-&gt;b = new_Integer(b);
+  return n;
+}
+
+int
+main(int argc, char* argv[])
+{
+  Number_p numbers[] = {
+    new_Fraction(3, 7),
+    new_Integer(8)
+  };
+  size_t numbers_len = sizeof(numbers) / sizeof(Number_p);
+  double result = 1;
+  for (size_t i = 0; i &lt; numbers_len; ++i) {
+    printf("%d: %f\n", i, numbers[i]-&gt;as_double());
+    result *= numbers[i]-&gt;as_double();
+  }
+  printf("Product of all numbers: %f\n", result);
+  for (size_t i = 0; i &lt; numbers_len; ++i) numbers[i]-&gt;delete();
+}
+</code></td>
+          <td><br/><br/><code>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+typedef struct Number *Number_p;
+typedef double (*Number_as_double)(Number_p n);
+typedef double (*Number_delete   )(Number_p n);
+typedef struct Number {
+  Number_delete    delete;
+  Number_as_double as_double;
+} Number;
+
+typedef struct Integer {
+  Number_as_double delete;
+  Number_as_double as_double;
+  int a;
+} Integer, *Integer_p;
+double
+as_double_Integer(Integer_p n)
+{
+  return (double)(n-&gt;a);
+}
+void
+delete_Integer(Integer_p self)
+{
+  free(self);
+}
+void*
+new_Integer(int a)
+{
+  Integer_p n = malloc(sizeof(Integer));
+  n-&gt;as_double = (Number_as_double)as_double_Integer;
+  n-&gt;delete    = (Number_delete   )   delete_Integer;
+  n-&gt;a = a;
+  return n;
+}
+
+typedef struct Fraction {
+  Number_as_double delete;
+  Number_as_double as_double;
+  Integer_p a; Integer_p b;
+} Fraction, *Fraction_p;
+void
+delete_Fraction(Fraction_p self)
+{
+  self-&gt;a-&gt;delete(<b>(void*)self-&gt;a</b>);
+  self-&gt;b-&gt;delete(<b>(void*)self-&gt;b</b>);
+  free(self);
+}
+double
+as_double_Fraction(Fraction_p n)
+{
+  return n-&gt;a-&gt;as_double(<b>(void*)n-&gt;a</b>) / n-&gt;b-&gt;as_double(<b>(void*)n-&gt;b</b>);
+}
+void*
+new_Fraction(int a, int b)
+{
+  Fraction_p n = malloc(sizeof(Fraction));
+  n-&gt;as_double = (Number_as_double)as_double_Fraction;
+  n-&gt;delete    = (Number_delete   )   delete_Fraction;
+  n-&gt;a = new_Integer(a);
+  n-&gt;b = new_Integer(b);
+  return n;
+}
+
+int
+main(int argc, char* argv[])
+{
+  Number_p numbers[] = {
+    new_Fraction(3, 7),
+    new_Integer(8)
+  };
+  size_t numbers_len = sizeof(numbers) / sizeof(Number_p);
+  double result = 1;
+  for (size_t i = 0; i &lt; numbers_len; ++i) {
+    printf("%d: %f\n", i, numbers[i]-&gt;as_double(<b>(void*)numbers[i]</b>));
+    result *= numbers[i]-&gt;as_double(<b>(void*)numbers[i]</b>);
+  }
+  printf("Product of all numbers: %f\n", result);
+  for (size_t i = 0; i &lt; numbers_len; ++i) numbers[i]-&gt;delete(<b>(void*)numbers[i]</b>);
+}
+</code></td>
+        </tr>
+      </table>
+
+      <h3 id="self-macro-related-work">Obras relacionadas <a class="anchor" href="#self-macro-related-work">#…-related-work</a></h3>
+      <p>Es parecido a lo que hacen otros lenguajes al pasar una referencia al objecto como primer argumento, implícito, de la función miembro.</p>
     </section>
 
     <section id="deferred-resource-release">

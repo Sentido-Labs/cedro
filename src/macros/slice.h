@@ -7,7 +7,8 @@
 /// Uses &x[a] in preference to x+a as advised in page 111 of
 /// “21st Century C” by Ben Klemens.
 static void
-macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src)
+macro_slice(mut_Marker_array_p markers, mut_Byte_array_p src,
+            Options options)
 {
   Marker_mut_p start  = start_of_Marker_array(markers);
   Marker_mut_p cursor = start;
