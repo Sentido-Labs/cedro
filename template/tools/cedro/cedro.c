@@ -1191,12 +1191,13 @@ string(Byte_p start, Byte_p end)
     Byte_mut_p p = cursor;
     while (*--p is '\\');
     if ((p - cursor) & 1) {
+      if (memchr(start, '\n', (size_t)(cursor - start))) break;
       return cursor + 1; // End is past the closing symbol.
     }
   }
   error(LANG("Cadena literal interrumpida.",
              "Unterminated string literal."));
-  return NULL;
+  return end;
 }
 
 /** Match a character literal.
@@ -1210,12 +1211,13 @@ character(Byte_p start, Byte_p end)
     Byte_mut_p p = cursor;
     while (*--p is '\\');
     if ((p - cursor) & 1) {
+      if (memchr(start, '\n', (size_t)(cursor - start))) break;
       return cursor + 1; // End is past the closing symbol.
     }
   }
   error(LANG("Carácter literal interrumpido.",
              "Unterminated character literal."));
-  return NULL;
+  return end;
 }
 
 /** Match whitespace: one or more space, `TAB`, `CR`, or `NL` characters.
@@ -1251,20 +1253,29 @@ comment(Byte_p start, Byte_p end)
   Byte_mut_p cursor = start + 1;
   if (*cursor is '/') {
     do {
-      cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
+      cursor = memchr(cursor + 1, '\n', (size_t)(end - (cursor + 1)));
       if (not cursor) { cursor = end; break; }
     } while ('\\' is *(cursor - 1));
     return cursor; // The newline is not part of the token.
   } else if (*cursor is_not '*') {
     return NULL;
   }
-  ++cursor; // Skip next character, at minimum a '*' if the comment is empty.
-  if (cursor is end) return NULL;
+  ++cursor; // Skip '*'.
+  if (cursor is end or cursor + 1 is end) {
+    error(LANG("Comentario interrumpido.",
+               "Unterminated comment."));
+    return end;
+  }
+  ++cursor; // Skip next character, at minimum an '*' if the comment is empty.
   do {
-    cursor = memchr(cursor + 1, '/', (size_t)(end - cursor));
-    if (not cursor) { cursor = end; break; }
+    cursor = memchr(cursor + 1, '/', (size_t)(end - (cursor + 1)));
+    if (not cursor) {
+      error(LANG("Comentario interrumpido.",
+                 "Unterminated comment."));
+      return end;
+    }
   } while (*(cursor - 1) is_not '*');
-  return (cursor is end)? end: cursor + 1;// Token includes the closing symbol.
+  return cursor + 1;// Token includes the closing symbol.
 }
 
 /** Match a pre-processor directive.
@@ -1320,7 +1331,7 @@ preprocessor(Byte_p start, Byte_p end)
   if (*cursor is ' ' or *cursor is '\n') {
     do {
       if (cursor is end) break;
-      cursor = memchr(cursor + 1, '\n', (size_t)(end - cursor));
+      cursor = memchr(cursor + 1, '\n', (size_t)(end - (cursor + 1)));
       if (not cursor) { cursor = end; break; }
     } while ('\\' is *(cursor - 1));
   }
@@ -2406,15 +2417,15 @@ parse_skip_until_cedro_pragma(Byte_array_p src, Byte_array_slice region, mut_Mar
     } else if ((token_end = number    (cursor, end))) {
     } else      token_end = other     (cursor, end);
     if (error_buffer[0]) {
-      eprintln(LANG("Error: %lu: %s",
-                    "Error: %lu: %s"),
-               original_line_number((size_t)(cursor - src->start), src),
-               error_buffer);
-      error_buffer[0] = 0;
+      return cursor;
+    } else if (token_end is cursor) {
+      error("tokenizer error");
       return cursor;
     }
     cursor = token_end;
   }
+
+
   if (cursor is end) {
     // No “#pragma Cedro x.y”, so just wrap the whole C code verbatim.
     mut_Marker inert;
@@ -2504,26 +2515,19 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
         }
       }
       TOKEN1(T_PREPROCESSOR);
-      if (token_end is cursor) { eprintln("error T_PREPROCESSOR"); break; }
     } else if ((token_end = string(cursor, end))) {
       TOKEN1(T_STRING);
-      if (token_end is cursor) { eprintln("error T_STRING"); break; }
     } else if ((token_end = character(cursor, end))) {
       TOKEN1(T_CHARACTER);
-      if (token_end is cursor) { eprintln("error T_CHARACTER"); break; }
     } else if ((token_end = comment(cursor, end))) {
       TOKEN1(T_COMMENT);
-      if (token_end is cursor) { eprintln("error T_COMMENT"); break; }
     } else if ((token_end = space(cursor, end))) {
       TOKEN1(T_SPACE);
-      if (token_end is cursor) { eprintln("error T_SPACE"); break; }
     } else if ((token_end = identifier(cursor, end))) {
       TOKEN1(keyword_or_identifier(cursor, token_end,
                                    use_defer_instead_of_auto));
-      if (token_end is cursor) { eprintln("error T_IDENTIFIER"); }
     } else if ((token_end = number(cursor, end))) {
       TOKEN1(T_NUMBER);
-      if (token_end is cursor) { eprintln("error T_NUMBER"); break; }
     } else {
       uint8_t c = *cursor;
       token_end = cursor + 1;
@@ -2696,11 +2700,12 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
       }
     }
     if (error_buffer[0]) {
-      // This should never happen: any error must cause an immediate return.
-      eprintln("Uncaught error: %s", error_buffer);
-      exit(87);
-      //return cursor;
+      return cursor;
+    } else if (token_end is cursor) {
+      error("tokenizer error in %s", TokenType_STRING[token_type]);
+      return cursor;
     }
+
 
     if (token_type is T_NONE) {
       token_end = other(cursor, end);
