@@ -89,65 +89,68 @@ Byte template_zip[] = {
 #define end(...)                 mz_zip_reader_end(__VA_ARGS__)
 
 static void
-capitalize(mut_Byte_array_p _)
+uppercase(mut_Byte_array_p _, size_t letter_count_from_start)
 {
   Byte_mut_p cursor = start_of_Byte_array(_);
-  Byte_p        end = end_of_Byte_array(_);
-  wint_t u = 0;
-  UTF8Error err = UTF8_NO_ERROR;
-  cursor = decode_utf8(cursor, end, &u, &err);
-  if (utf8_error(err, (size_t)(cursor - start_of_Byte_array(_)))) {
-    eprintln(LANG("Error al descodificar UTF-8 en capitalize(): %s",
-                  "Error when deocding UTF-8 in capitalize(): %s"),
-             error_buffer);
-    error_buffer[0] = 0;
-    return;
-  }
-  wint_t capital_letter = towupper(u);
-  if (capital_letter is u) {
-    /* `towupper()` only converts characters from the current locale,
-       and some times not even that. Here is a backup for some alphabets: */
-    if      (in(0x00E0,u,0x00FD)) capital_letter &= 0xFFDF;
-    else if        (u is 0x00FF)  capital_letter  = 0x0178;
-    else if (in(0x0101,u,0x024F)) capital_letter -= 1;
-    else if (in(0x03B1,u,0x03C9)) capital_letter &= 0xFFDF;
-    else if (in(0x0430,u,0x045F)) capital_letter &= 0xFFDF;
-    else if (in(0x0461,u,0x0527)) capital_letter -= 1;
-    else if (in(0x0561,u,0x0586)) capital_letter &= 0xFFCF;
-    else if (in(0x1E01,u,0x1EFF)) capital_letter -= 1;
-    else if (in(0x1F00,u,0x1FB3)) capital_letter |= 0x0008;
-  }
-  if (capital_letter is_not u) {
-    mut_Byte utf8[4] = {0};
-    size_t len;
-    if        ((capital_letter & 0xFFFFFF80) is 0) {
-      len = 1;
-      utf8[0] = (Byte)capital_letter;
-    } else if ((capital_letter & 0xFFFFF800) is 0) {
-      len = 2;
-      utf8[1] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
-      utf8[0] = 0xC0 | (Byte)((capital_letter >>  6) & 0x1F);
-    } else if ((capital_letter & 0xFFFF0000) is 0) {
-      len = 3;
-      utf8[2] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
-      utf8[1] = 0x80 | (Byte)((capital_letter >>  6) & 0x3F);
-      utf8[0] = 0xE0 | (Byte)((capital_letter >> 12) & 0x0F);
-    } else if (capital_letter <= 0x0010FFFF) {
-      len = 4;
-      utf8[3] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
-      utf8[2] = 0x80 | (Byte)((capital_letter >>  6) & 0x3F);
-      utf8[1] = 0x80 | (Byte)((capital_letter >> 12) & 0x3F);
-      utf8[0] = 0xE0 | (Byte)((capital_letter >> 24) & 0x0F);
-    } else {
-      error(LANG("Mayúscula no válida: 0x%4X",
-                 "Invalid capital letter: 0x%4X"),
-            capital_letter);
+  Byte_mut_p    end = end_of_Byte_array(_);
+  while (cursor is_not end and letter_count_from_start-- is_not 0) {
+    wint_t u = 0;
+    size_t cursor_index = (size_t)(cursor - start_of_Byte_array(_));
+    UTF8Error err = UTF8_NO_ERROR;
+    cursor = decode_utf8(cursor, end, &u, &err);
+    if (utf8_error(err, cursor_index)) {
+      eprintln(LANG("Error al descodificar UTF-8 en capitalize(): %s",
+                    "Error when deocding UTF-8 in capitalize(): %s"),
+               error_buffer);
+      error_buffer[0] = 0;
       return;
     }
-    Byte_array_slice capital_letter_utf8 = { &utf8[0], &utf8[len] };
-    splice_Byte_array(_, 0,
-                      (size_t)(cursor - start_of_Byte_array(_)), NULL,
-                      capital_letter_utf8);
+    wint_t capital_letter = towupper(u);
+    if (capital_letter is u) {
+      /* `towupper()` only converts characters from the current locale,
+         and some times not even that. Here is a backup for some alphabets: */
+      if      (in(0x00E0,u,0x00FD)) capital_letter &= 0xFFDF;
+      else if        (u is 0x00FF)  capital_letter  = 0x0178;
+      else if (in(0x0101,u,0x024F)) capital_letter -= 1;
+      else if (in(0x03B1,u,0x03C9)) capital_letter &= 0xFFDF;
+      else if (in(0x0430,u,0x045F)) capital_letter &= 0xFFDF;
+      else if (in(0x0461,u,0x0527)) capital_letter -= 1;
+      else if (in(0x0561,u,0x0586)) capital_letter &= 0xFFCF;
+      else if (in(0x1E01,u,0x1EFF)) capital_letter -= 1;
+      else if (in(0x1F00,u,0x1FB3)) capital_letter |= 0x0008;
+    }
+    if (capital_letter is_not u) {
+      mut_Byte utf8[4] = {0};
+      size_t len;
+      if        ((capital_letter & 0xFFFFFF80) is 0) {
+        len = 1;
+        utf8[0] = (Byte)capital_letter;
+      } else if ((capital_letter & 0xFFFFF800) is 0) {
+        len = 2;
+        utf8[1] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
+        utf8[0] = 0xC0 | (Byte)((capital_letter >>  6) & 0x1F);
+      } else if ((capital_letter & 0xFFFF0000) is 0) {
+        len = 3;
+        utf8[2] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
+        utf8[1] = 0x80 | (Byte)((capital_letter >>  6) & 0x3F);
+        utf8[0] = 0xE0 | (Byte)((capital_letter >> 12) & 0x0F);
+      } else if (capital_letter <= 0x0010FFFF) {
+        len = 4;
+        utf8[3] = 0x80 | (Byte)((capital_letter      ) & 0x3F);
+        utf8[2] = 0x80 | (Byte)((capital_letter >>  6) & 0x3F);
+        utf8[1] = 0x80 | (Byte)((capital_letter >> 12) & 0x3F);
+        utf8[0] = 0xE0 | (Byte)((capital_letter >> 24) & 0x0F);
+      } else {
+        error(LANG("Mayúscula no válida: 0x%4X",
+                   "Invalid capital letter: 0x%4X"),
+              capital_letter);
+        return;
+      }
+      Byte_array_slice capital_letter_utf8 = { &utf8[0], &utf8[len] };
+      splice_Byte_array(_, cursor_index, len, NULL, capital_letter_utf8);
+      cursor = start_of_Byte_array(_) + cursor_index + len;
+      end    =   end_of_Byte_array(_);
+    }
   }
 }
 
@@ -208,13 +211,22 @@ int main(int argc, char* argv[])
   }
   auto end(&zip_archive);
 
-  mut_Byte_array command_name = {0}, project_name = {0};
+  mut_Byte_array command_name = {0}, project_name = {0}, constant_name = {0};
   auto destruct_Byte_array(&command_name);
   auto destruct_Byte_array(&project_name);
+  auto destruct_Byte_array(&constant_name); // All caps, for naming constants.
 
   push_str(&command_name,
            strrchr(project_path, '/')?
            strrchr(project_path, '/') + 1: project_path);
+
+  append_Byte_array(&project_name, bounds_of_Byte_array(&command_name));
+  uppercase(&project_name, 1);
+  for (mut_Byte_mut_p cursor = start_of_mut_Byte_array(&project_name),
+         end = end_of_mut_Byte_array(&project_name);
+       cursor is_not end; ++cursor) {
+    if (*cursor is '-' or *cursor is '_') *cursor = ' ';
+  }
 
   if (interactive) {
     eprint(LANG("¿Nombre del ejecutable? (implícito: %s): ",
@@ -231,14 +243,6 @@ int main(int argc, char* argv[])
       append_Byte_array(&command_name, bounds_of_Byte_array(&answer));
     }
 
-    push_str(&project_name, as_c_string(&command_name));
-    capitalize(&project_name);
-    for (mut_Byte_mut_p cursor = end_of_mut_Byte_array(&project_name);
-         cursor is_not start_of_mut_Byte_array(&project_name); ) {
-      --cursor;
-      if (*cursor is '-' or *cursor is '_') *cursor = ' ';
-    }
-
     eprint(LANG("¿Nombre completo del proyecto? (implícito: %s): ",
                 "Full project name? (default: %s): "),
            as_c_string(&project_name));
@@ -250,14 +254,19 @@ int main(int argc, char* argv[])
       project_name.len = 0;
       append_Byte_array(&project_name, bounds_of_Byte_array(&answer));
     }
-  } else {
-    append_Byte_array(&project_name, bounds_of_Byte_array(&command_name));
-    capitalize(&project_name);
-    for (mut_Byte_mut_p cursor = end_of_mut_Byte_array(&project_name);
-         cursor is_not start_of_mut_Byte_array(&project_name); ) {
-      --cursor;
-      if (*cursor is '-' or *cursor is '_') *cursor = ' ';
-    }
+  }
+
+  append_Byte_array(&constant_name, bounds_of_Byte_array(&command_name));
+  uppercase(&constant_name, ~0);
+  if (constant_name.start[0] >= '0' and constant_name.start[0] <= '9') {
+    constant_name.start[0] = '_'; // Ensure valid C identifier.
+  }
+  for (mut_Byte_mut_p cursor = start_of_mut_Byte_array(&constant_name) + 1,
+         end = end_of_mut_Byte_array(&constant_name);
+       cursor is_not end; ++cursor) {
+    if ((*cursor < 'A' or *cursor > 'Z') and
+        (*cursor < '0' or *cursor > '9') and
+        *cursor is_not '_') *cursor = '_';
   }
 
   char user_name [255 + 1] = {0};
@@ -410,6 +419,11 @@ int main(int argc, char* argv[])
         } else if (cursor + 11 < end and mem_eq(cursor, "{#template}", 11)) {
           fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
           fwrite(command_name.start, 1, command_name.len, output);
+          cursor += 11;
+          previous = cursor;
+        } else if (cursor + 11 < end and mem_eq(cursor, "{#TEMPLATE}", 11)) {
+          fwrite(previous, sizeof(Byte), (size_t)(cursor - previous), output);
+          fwrite(constant_name.start, 1, constant_name.len, output);
           cursor += 11;
           previous = cursor;
         } else {
