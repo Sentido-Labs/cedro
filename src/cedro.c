@@ -1261,12 +1261,11 @@ comment(Byte_p start, Byte_p end)
     return NULL;
   }
   ++cursor; // Skip '*'.
-  if (cursor is end or cursor + 1 is end) {
+  if (cursor is end) {
     error(LANG("Comentario interrumpido.",
                "Unterminated comment."));
     return end;
   }
-  ++cursor; // Skip next character, at minimum an '*' if the comment is empty.
   do {
     cursor = memchr(cursor + 1, '/', (size_t)(end - (cursor + 1)));
     if (not cursor) {
