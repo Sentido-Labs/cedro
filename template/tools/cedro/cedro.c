@@ -1261,12 +1261,11 @@ comment(Byte_p start, Byte_p end)
     return NULL;
   }
   ++cursor; // Skip '*'.
-  if (cursor is end or cursor + 1 is end) {
+  if (cursor is end) {
     error(LANG("Comentario interrumpido.",
                "Unterminated comment."));
     return end;
   }
-  ++cursor; // Skip next character, at minimum an '*' if the comment is empty.
   do {
     cursor = memchr(cursor + 1, '/', (size_t)(end - (cursor + 1)));
     if (not cursor) {
@@ -4159,9 +4158,16 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
   Marker_mut_p
       cursor     = start_of_Marker_array(&markers),
       cursor_ref = start_of_Marker_array(&markers_ref);
-  cursor     = skip_space_forward(cursor,     end);
-  cursor_ref = skip_space_forward(cursor_ref, end_ref);
   while (cursor is_not end and cursor_ref is_not end_ref) {
+    // Ignore spaces, but not comments.
+    while (cursor     is_not end     and
+           cursor    ->token_type is T_SPACE) ++cursor;
+    while (cursor_ref is_not end_ref and
+           cursor_ref->token_type is T_SPACE) ++cursor_ref;
+    if (cursor is end or cursor_ref is end_ref) {
+      result = (cursor is end) is (cursor_ref is end_ref);
+      break;
+    }
     if (cursor->token_type is_not cursor_ref->token_type or
         cursor->len > cursor_ref->len                    or
         not mem_eq(get_Byte_array(src,     cursor    ->start),
@@ -4170,11 +4176,14 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
       result = false;
       break;
     }
-    cursor     = skip_space_forward(cursor     + 1, end);
-    cursor_ref = skip_space_forward(cursor_ref + 1, end_ref);
+    ++cursor;
+    ++cursor_ref;
   }
+  if (cursor is_not end or cursor_ref is_not end_ref) result = false;
 
   if (result is false) {
+    if (cursor     is end    ) --cursor;
+    if (cursor_ref is end_ref) --cursor_ref;
     mut_Byte_array message = init_Byte_array(80);
     if (not push_fmt(&message, LANG("Procesado, línea %lu",
                                     "Processed, line %lu"),
