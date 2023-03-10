@@ -1,6 +1,7 @@
 /* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*-
  * vi: set et ts=4 sw=4: */
 /** \file */
+#define {#TEMPLATE}_VERSION "0.1a"
 /** \mainpage
  * See nanovg’s example_gl3.c:
  *  https://github.com/memononen/nanovg/blob/master/example/example_gl3.c
@@ -158,8 +159,8 @@ const char* const usage_en =
         ;
 
 typedef struct Options {
-    int        vsync; ///< 1: v-sync, 0: no v-sync, -1: adaptive v-sync.
-    bool         exit_after_brief_delay;
+    int  vsync; ///< 1: v-sync, 0: no v-sync, -1: adaptive v-sync.
+    bool exit_after_brief_delay;
 } MUT_CONST_TYPE_VARIANTS(Options);
 
 int
@@ -174,6 +175,11 @@ main(int argc, char* argv[])
     for (int i = 1; i < argc; ++i) {
         const char* arg = argv[i];
         if (str_eq("-h", arg) || str_eq("--help", arg)) {
+            eprintln("{#Template} v%s, nanovg v%s, glew v%d.%d.%d, glfw %s",
+                     {#TEMPLATE}_VERSION,
+                     NANOVG_VERSION,
+                     GLEW_VERSION_MAJOR, GLEW_VERSION_MINOR, GLEW_VERSION_MICRO,
+                     glfwGetVersionString());
             eprint(LANG(usage_es, usage_en));
             return err;
         } else if (str_eq("--exit-after-brief-delay", arg)) {

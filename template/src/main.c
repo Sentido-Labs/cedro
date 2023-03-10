@@ -1,6 +1,7 @@
 /* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*-
  * vi: set et ts=4 sw=4: */
 /** \file */
+#define {#TEMPLATE}_VERSION "0.1a"
 /** \mainpage
  * {#Template} 0.1a
  *
@@ -108,6 +109,7 @@ main(int argc, char* argv[])
 {
     int err = 0;
     if (argc == 1) {
+        eprintln("{#Template} v%s", {#TEMPLATE}_VERSION);
         eprintln(LANG(usage_es, usage_en));
         err = 1;
         return err;

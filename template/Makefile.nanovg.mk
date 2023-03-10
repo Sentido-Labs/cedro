@@ -29,7 +29,7 @@ build/assets.o: src/assets.c logo.png $(CEDROCC)
 
 LIBRARIES:=build/assets.o $(LIBRARIES) $(NANOVG_DIR)/build/libnanovg.a $(GLEW_DIR)/build/lib/libGLEW.a -ldl -lX11 -lpthread $(GLFW_DIR)/build/src/libglfw3.a -lGL -lGLU -lm
 # “C99 compliance / user side #306” https://github.com/nanovg/nanovg/issues/306
-CFLAGS:=$(CFLAGS) -I$(NANOVG_DIR)/src -DNANOVG_GLEW -I$(GLEW_DIR)/include -I$(GLFW_DIR)/include -std=c11
+CFLAGS:=$(CFLAGS) -I$(NANOVG_DIR)/src -DNANOVG_GLEW -I$(GLEW_DIR)/include -I$(GLFW_DIR)/include -std=c11 -DNANOVG_VERSION="'"'"'$(NANOVG_VERSION)'"'"'"
 LDFLAGS:=-L$(GLEW_DIR)/build -L$(GLFW_DIR)/build
 
 $(NANOVG_DIR)/build/libnanovg.a: $(NANOVG_DIR)/build $(NANOVG_DIR)/src/* $(GLEW_DIR)/build/lib/libGLEW.a $(GLFW_DIR)/build/src/libglfw3.a

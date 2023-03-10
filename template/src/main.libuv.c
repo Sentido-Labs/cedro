@@ -1,6 +1,7 @@
 /* -*- coding: utf-8 c-basic-offset: 4 tab-width: 4 indent-tabs-mode: nil -*-
  * vi: set et ts=4 sw=4: */
 /** \file */
+#define {#TEMPLATE}_VERSION "0.1a"
 /** \mainpage
  * See the example in the libuv book:
  *  http://docs.libuv.org/en/v1.x/guide/networking.html#tcp
@@ -426,6 +427,9 @@ main(int argc, char* argv[])
     for (int i = 1; i < argc; ++i) {
         const char* arg = argv[i];
         if (str_eq("-h", arg) || str_eq("--help", arg)) {
+            eprintln("{#Template} v%s, libuv v%s",
+                     {#TEMPLATE}_VERSION,
+                     uv_version_string());
             eprint(LANG(usage_es, usage_en));
             return err;
         } else if (str_eq("--exit-after-brief-delay", arg)) {
