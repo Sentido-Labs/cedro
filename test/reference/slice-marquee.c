@@ -1,6 +1,6 @@
 #ifdef _WIN32
 #include <windows.h>
-// Véase: https://stackoverflow.com/a/3930716/
+// Véase https://stackoverflow.com/a/3930716/
 int sleep_ms(int ms) { Sleep(ms); return 0; }
 #else
 #define _XOPEN_SOURCE 500
