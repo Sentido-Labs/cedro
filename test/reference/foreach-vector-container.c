@@ -6,6 +6,7 @@
 typedef struct str { uint8_t* start; uint8_t* end; } str;
 typedef char* cstr; // Nombres de tipo deben ser palabras.
 
+
 /** Tipo Vector (ristra extensible). */
 typedef struct {
   float* _;

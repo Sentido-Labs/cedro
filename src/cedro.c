@@ -2926,6 +2926,19 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
     goto exit;
   }
 
+  for (mut_Marker_mut_p s = end_of_mut_Marker_array(&arguments);
+       s-- is_not arguments.start; ) {
+    // Replace line continuations / *\\\n/ with plain EOLs.
+    Byte_p backslash = memchr(&src->start[s->start], '\\', (size_t)(s->len));
+    if (backslash and *(backslash + 1) is '\n') {
+      //s->len  -= (size_t)(backslash - &src->start[s->start]) + 1;
+      s->len = 1;
+      s->start = (size_t)(backslash - src->start) + 1;
+      s->synthetic = true;
+    }
+  }
+  fflush(stderr); fflush(stdout);
+
   Marker_array_mut_slice arg = bounds_of_Marker_array(&arguments);
   arg.start_p = skip_space_forward(arg.start_p, arg.end_p);
   if (arg.start_p is arg.end_p) {
@@ -3052,6 +3065,19 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
 
   Marker_mut_p fragment_end = m_end;
 
+  size_t content_start_offset = 1; // Skip `#foreach { ...`.
+  {
+    Marker_p content_start = skip_space_forward(m + 1, m_end);
+    if (content_start < m_end and
+        content_start->token_type is T_PREPROCESSOR) {
+      Byte_array_mut_slice text = slice_for_marker(src, content_start);
+      if (text.end_p - text.start_p >= 10 /*strlen("#foreach {"}*/) {
+        if (strn_eq("#foreach {", (const char*)text.start_p, 10)) {
+          ++content_start_offset; // Skip newline after `#foreach { ...`.
+        }
+      }
+    }
+  }
   while (arg.start_p is_not arg.end_p) {
     Marker_array_mut_slice value = (Marker_array_mut_slice){
       arg.start_p, arg.start_p
@@ -3191,9 +3217,13 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
               goto exit;
             }
 
+            Marker_p next = value.end_p + 1;
+            // Trim space after segment, but not comments.
+            while (value.end_p is_not value.start_p and
+            (value.end_p - 1)->token_type is T_SPACE) --value.end_p;
             replacements->start[valueIndex++].replacement = value;
+            value.start_p = value.end_p = next;
 
-            value.start_p = value.end_p + 1;
             // Skip spaces, but not comments.
             while (value.start_p is_not valueList.end_p and
                    value.start_p->token_type is T_SPACE) ++value.start_p;
@@ -3230,6 +3260,9 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
         goto exit;
       }
 
+      // Trim space after segment, but not comments.
+      while (value.end_p is_not value.start_p and
+             (value.end_p - 1)->token_type is T_SPACE) --value.end_p;
       replacements->start[valueIndex++].replacement = value;
 
       if (valueIndex is_not replacements->len) {
@@ -3240,14 +3273,19 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
         m = m_end;
         goto exit;
       }
-      value.start_p = skip_space_forward(value.end_p+1, valueList.end_p);
+      // Skip spaces, but not comments.
+      while (value.start_p is_not valueList.end_p and
+             value.start_p->token_type is T_SPACE) ++value.start_p;
     }
+
     assert(m is_not m_end);
-    fragment_end = unparse_fragment(m + 1, m_end, previous_marker_end,
+    fragment_end = unparse_fragment(m + content_start_offset,
+                                    m_end, previous_marker_end,
                                     src, original_src_len,
                                     src_file_name, include,
                                     replacements, arg.start_p is arg.end_p,
                                     options, out);
+    content_start_offset = 1;
     if (error_buffer[0]) {
       m = m_end;
       goto exit;
@@ -3264,6 +3302,7 @@ exit:
 
   return m;
 }
+
 /** Write pending space, and if there is a pending `#line` directive try
  * to insert it in the first available end of line.
  * @param line_directive_pending [out] will be set to `false` if it was
@@ -3337,6 +3376,7 @@ write_pending_space(bool* line_directive_pending, const char* src_file_name,
 
   return write_token(pending_space, src, options, out);
 }
+
 static Marker_p
 unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
                  Byte_array_p src, size_t original_src_len,
@@ -3929,16 +3969,20 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
           pending_space = NULL;
         }
         fputc('"', out);
-        for (Marker_mut_p m = value.start_p; m is_not value.end_p; ++m) {
-          if (m->token_type is T_STRING) {
-            for (Byte_array_mut_slice text = slice_for_marker(src, m);
+        for (Marker_mut_p v = value.start_p; v is_not value.end_p; ++v) {
+          if (v->token_type is T_STRING) {
+            for (Byte_array_mut_slice text = slice_for_marker(src, v);
                  text.start_p is_not text.end_p;
                  ++text.start_p) {
               Byte c = *text.start_p;
-              if (c is '"' or c is '\\') fputc('\\', out);
-              fputc(c, out);
+              // Escape newline if present, not a normal case:
+              if (c is '\n') { fputc('\\', out); fputc('n', out); }
+              else {
+                if (c is '"' or c is '\\') fputc('\\', out);
+                fputc(c, out);
+              }
             }
-          } else if (not write_token(m, src, options, out)) {
+          } else if (not write_token(v, src, options, out)) {
             m = m_end;
             goto exit;
           }
@@ -3971,8 +4015,26 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
           get_replacement_value(replacements, m, src);
 
       if (value.start_p) {
-        for (Marker_mut_p m = value.start_p; m is_not value.end_p; ++m) {
-          if (not write_token(m, src, options, out)) {
+        for (Marker_mut_p v = value.start_p; v is_not value.end_p; ++v) {
+          if (v->token_type is T_SPACE and src->start[v->start] is '\n') {
+            // Adjust indentation to match the line where
+            // this expansion takes place.
+            mut_Error err = {0};
+            Marker_mut_p line_start = find_line_start(m, m_start, &err);
+            if (err.message) {
+              write_error_at(err.message,
+                             original_line_number(m->start, src),
+                             m_start, m, src, out);
+              m = m_end;
+              goto exit;
+            }
+            if (not write_token(line_start, src, options, out)) {
+              m = m_end;
+              goto exit;
+            }
+            continue;
+          }
+          if (not write_token(v, src, options, out)) {
             m = m_end;
             goto exit;
           }
