@@ -105,7 +105,7 @@ error(const char * const fmt, ...)
 {
   va_list args;
   va_start(args, fmt);
-  int len = vsnprintf(error_buffer, error_buffer_size, fmt, args);
+  size_t len = (size_t)vsnprintf(error_buffer, error_buffer_size, fmt, args);
   assert(len < error_buffer_size);
   va_end(args);
 }

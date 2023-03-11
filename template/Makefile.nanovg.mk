@@ -41,6 +41,7 @@ $(GLFW_DIR)/build/src/libglfw3.a: $(GLFW_DIR)/build $(GLFW_DIR)/src/*
 
 $(NANOVG_DIR)/src/*: $(NANOVG_DIR)
 $(NANOVG_DIR)/build: $(NANOVG_DIR) $(GLEW_DIR)/build $(GLFW_DIR)/build
+	sed -i 's/return tex? tex->tex: -1;/return tex? tex->tex: (GLuint)-1;/' $(NANOVG_DIR)/src/nanovg_gl.h
 	@echo '============== Generating nanovg makefile =============='
 # Replace pkg-config so that we do not depend on having glfw-devel installed.
 	mkdir -p "$@" && cd $(NANOVG_DIR) && sed -i 's/"`pkg-config --libs glfw3`"/"-lglfw3"/' premake4.lua && premake4 gmake

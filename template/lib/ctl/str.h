@@ -93,7 +93,7 @@ str_find(str* self, const char* s)
     char* c_str = self->value;
     char* found = strstr(c_str, s);
     if(found)
-        return found - c_str;
+        return (size_t)(found - c_str);
     return SIZE_MAX;
 }
 
@@ -115,7 +115,7 @@ str_rfind(str* self, const char* s)
     {
         char* found = strstr(&c_str[i], s);
         if(found)
-            return found - c_str;
+            return (size_t)(found - c_str);
     }
     return SIZE_MAX;
 }

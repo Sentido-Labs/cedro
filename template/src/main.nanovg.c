@@ -248,10 +248,9 @@ main(int argc, char* argv[])
 
     glfwSwapInterval(options.vsync);
 
-    int fontSans =
-            nvgCreateFontMem(vg, "sans",
-                             (unsigned char*) font_sans, sizeof_font_sans,
-                             false);
+    nvgCreateFontMem(vg, "sans",
+                     (unsigned char*) font_sans, sizeof_font_sans,
+                     false);
 
     char text_buffer[300] = {0};
     const double π = 3.1415926535;

@@ -121,6 +121,18 @@ str_append_int(str* self, const char* format, const int value)
     buffer[sizeof(buffer)-1] = '\0';
     str_append(self, buffer);
 }
+/** Append a `size_t` (unsigned) integer formatted as specified.
+ * `"%d"` decimal, `"%X"`/`"%x"` hexadecimal,
+ * `"%04d"` decimal padded with zeros to 4 digits.
+ */
+void
+str_append_size(str* self, const char* format, const size_t value)
+{
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), format, (int)value);
+    buffer[sizeof(buffer)-1] = '\0';
+    str_append(self, buffer);
+}
 /** Append a double formatted as specified.
  * `"%f"` as many digits as needed,
  * `"%04.2f"` integer part padded with zeros to 4 digits, 2 decimals.
@@ -250,7 +262,8 @@ format_http_response(HttpResponse_p res, str* response)
 #foreach }
     if (res->body) {
         char size_string[16];
-        snprintf(size_string, sizeof(size_string), "%d", strlen(res->body));
+        snprintf(size_string, sizeof(size_string),
+                 "%d", (int)strlen(res->body));
         str_append(response, "Content-Length: ");
         str_append(response, size_string);
         str_append(response, "\r\n\r\n");
@@ -301,7 +314,7 @@ on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
                 _date(", today is the %Y-%m-%d", &today),
                 _date(" at %H:%M:%S.", &today),
                 ("\n    <div>Visit count: <span class='visit-counter'>"),
-                _int("%06d", ++request_count),
+                _size("%06d", ++request_count),
                 ("</span></div>"),
                 ("\n  </body>"),
                 ("\n</html>");
@@ -455,7 +468,7 @@ main(int argc, char* argv[])
     uv_tcp_t server;
     uv_tcp_init(loop, &server);
 
-    uv_ip4_addr(options.host, options.port, &addr);
+    uv_ip4_addr(options.host, (int)options.port, &addr);
 
     uv_tcp_bind(&server, (const struct sockaddr*)&addr, 0);
     err = uv_listen((uv_stream_t*)&server, options.backlog, on_new_connection);

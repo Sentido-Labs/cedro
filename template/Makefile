@@ -10,7 +10,7 @@ CSS=doc/api.css
 # The include paths must be put also in Doxyfile (see below).
 
 # Strict compilation flags, use during development:
-CFLAGS=-g -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion
+CFLAGS=-g -I lib -I src -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion -Wsign-compare
 
 # Loose compilation flags, use for releases:
 CFLAGS=-g -DNDEBUG -I lib -I src -std=c99

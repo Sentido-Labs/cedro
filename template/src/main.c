@@ -126,7 +126,7 @@ main(int argc, char* argv[])
     }
     char* message = malloc(length);
     auto free(message);
-    if (SIZE_ERROR == snprintf(message, length, format_string, argc - 1)) {
+    if ((int)SIZE_ERROR == snprintf(message, length, format_string, argc - 1)) {
         perror("");
         err = errno;
         return err;

@@ -448,9 +448,9 @@ int main(int argc, char* argv[])
   // or one less when extracting the .c file name.
   char** args = malloc(sizeof(char*) * (size_t)argc);
   auto free(args);
-  size_t i = 0;
+  int i = 0;
   args[i++] = cc;
-  for (size_t j = 1; j < argc; ++j) {
+  for (int j = 1; j < argc; ++j) {
     char* arg = argv[j];
     if (not file_name and arg[0] is_not '-') {
       char* extension = strrchr(arg, '.');
@@ -587,7 +587,7 @@ int main(int argc, char* argv[])
     mut_Byte_array cmd = {0};
     auto destruct_Byte_array(&cmd);
 
-    for (size_t j = 0; j < i; ++j) {
+    for (int j = 0; j < i; ++j) {
       if (j is_not 0) push_str(&cmd, " ");
       push_str(&cmd, args[j]);
     }

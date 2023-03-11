@@ -42,7 +42,7 @@ help-en:
 NAME=cedro
 
 # Strict compilation flags, use during development:
-CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion
+CFLAGS=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable -Wsign-conversion -Wsign-compare
 # miniz has many implicit sign conversions, after removing some it works on
 # some manchines but it is not enough in others, so better ignore it:
 CFLAGS_MINIZ=-g -fshort-enums -std=c99 -fmax-errors=4 -pedantic-errors -Wall -Werror -Wno-unused-function -Wno-unused-const-variable

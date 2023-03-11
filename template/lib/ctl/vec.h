@@ -256,8 +256,7 @@ JOIN(A, resize)(A* self, size_t size, T value)
 {
     if(size < self->size)
     {
-        int64_t less = self->size - size;
-        if(less > 0)
+        size_t less = self->size - size;
             JOIN(A, wipe)(self, less);
     }
     else
@@ -326,14 +325,14 @@ JOIN(A, erase)(A* self, size_t index)
 }
 
 static inline void
-JOIN(A, ranged_sort)(A* self, int64_t a, int64_t b, int _compare(T*, T*))
+JOIN(A, ranged_sort)(A* self, size_t a, size_t b, int _compare(T*, T*))
 {
     if(a >= b)
         return;
-    int64_t mid = (a + b) / 2;
+    size_t mid = (a + b) / 2;
     SWAP(T, &self->value[a], &self->value[mid]);
-    int64_t z = a;
-    for(int64_t i = a + 1; i <= b; i++)
+    size_t z = a;
+    for(size_t i = a + 1; i <= b; i++)
         if(_compare(&self->value[a], &self->value[i]))
         {
             z += 1;
@@ -371,7 +370,7 @@ JOIN(A, remove_if)(A* self, int _match(T*))
     {
         if(_match(it.ref))
         {
-            size_t index = it.ref - JOIN(A, begin)(self);
+            size_t index = (size_t)(it.ref - JOIN(A, begin)(self));
             JOIN(A, erase)(self, index);
             it.end = JOIN(A, end)(self);
             it.next = it.ref;
