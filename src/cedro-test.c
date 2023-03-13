@@ -44,7 +44,7 @@ void test_array()
     push_Byte_array(&array, text[i]);
   }
   assert(eq(array.len, text_len) ||
-         (eprintln("Wrong text length %lu ≠ %lu", array.len, text_len), false));
+         (eprintln("Wrong text length %zu ≠ %zu", array.len, text_len), false));
 
   char* text_rebuilt = to_string_Byte_array(&array);
   assert(str_eq((char*const) text, (char*const) text_rebuilt) ||

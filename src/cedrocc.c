@@ -239,7 +239,7 @@ include_callback(Marker_p m, Byte_array_p src, FILE* cc_stdin,
       return_code = include(as_c_string(&s), cc_stdin, _, options);
       truncate_IncludePaths(&_->paths_quote, previous_len);
       if (return_code is EXIT_SUCCESS) {
-        fprintf(cc_stdin, "\n#line %lu \"",
+        fprintf(cc_stdin, "\n#line %zu \"",
                 original_line_number(m->start, src));
         fwrite(content.start_p, sizeof(content.start_p[0]),
                (size_t)(content.end_p - content.start_p), cc_stdin);
@@ -294,7 +294,7 @@ include(const char* file_name, FILE* cc_stdin,
                                                    &options);
     Byte_p parse_end = parse(&src, region, &markers, false);
     if (parse_end is_not region.end_p) {
-      if (fprintf(cc_stdin, "#line %lu \"%s\"\n#error %s\n",
+      if (fprintf(cc_stdin, "#line %zu \"%s\"\n#error %s\n",
                   original_line_number((size_t)(parse_end - src.start), &src),
                   file_name,
                   error_buffer) < 0) {
@@ -307,7 +307,7 @@ include(const char* file_name, FILE* cc_stdin,
     if (options.enable_embed_directive and options.embed_as_string) {
       err = prepare_binary_embedding(&markers, &src, file_name);
       if (err) {
-        eprintln("#line %lu \"%s\"\n#error %s\n",
+        eprintln("#line %zu \"%s\"\n#error %s\n",
                  original_line_number((size_t)(parse_end - src.start), &src),
                  file_name,
                  error_buffer);
@@ -323,7 +323,7 @@ include(const char* file_name, FILE* cc_stdin,
         // Does not depend on options.insert_line_directives
         // because it does not cause syntax problems
         // as it is right at the beginning of an input file.
-        fprintf(cc_stdin, "\n#line %lu \"%s\"\n",
+        fprintf(cc_stdin, "\n#line %zu \"%s\"\n",
                 original_line_number((size_t)(region.start_p - src.start),
                                      &src),
             file_name);
