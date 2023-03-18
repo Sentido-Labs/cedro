@@ -944,19 +944,17 @@ int main(int argc, char **argv) {
 int main(int argc, char* argv[])
 {
   int x = 0, y = 0;
-  int initial_x = 0;
 
-<em>search_from_initial_x</em>:
-  for (x = initial_x; x &lt; 100; ++x) {
+  for (x = 0; <b><em>next_x</em>:</b> x &lt; 100; ++x) {
     for (y = 0; y &lt; 100; ++y) {
       switch (x + y) {
         case 157:
           <b>break</b> <em>found_number_decomposition</em>;
         case 11:
-          initial_x = 37;
-          fprintf(stderr, "Jump from x=11 to x=%d\n",
-                  initial_x);
-          <b>continue</b> <em>search_from_initial_x</em>;
+          x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n", x);
+          --x;
+          <b>continue</b> <em>next_x</em>;
       }
     }
   } <em>found_number_decomposition</em>:
@@ -975,21 +973,20 @@ int main(int argc, char* argv[])
 int main(int argc, char* argv[])
 {
   int x = 0, y = 0;
-  int initial_x = 0;
 
-<em>search_from_initial_x</em>:
-  for (x = initial_x; x &lt; 100; ++x) {
+  for (x = 0; x &lt; 100; ++x) {
     for (y = 0; y &lt; 100; ++y) {
       switch (x + y) {
         case 157:
           <b>goto</b> <em>found_number_decomposition</em>;
         case 11:
-          initial_x = 37;
-          fprintf(stderr, "Jump from x=11 to x=%d\n",
-                  initial_x);
-          <b>goto</b> <em>search_from_initial_x</em>;
+          x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n", x);
+          --x;
+          <b>goto</b> <em>next_x</em>;
       }
     }
+  <b><em>next_x</em>:;</b>
   } <em>found_number_decomposition</em>:
 
   if (x &lt; 100 || y &lt; 100) {
@@ -1005,7 +1002,7 @@ int main(int argc, char* argv[])
       <p>The difference between <code>break …</code>, <code>continue …</code>, and <code>goto …</code> is in the restrictions:</p>
       <ul>
         <li><code>break <em>label</em></code> only allows forward jumps, and the label must go right after the end of the loop.</li>
-        <li><code>continue <em>label</em></code> only backward jumps, and the label must go right before the start of the loop.</li>
+        <li><code>continue <em>label</em></code> only backward jumps, and the label must go on the loop <a href="https://en.cppreference.com/w/c/language/for">cond-expression</a>: <code>for (i = 0; <em>label:</em> i &lt 10; ++i)</code>, <code>while (<em>label:</em> i &lt 10)</code>.</li>
         <li><code>goto <em>label</em></code> has no restrictions.</li>
       </uL>
 
@@ -1023,10 +1020,8 @@ int main(int argc, char* argv[])
   int x = 0, y = 0;
   char *level1 = malloc(1);
   <b>auto free(level1);</b>
-  int initial_x = 0;
 
-<em>search_from_initial_x</em>:
-  for (x = initial_x; x &lt; 100; ++x) {
+  for (x = 0; <b><em>next_x</em>:</b> x &lt; 100; ++x) {
     char *level2 = malloc(2);
     <b>auto free(level2);</b>
     for (y = 0; y &lt; 100; ++y) {
@@ -1036,10 +1031,9 @@ int main(int argc, char* argv[])
         case 157:
           <b>break</b> <em>found_number_decomposition</em>;
         case 11:
-          initial_x = 37;
-          fprintf(stderr, "Jump from x=11 to x=%d\n",
-                  initial_x);
-          <b>continue</b> <em>search_from_initial_x</em>;
+          x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n", x);
+          <b>continue</b> <em>next_x</em>;
       }
     }
   } <em>found_number_decomposition</em>:
@@ -1059,10 +1053,8 @@ int main(int argc, char* argv[])
 {
   int x = 0, y = 0;
   char *level1 = malloc(1);
-  int initial_x = 0;
 
-<em>search_from_initial_x</em>:
-  for (x = initial_x; x &lt; 100; ++x) {
+  for (x = 0; x &lt; 100; ++x) {
     char *level2 = malloc(2);
     for (y = 0; y &lt; 100; ++y) {
       char *level3 = malloc(3);
@@ -1072,15 +1064,14 @@ int main(int argc, char* argv[])
           <b>free(level2);</b>
           <b>goto</b> <em>found_number_decomposition</em>;
         case 11:
-          initial_x = 37;
-          fprintf(stderr, "Jump from x=11 to x=%d\n",
-                  initial_x);
+          x = 37;
+          fprintf(stderr, "Jump from x=11 to x=%d\n", x);
           <b>free(level3);</b>
-          <b>free(level2);</b>
-          <b>goto</b> <em>search_from_initial_x</em>;
+          <b>goto</b> <em>next_x</em>;
       }
       <b>free(level3);</b>
     }
+  <b><em>next_x</em>:;</b>
     <b>free(level2);</b>
   } <em>found_number_decomposition</em>:
 

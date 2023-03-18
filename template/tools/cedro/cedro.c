@@ -138,25 +138,25 @@ utf8_error(UTF8Error err, size_t position)
     case UTF8_NO_ERROR:
       return false;
     case UTF8_ERROR:
-      error(LANG("Error descodificando UTF-8 en octeto %lu.",
-                 "UTF-8 decode error at byte %lu."),
+      error(LANG("Error descodificando UTF-8 en octeto %zu.",
+                 "UTF-8 decode error at byte %zu."),
             position);
       break;
     case UTF8_ERROR_OVERLONG:
-      error(LANG("Error UTF-8, secuencia sobrelarga en octeto %lu.",
-                 "UTF-8 error, overlong sequence at byte %lu."),
+      error(LANG("Error UTF-8, secuencia sobrelarga en octeto %zu.",
+                 "UTF-8 error, overlong sequence at byte %zu."),
             position);
       break;
     case UTF8_ERROR_INTERRUPTED_1:
     case UTF8_ERROR_INTERRUPTED_2:
     case UTF8_ERROR_INTERRUPTED_3:
-      error(LANG("Error UTF-8, secuencia interrumpida en octeto %lu.",
-                 "UTF-8 error, interrupted sequence at byte %lu."),
+      error(LANG("Error UTF-8, secuencia interrumpida en octeto %zu.",
+                 "UTF-8 error, interrupted sequence at byte %zu."),
             position);
       break;
     default:
-      error(LANG("Error UTF-8 inesperado 0x%02X en octeto %lu.",
-                 "UTF-8 error, unexpected 0x%02X at byte %lu."),
+      error(LANG("Error UTF-8 inesperado 0x%02X en octeto %zu.",
+                 "UTF-8 error, unexpected 0x%02X at byte %zu."),
             err, position);
   }
 
@@ -186,8 +186,8 @@ eprint(const char * const fmt, ...)
     } else {
       buffer = malloc(needed);
       if (not buffer) {
-        error(LANG("Error de falta de memoria. Se necesitan %lu octetos.\n",
-                   "Out of memory error. %lu bytes needed.\n"),
+        error(LANG("Error de falta de memoria. Se necesitan %zu octetos.\n",
+                   "Out of memory error. %zu bytes needed.\n"),
               needed);
         goto exit;
       }
@@ -1453,20 +1453,47 @@ skip_space_back(Marker_p start, Marker_mut_p end) {
   return end;
 }
 
-/** Find matching fence starting at `cursor`, which should point to an
- * opening fence `{`, `[` or `(`, advance until the corresponding
+/** Find matching fence starting at `cursor`, which must point to an
+ * opening fence `{`, `[` or `(`, or closing fende '}', ']', ')'.
+ *  If starting at an opening fence, advance until the corresponding
  * closing fence `}`, `]` or `)` is found, then return that address.
- *  If the fences are not closed, the return value is `end`
- * and an error message is stored in `err`.
+ *  If at a closing fence, go backwards until finding the opening fence.
+ *  This means that running it again on the result of running it on `cursor`
+ * returns the starting value of `cursor`.
+ *  If the fences are not closed, or `cursor` does not point to a fence,
+ * an error message is stored in `err`.
+ *  Returns `NULL` on error.
  */
 static inline Marker_p
-find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
+find_matching_fence(Marker_p cursor, Marker_p start, Marker_p end,
+                    mut_Error_p err)
 {
-  // TODO: search backwards if we start at a closing fence.
-  Marker_mut_p matching_close = cursor;
+  Marker_mut_p matching_fence = cursor;
   size_t nesting = 0;
+  switch (cursor->token_type) {
+  case T_BLOCK_END:
+  case T_TUPLE_END:
+  case T_INDEX_END:
   do {
-    switch (matching_close->token_type) {
+      switch (matching_fence->token_type) {
+      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+        ++nesting;
+        break;
+      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+        --nesting;
+        break;
+      default: break;
+      }
+      --matching_fence;
+    } while (matching_fence is_not start and nesting);
+    break;
+  case T_BLOCK_START:
+  case T_TUPLE_START:
+  case T_INDEX_START:
+    --matching_fence;
+    do {
+      ++matching_fence;
+      switch (matching_fence->token_type) {
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
         ++nesting;
         break;
@@ -1475,19 +1502,26 @@ find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
         break;
       default: break;
     }
-    ++matching_close;
-  } while (matching_close is_not end and nesting);
-
-  if (nesting or matching_close is end) {
-    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
+    } while (matching_fence is_not end and nesting);
+    break;
+  default:
+    err->message = LANG("No es grupo.", "Not a group.");
     err->position = cursor;
+    matching_fence = NULL;
   }
 
-  return matching_close;
+  if (nesting or matching_fence is end) {
+    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
+    err->position = cursor;
+    matching_fence = NULL;
+  }
+
+  return matching_fence;
 }
 
 /** Find start of line that contains `cursor`,
  * looking back no further than `start`.
+ *  The result points to the first marker in the line.
  */
 static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
@@ -1532,6 +1566,7 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 
 /** Find end of line that contains `cursor`,
  * looking forward no further than right before `end`.
+ *  The result points to the closing marker, ';', '}', EOL, etc.
  */
 static inline Marker_p
 find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
@@ -1761,7 +1796,7 @@ error_at(const char * message,
   while (pending > 0) { --pending; ok = ok && push_str(&buffer, "\n#endif"); }
 
   ok = ok &&
-      push_fmt(&buffer, "\n#line %lu",
+      push_fmt(&buffer, "\n#line %zu",
                original_line_number(cursor->start, src))          &&
       push_str(&buffer, "\n")                                     &&
       push_Marker_array(_, Marker_from(src, as_c_string(&buffer),
@@ -1807,7 +1842,7 @@ write_error_at(const char * message, size_t line_number,
   }
   while (pending > 0) { --pending; fputs("\n#endif", out); }
 
-  fprintf(out, "\n#line %lu", line_number);
+  fprintf(out, "\n#line %zu", line_number);
   fprintf(out, "\n#error %s\n", message);
 }
 
@@ -2285,7 +2320,7 @@ prepare_binary_embedding(mut_Marker_array_p markers, mut_Byte_array_p src,
               (m-1)->token_type is T_INDEX_END) {
             --m; // m → ']'.
             char size_string[16]; // Maximum 16 decimal digits.
-            snprintf(size_string, 16, "%lu", size);
+            snprintf(size_string, 16, "%zu", size);
             push_Marker_array(&replacement,
                               Marker_from(src, size_string, T_NUMBER));
             append_Marker_array(&replacement, (Marker_array_slice){
@@ -2311,7 +2346,7 @@ prepare_binary_embedding(mut_Marker_array_p markers, mut_Byte_array_p src,
             }
             size_t insertion_point = (size_t)(m - markers->start);
             if (err.message) {
-              error("Error: %lu: %s",
+              error("Error: %zu: %s",
                     original_line_number(insertion_point, src),
                     err.message);
               break;
@@ -2482,10 +2517,10 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
       if (cursor + CEDRO_PRAGMA_LEN < token_end and
           mem_eq(CEDRO_PRAGMA, cursor, CEDRO_PRAGMA_LEN)) {
         eprintln(
-            LANG("Aviso: %lu: #pragma Cedro duplicada.\n"
+            LANG("Aviso: %zu: #pragma Cedro duplicada.\n"
                  "  puede hacer que algún código se malinterprete,\n"
                  "  por ejemplo si usa `auto` con su significado normal.",
-                 "Warning: %lu: duplicated Cedro #pragma.\n"
+                 "Warning: %zu: duplicated Cedro #pragma.\n"
                  "  This might cause some code to be misinterpreted,\n"
                  "  for instance if it uses `auto` in its standard meaning."),
             original_line_number((size_t)(cursor - src->start), src));
@@ -2565,17 +2600,15 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
                   if (m->token_type is T_SEMICOLON   or
                       m->token_type is T_LABEL_COLON or
                       m->token_type is T_BLOCK_START or
-                      m->token_type is T_BLOCK_END) {
+                      m->token_type is T_BLOCK_END   or
+                      m->token_type is T_TUPLE_START) {
                     label_candidate->token_type = T_CONTROL_FLOW_LABEL;
                     token_type = T_LABEL_COLON;
                   }
                 } else {
                   mut_Error err = {0};
                   Marker_mut_p line_start = find_line_start(m, start, &err);
-                  if (err.message) {
-                    error(err.message);
-                    return cursor;
-                  }
+                  if (err.message) { error(err.message); return cursor; }
                   while (line_start->token_type is T_SPACE or
                          line_start->token_type is T_COMMENT) ++line_start;
                   if (line_start->token_type is T_CONTROL_FLOW_CASE) {
@@ -2914,7 +2947,7 @@ unparse_foreach(Marker_array_slice markers, size_t previous_marker_end,
       parse(src, (Byte_array_slice){rest, text.end_p}, &arguments,
             options.use_defer_instead_of_auto);
   if (parse_end is_not text.end_p) {
-    if (fprintf(out, "#line %lu \"%s\"\n#error %s\n",
+    if (fprintf(out, "#line %zu \"%s\"\n#error %s\n",
                 original_line_number((size_t)(parse_end - src->start), src),
                 src_file_name,
                 error_buffer) < 0) {
@@ -3357,7 +3390,7 @@ write_pending_space(bool* line_directive_pending, const char* src_file_name,
         line_number = next is end? 0: original_line_number(next->start, src);
       }
       if (line_number is_not 0 and
-          fprintf(out, "#line %lu \"%s\"\n", line_number, src_file_name) < 0) {
+          fprintf(out, "#line %zu \"%s\"\n", line_number, src_file_name) < 0) {
         error(LANG("al escribir la directiva #line",
                    "when writing #line directive"));
         return false;
@@ -3670,9 +3703,9 @@ unparse_fragment(Marker_p m_start, Marker_p m_end, size_t previous_marker_end,
 
         if (len is 10) {
           if (as_string) {
-            fprintf(out, "[%lu] = /* %s */\n", bin_len, basename);
+            fprintf(out, "[%zu] = /* %s */\n", bin_len, basename);
           } else {
-            fprintf(out, "[%lu] = { /* %s */\n", bin_len, basename);
+            fprintf(out, "[%zu] = { /* %s */\n", bin_len, basename);
           }
         } else {
           if (as_string) {
@@ -4154,7 +4187,7 @@ benchmark(mut_Byte_array_p src_p, const char* src_file_name,
                              options.use_defer_instead_of_auto);
     if (parse_end is_not region.end_p) {
       destruct_Marker_array(&markers);
-      eprintln("#line %lu \"%s\"\n#error %s\n",
+      eprintln("#line %zu \"%s\"\n#error %s\n",
                original_line_number((size_t)(parse_end - src_p->start), src_p),
                src_file_name,
                error_buffer);
@@ -4195,7 +4228,7 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
   parse_end = parse(src, region, &markers, false);
   if (parse_end is_not region.end_p) {
     result = false;
-    eprintln("#line %lu \"%s\"\n#error %s\n",
+    eprintln("#line %zu \"%s\"\n#error %s\n",
              original_line_number((size_t)(parse_end - src->start), src),
              src_file_name,
              error_buffer);
@@ -4206,7 +4239,7 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
   parse_end = parse(src_ref, region, &markers_ref, false);
   if (parse_end is_not region.end_p) {
     result = false;
-    eprintln("#line %lu \"%s\"\n#error %s\n",
+    eprintln("#line %zu \"%s\"\n#error %s\n",
              original_line_number((size_t)(parse_end-src_ref->start), src_ref),
              src_ref_file_name,
              error_buffer);
@@ -4247,8 +4280,8 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
     if (cursor     is end    ) --cursor;
     if (cursor_ref is end_ref) --cursor_ref;
     mut_Byte_array message = init_Byte_array(80);
-    if (not push_fmt(&message, LANG("Procesado, línea %lu",
-                                    "Processed, line %lu"),
+    if (not push_fmt(&message, LANG("Procesado, línea %zu",
+                                    "Processed, line %zu"),
                      original_line_number(cursor->start, src))) {
       error("OUT OF MEMORY ERROR.");
       destruct_Byte_array(&message);
@@ -4256,8 +4289,8 @@ validate_eq(mut_Byte_array_p src, mut_Byte_array_p src_ref,
     }
     debug_cursor(cursor, 5, as_c_string(&message), &markers, src);
     if (message.len) truncate_Byte_array(&message, 0);
-    if (not push_fmt(&message, LANG("Referencia, línea %lu",
-                                    "Reference, line %lu"),
+    if (not push_fmt(&message, LANG("Referencia, línea %zu",
+                                    "Reference, line %zu"),
                      original_line_number(cursor_ref->start, src_ref))) {
       error("OUT OF MEMORY ERROR.");
       destruct_Byte_array(&message);
@@ -4549,7 +4582,7 @@ int main(int argc, char** argv)
                              options.use_defer_instead_of_auto);
     if (parse_end is_not region.end_p) {
       err = 1;
-      eprintln("#line %lu \"%s\"\n#error %s\n",
+      eprintln("#line %zu \"%s\"\n#error %s\n",
                original_line_number((size_t)(parse_end - src.start), &src),
                src_file_name,
                error_buffer);
@@ -4560,7 +4593,7 @@ int main(int argc, char** argv)
     if (options.enable_embed_directive and options.embed_as_string) {
       err = prepare_binary_embedding(&markers, &src, src_file_name);
       if (err) {
-        eprintln("#line %lu \"%s\"\n#error %s\n",
+        eprintln("#line %zu \"%s\"\n#error %s\n",
                  original_line_number((size_t)(parse_end - src.start), &src),
                  src_file_name,
                  error_buffer);

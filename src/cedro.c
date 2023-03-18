@@ -1453,20 +1453,47 @@ skip_space_back(Marker_p start, Marker_mut_p end) {
   return end;
 }
 
-/** Find matching fence starting at `cursor`, which should point to an
- * opening fence `{`, `[` or `(`, advance until the corresponding
+/** Find matching fence starting at `cursor`, which must point to an
+ * opening fence `{`, `[` or `(`, or closing fende '}', ']', ')'.
+ *  If starting at an opening fence, advance until the corresponding
  * closing fence `}`, `]` or `)` is found, then return that address.
- *  If the fences are not closed, the return value is `end`
- * and an error message is stored in `err`.
+ *  If at a closing fence, go backwards until finding the opening fence.
+ *  This means that running it again on the result of running it on `cursor`
+ * returns the starting value of `cursor`.
+ *  If the fences are not closed, or `cursor` does not point to a fence,
+ * an error message is stored in `err`.
+ *  Returns `NULL` on error.
  */
 static inline Marker_p
-find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
+find_matching_fence(Marker_p cursor, Marker_p start, Marker_p end,
+                    mut_Error_p err)
 {
-  // TODO: search backwards if we start at a closing fence.
-  Marker_mut_p matching_close = cursor;
+  Marker_mut_p matching_fence = cursor;
   size_t nesting = 0;
-  do {
-    switch (matching_close->token_type) {
+  switch (cursor->token_type) {
+  case T_BLOCK_END:
+  case T_TUPLE_END:
+  case T_INDEX_END:
+    do {
+      switch (matching_fence->token_type) {
+      case T_BLOCK_END: case T_TUPLE_END: case T_INDEX_END:
+        ++nesting;
+        break;
+      case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
+        --nesting;
+        break;
+      default: break;
+      }
+      --matching_fence;
+    } while (matching_fence is_not start and nesting);
+    break;
+  case T_BLOCK_START:
+  case T_TUPLE_START:
+  case T_INDEX_START:
+    --matching_fence;
+    do {
+      ++matching_fence;
+      switch (matching_fence->token_type) {
       case T_BLOCK_START: case T_TUPLE_START: case T_INDEX_START:
         ++nesting;
         break;
@@ -1474,20 +1501,27 @@ find_matching_fence(Marker_p cursor, Marker_p end, mut_Error_p err)
         --nesting;
         break;
       default: break;
-    }
-    ++matching_close;
-  } while (matching_close is_not end and nesting);
-
-  if (nesting or matching_close is end) {
-    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
+      }
+    } while (matching_fence is_not end and nesting);
+    break;
+  default:
+    err->message = LANG("No es grupo.", "Not a group.");
     err->position = cursor;
+    matching_fence = NULL;
   }
 
-  return matching_close;
+  if (nesting or matching_fence is end) {
+    err->message = LANG("Grupo sin cerrar.", "Unclosed group.");
+    err->position = cursor;
+    matching_fence = NULL;
+  }
+
+  return matching_fence;
 }
 
 /** Find start of line that contains `cursor`,
  * looking back no further than `start`.
+ *  The result points to the first marker in the line.
  */
 static inline Marker_p
 find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
@@ -1532,6 +1566,7 @@ find_line_start(Marker_p cursor, Marker_p start, mut_Error_p err)
 
 /** Find end of line that contains `cursor`,
  * looking forward no further than right before `end`.
+ *  The result points to the closing marker, ';', '}', EOL, etc.
  */
 static inline Marker_p
 find_line_end(Marker_p cursor, Marker_p end, mut_Error_p err)
@@ -2565,17 +2600,15 @@ parse(Byte_array_p src, Byte_array_slice region, mut_Marker_array_p markers,
                   if (m->token_type is T_SEMICOLON   or
                       m->token_type is T_LABEL_COLON or
                       m->token_type is T_BLOCK_START or
-                      m->token_type is T_BLOCK_END) {
+                      m->token_type is T_BLOCK_END   or
+                      m->token_type is T_TUPLE_START) {
                     label_candidate->token_type = T_CONTROL_FLOW_LABEL;
                     token_type = T_LABEL_COLON;
                   }
                 } else {
                   mut_Error err = {0};
                   Marker_mut_p line_start = find_line_start(m, start, &err);
-                  if (err.message) {
-                    error(err.message);
-                    return cursor;
-                  }
+                  if (err.message) { error(err.message); return cursor; }
                   while (line_start->token_type is T_SPACE or
                          line_start->token_type is T_COMMENT) ++line_start;
                   if (line_start->token_type is T_CONTROL_FLOW_CASE) {
