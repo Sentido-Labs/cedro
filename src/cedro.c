@@ -1772,30 +1772,9 @@ error_at(const char * message,
     }
   }
 
-  _->len = index_Marker_array(_, cursor);
+  _->len = 0;
   mut_Byte_array buffer = init_Byte_array(200);
-
-  /* Close all open #ifdefs which is needed before #error
-   * because otherwise, the compiler will complain about the unterminated #ifdef
-   * and the intended error message will not be printed. */
-  int pending = 0; // Signed in case of incorrect syntax with too many #endif.
-  for (Marker_mut_p m = _->start; m is_not cursor; ++m) {
-    if (m->token_type is T_PREPROCESSOR) {
-      Byte_array_mut_slice text = slice_for_marker(src, m);
-      while (text.start_p is_not text.end_p and
-             (*text.start_p is ' ' or *text.start_p is '\t')) ++text.start_p;
-      size_t len = (size_t)(text.end_p - text.start_p);
-      if        (strn_eq("if",    (char*)text.start_p, len)) {
-        ++pending;
-      } else if (strn_eq("endif", (char*)text.start_p, len)) {
-        --pending;
-      }
-    }
-  }
-  bool ok = true;
-  while (pending > 0) { --pending; ok = ok && push_str(&buffer, "\n#endif"); }
-
-  ok = ok &&
+  bool ok =
       push_fmt(&buffer, "\n#line %zu",
                original_line_number(cursor->start, src))          &&
       push_str(&buffer, "\n")                                     &&
