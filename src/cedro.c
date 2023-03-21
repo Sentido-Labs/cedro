@@ -2789,7 +2789,7 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
       Byte_mut_p p = text.start_p+2;
       mut_Byte bit_count = 0;
       while (p is_not text.end_p) {
-        char c = *p++;
+        Byte c = *p++;
         if (c is_not '_' and c is_not '\'') ++bit_count;
       }
       bit_count &= 3;
@@ -2823,7 +2823,7 @@ write_token(Marker_p m, Byte_array_p src, Options options, FILE* out)
     } else {
       // Number literal separators.
       for (Byte_mut_p p = text.start_p; p is_not text.end_p; ++p) {
-        char c = *p;
+        Byte c = *p;
         if (c is '_' or c is '\'') {
           if (options.c_standard is C23) putc('\'', out);
         } else putc(c, out);
@@ -4504,11 +4504,11 @@ int main(int argc, char** argv)
       } else if (strn_eq("--validate=", arg, strlen("--validate="))) {
         opt_validate = arg + strlen("--validate=");
       } else if (str_eq("--version", arg)) {
-        eprintln(CEDRO_VERSION);
+        fputs(CEDRO_VERSION, stderr);
       } else if (str_eq("-h", arg) or str_eq("--help", arg)) {
-        eprintln(LANG(usage_es, usage_en));
+        fputs(LANG(usage_es, usage_en), stderr);
       } else {
-        eprintln(LANG(usage_es, usage_en));
+        fputs(LANG(usage_es, usage_en), stderr);
         eprintln(LANG("Error: opción desconocida: %s",
                       "Error: unknown option: %s"),
                  arg);

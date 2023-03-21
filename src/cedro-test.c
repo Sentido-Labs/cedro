@@ -48,7 +48,7 @@ void test_array()
 
   char* text_rebuilt = to_string_Byte_array(&array);
   assert(str_eq((char*const) text, (char*const) text_rebuilt) ||
-         (eprintln(text_rebuilt), false));
+         (fputs(text_rebuilt, stderr), false));
   free(text_rebuilt);
 
   mut_Byte_array text_array = {

@@ -446,7 +446,7 @@ macro_defer(mut_Marker_array_p markers, mut_Byte_array_p src)
               find_line_start(block_start, start, &err);
             Marker_p loop_start = err.message? NULL:
               skip_space_forward(line_start, label_p);
-            if (err.message) { eprintln(err.message); err.message = NULL; }
+            if (err.message) { fputs(err.message, stderr); err.message = NULL; }
             if (low_watermark < nesting or
                 loop_start is NULL or
                 loop_start->token_type is_not T_CONTROL_FLOW_LOOP) {
